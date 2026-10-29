@@ -26,7 +26,7 @@
           <% for (const o of recent) { %>
             <tr class="row-link" data-href="/admin/orders/<%= o.id %>">
               <td><a href="/admin/orders/<%= o.id %>"><strong><%= o.name %></strong></a></td>
-              <td class="muted"><%= formatDate(o.created_at, true) %></td>
+              <td class="muted nowrap"><%= formatDate(o.created_at, true) %></td>
               <td><%= o.email %></td>
               <td><%- include('partials/status', { value: o.financial_status }) %></td>
               <td><%- include('partials/status', { value: o.status === 'cancelled' ? 'cancelled' : o.fulfillment_status }) %></td>

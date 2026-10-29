@@ -5,7 +5,10 @@ const session = require('express-session');
 const SqliteStore = require('./session-store');
 const mw = require('./middleware');
 const { UPLOAD_DIR } = require('./uploads');
+const fs = require('node:fs');
 const { token } = require('./utils');
+
+require('./seed').ensureBase();
 
 const app = express();
 const ROOT = path.join(__dirname, '..');
@@ -26,11 +29,19 @@ app.use('/uploads', express.static(UPLOAD_DIR, {
 
 app.use('/webhooks', require('./routes/webhooks'));
 
+// Without SESSION_SECRET, keep a generated secret next to the database so logins survive restarts.
+function sessionSecret() {
+  if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+  const file = path.join(path.dirname(process.env.DB_PATH || path.join(ROOT, 'data', 'store.db')), '.session-secret');
+  if (!fs.existsSync(file)) fs.writeFileSync(file, token(32), { mode: 0o600 });
+  return fs.readFileSync(file, 'utf8').trim();
+}
+
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(session({
   store: new SqliteStore(),
-  secret: process.env.SESSION_SECRET || token(32),
+  secret: sessionSecret(),
   resave: false,
   saveUninitialized: false,
   name: 'store.sid',

@@ -170,7 +170,8 @@ router.post('/cart/update', (req, res) => {
   const quantities = req.body.quantities || {};
   const next = [];
   for (const line of req.session.cart || []) {
-    const q = quantities[line.variant_id] !== undefined ? toInt(quantities[line.variant_id], line.quantity) : line.quantity;
+    const sent = quantities[`id${line.variant_id}`];
+    const q = sent !== undefined ? toInt(sent, line.quantity) : line.quantity;
     if (q > 0) next.push({ variant_id: line.variant_id, quantity: q });
   }
   if (req.body.remove) {

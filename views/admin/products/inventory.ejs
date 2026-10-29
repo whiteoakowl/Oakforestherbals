@@ -15,7 +15,7 @@
             <td class="muted"><%= r.sku || '—' %></td>
             <td><%- include('../partials/status', { value: r.status }) %></td>
             <td class="num">
-              <% if (r.track_inventory) { %><input type="number" name="qty[<%= r.id %>]" value="<%= r.inventory_qty %>" class="qty-input" aria-label="Quantity for <%= r.product_title %> <%= r.title %>"><% } else { %><span class="muted">Not tracked</span><% } %>
+              <% if (r.track_inventory) { %><input type="number" name="qty[id<%= r.id %>]" value="<%= r.inventory_qty %>" class="qty-input" aria-label="Quantity for <%= r.product_title %> <%= r.title %>"><% } else { %><span class="muted">Not tracked</span><% } %>
             </td>
           </tr>
         <% } %>

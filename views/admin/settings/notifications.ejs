@@ -1,0 +1,50 @@
+<%- include('_top') %>
+<form action="/admin/settings/notifications" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card form-stack">
+    <h2>Sender</h2>
+    <div class="grid-2">
+      <label class="field"><span>Sender name</span><input name="sender_name" value="<%= s.sender_name %>"></label>
+      <label class="field"><span>Sender email</span><input type="email" name="sender_email" value="<%= s.sender_email %>"></label>
+    </div>
+    <label class="field"><span>Send new-order alerts to (staff)</span><input type="email" name="staff_order_email" value="<%= s.staff_order_email %>" placeholder="orders@yourstore.com"></label>
+  </div>
+  <div class="card form-stack">
+    <h2>Email delivery (SMTP)</h2>
+    <p class="muted small">Connect any SMTP provider (Gmail, SendGrid, Mailgun, Postmark, Amazon SES…). Until configured, emails are saved to the outbox below instead of being sent.</p>
+    <div class="grid-3">
+      <label class="field"><span>Host</span><input name="smtp_host" value="<%= s.smtp_host %>" placeholder="smtp.example.com"></label>
+      <label class="field"><span>Port</span><input name="smtp_port" value="<%= s.smtp_port %>"></label>
+      <label class="check"><input type="checkbox" name="smtp_secure" value="1" <%= s.smtp_secure ? 'checked' : '' %>> Use TLS (port 465)</label>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>Username</span><input name="smtp_user" value="<%= s.smtp_user %>" autocomplete="off"></label>
+      <label class="field"><span>Password</span><input type="password" name="smtp_pass" value="<%= s.smtp_pass %>" autocomplete="off"></label>
+    </div>
+  </div>
+  <div class="card form-stack">
+    <h2>Customer notifications</h2>
+    <label class="check"><input type="checkbox" name="order_confirmation" value="1" <%= s.order_confirmation ? 'checked' : '' %>> Order confirmation</label>
+    <label class="check"><input type="checkbox" name="shipping_confirmation" value="1" <%= s.shipping_confirmation ? 'checked' : '' %>> Shipping confirmation</label>
+    <label class="check"><input type="checkbox" name="order_cancelled" value="1" <%= s.order_cancelled ? 'checked' : '' %>> Order cancelled</label>
+    <label class="check"><input type="checkbox" name="customer_welcome" value="1" <%= s.customer_welcome ? 'checked' : '' %>> Customer account welcome</label>
+  </div>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<div class="card flush">
+  <div class="card-head pad"><h2>Outbox</h2>
+    <form action="/admin/settings/notifications/test" method="post"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm">Send test email to me</button></form>
+  </div>
+  <table class="table">
+    <thead><tr><th>To</th><th>Subject</th><th>Status</th><th>Date</th></tr></thead>
+    <tbody>
+    <% for (const e of outbox) { %>
+      <tr><td><%= e.to_address %></td><td><a href="/admin/settings/email/<%= e.id %>" target="_blank"><%= e.subject %></a></td>
+        <td><span class="badge badge-<%= e.status === 'sent' ? 'success' : e.status === 'failed' ? 'critical' : 'default' %>" title="<%= e.error %>"><%= e.status %></span></td>
+        <td class="muted small"><%= formatDate(e.created_at, true) %></td></tr>
+    <% } %>
+    </tbody>
+  </table>
+  <% if (!outbox.length) { %><p class="muted pad">No emails yet.</p><% } %>
+</div>
+<%- include('_bottom') %>

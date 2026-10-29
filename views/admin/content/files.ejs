@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Files' }) %>
+  <form action="/admin/content/files" method="post" enctype="multipart/form-data" class="card inline-fields">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="file" name="files" multiple accept="image/*" required aria-label="Files to upload" class="grow">
+    <button class="btn btn-primary">Upload files</button>
+  </form>
+  <div class="card flush">
+    <table class="table">
+      <thead><tr><th></th><th>File</th><th>Size</th><th>Date added</th><th></th></tr></thead>
+      <tbody>
+      <% for (const f of files) { %>
+        <tr>
+          <td class="thumb-col"><img class="thumb" src="<%= f.url %>" alt=""></td>
+          <td><a href="<%= f.url %>" target="_blank"><%= f.name %></a><div><button type="button" class="link-plain small" data-copy="<%= f.url %>">Copy link</button></div></td>
+          <td class="muted"><%= (f.size / 1024).toFixed(1) %> KB</td>
+          <td class="muted"><%= formatDate(f.created.toISOString()) %></td>
+          <td class="num"><form action="/admin/content/files/delete" method="post" data-confirm="Delete this file? Pages using it will show a broken image."><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="name" value="<%= f.name %>"><button class="link-plain critical-text">Delete</button></form></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+    <% if (!files.length) { %><div class="empty-card"><p class="muted">Uploaded images appear here.</p></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,12 @@
+<%- include('_top') %>
+<form action="/admin/settings/policies" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% for (const [key, label] of [['refund', 'Refund policy'], ['privacy', 'Privacy policy'], ['terms', 'Terms of service'], ['shipping', 'Shipping policy'], ['contact', 'Contact information']]) { %>
+    <div class="card form-stack">
+      <div class="card-head"><h2><%= label %></h2><a class="link small" href="/policies/<%= key %>" target="_blank">View</a></div>
+      <%- include('../partials/rte', { name: key, value: s[key] }) %>
+    </div>
+  <% } %>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<%- include('_bottom') %>

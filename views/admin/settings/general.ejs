@@ -1,0 +1,31 @@
+<%- include('_top') %>
+<form action="/admin/settings/general" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card form-stack">
+    <h2>Store details</h2>
+    <div class="grid-2">
+      <label class="field"><span>Store name</span><input name="name" value="<%= s.name %>" required></label>
+      <label class="field"><span>Tagline</span><input name="tagline" value="<%= s.tagline %>"></label>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>Store contact email</span><input type="email" name="email" value="<%= s.email %>"><small class="muted">Customers see this on emails and the contact page.</small></label>
+      <label class="field"><span>Phone</span><input name="phone" value="<%= s.phone %>"></label>
+    </div>
+    <label class="field"><span>Business address</span><textarea name="address" rows="2"><%= s.address %></textarea></label>
+  </div>
+  <div class="card form-stack">
+    <h2>Store defaults</h2>
+    <div class="grid-3">
+      <label class="field"><span>Currency code</span><input name="currency" value="<%= s.currency %>" maxlength="3"></label>
+      <label class="field"><span>Currency symbol</span><input name="currency_symbol" value="<%= s.currency_symbol %>" maxlength="4"></label>
+      <label class="field"><span>Weight unit</span><select name="weight_unit"><% for (const u of ['g', 'kg', 'oz', 'lb']) { %><option <%= s.weight_unit === u ? 'selected' : '' %>><%= u %></option><% } %></select></label>
+    </div>
+    <p class="muted small">Changing currency does not convert existing prices.</p>
+  </div>
+  <div class="card form-stack">
+    <h2>Order ID format</h2>
+    <label class="field narrow-field"><span>Prefix</span><input name="order_prefix" value="<%= s.order_prefix %>"><small class="muted">Your order ID will appear as <%= s.order_prefix %>1001, <%= s.order_prefix %>1002…</small></label>
+  </div>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<%- include('_bottom') %>

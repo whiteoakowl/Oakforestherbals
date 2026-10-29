@@ -74,6 +74,7 @@ input, select, textarea, button { font: inherit; color: inherit; }
 .predictive img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; }
 .search-link { display: none; }
 .cart-count { position: absolute; top: 2px; right: 0; background: var(--color-accent); color: #fff; font-size: .7rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; display: grid; place-items: center; padding: 0 4px; }
+.cart-count[hidden] { display: none; }
 .menu-toggle { display: none; }
 .staff-bar { background: #1f2a22; color: #fff; font-size: .8rem; text-align: center; padding: 4px; }
 .staff-bar a { color: #fff; }

@@ -1,0 +1,110 @@
+<%- include('../partials/head') %>
+<body class="editor-body">
+<form action="/admin/themes/customize" method="post" enctype="multipart/form-data" class="editor" data-theme-form>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <header class="editor-top">
+    <a href="/admin/themes" class="btn btn-plain">← Exit</a>
+    <strong>Forest · Live</strong>
+    <div class="editor-preview-toggle" role="group" aria-label="Preview size">
+      <button type="button" class="btn btn-sm" data-preview-size="desktop">Desktop</button>
+      <button type="button" class="btn btn-sm" data-preview-size="mobile">Mobile</button>
+    </div>
+    <select class="preview-page" data-preview-page aria-label="Preview page">
+      <option value="/">Home page</option>
+      <option value="/collections/all">Collection</option>
+      <option value="/products/<%= previewProduct %>">Product</option>
+      <option value="/cart">Cart</option>
+      <option value="/blogs/news">Blog</option>
+    </select>
+    <button class="btn btn-primary">Save</button>
+  </header>
+  <% for (const f of flash) { %><div class="toast toast-<%= f.type %> editor-toast"><%= f.message %></div><% } %>
+  <div class="editor-body-grid">
+    <aside class="editor-panel">
+      <details open>
+        <summary>Colors</summary>
+        <% for (const [key, label] of [['color_primary', 'Primary / buttons'], ['color_accent', 'Accent / badges'], ['color_background', 'Background'], ['color_surface', 'Cards & header'], ['color_text', 'Text']]) { %>
+          <label class="color-field"><input type="color" name="<%= key %>" value="<%= t[key] %>"><span><%= label %></span><code><%= t[key] %></code></label>
+        <% } %>
+      </details>
+      <details>
+        <summary>Typography</summary>
+        <label class="field"><span>Headings</span><select name="font_heading"><% for (const f of FONTS) { %><option <%= t.font_heading === f ? 'selected' : '' %>><%= f %></option><% } %></select></label>
+        <label class="field"><span>Body</span><select name="font_body"><% for (const f of FONTS) { %><option <%= t.font_body === f ? 'selected' : '' %>><%= f %></option><% } %></select></label>
+        <label class="field"><span>Button corner radius (px)</span><input type="range" name="button_radius" min="0" max="24" value="<%= t.button_radius %>"></label>
+      </details>
+      <details>
+        <summary>Logo &amp; favicon</summary>
+        <% for (const [key, label] of [['logo', 'Logo'], ['favicon', 'Favicon']]) { %>
+          <div class="field"><span><%= label %></span>
+            <% if (t[key]) { %><img src="<%= t[key] %>" alt="" class="preview-img small-img"><label class="check small"><input type="checkbox" name="remove_<%= key %>" value="1"> Remove</label><% } %>
+            <input type="file" name="<%= key %>_file" accept="image/*">
+          </div>
+        <% } %>
+        <label class="field"><span>Logo width (px)</span><input type="number" name="logo_width" value="<%= t.logo_width %>" min="40" max="400"></label>
+      </details>
+      <details>
+        <summary>Announcement bar</summary>
+        <label class="check"><input type="checkbox" name="announcement_enabled" value="1" <%= t.announcement_enabled ? 'checked' : '' %>> Show announcement</label>
+        <label class="field"><span>Text</span><input name="announcement_text" value="<%= t.announcement_text %>"></label>
+        <label class="field"><span>Link</span><input name="announcement_link" value="<%= t.announcement_link %>"></label>
+      </details>
+      <details>
+        <summary>Home page · Image banner</summary>
+        <label class="check"><input type="checkbox" name="hero_enabled" value="1" <%= t.hero_enabled ? 'checked' : '' %>> Show image banner</label>
+        <label class="field"><span>Heading</span><input name="hero_heading" value="<%= t.hero_heading %>"></label>
+        <label class="field"><span>Text</span><textarea name="hero_subheading" rows="3"><%= t.hero_subheading %></textarea></label>
+        <div class="field"><span>Image</span>
+          <% if (t.hero_image) { %><img src="<%= t.hero_image %>" alt="" class="preview-img small-img"><label class="check small"><input type="checkbox" name="remove_hero_image" value="1"> Remove</label><% } %>
+          <input type="file" name="hero_image_file" accept="image/*">
+        </div>
+        <div class="grid-2">
+          <label class="field"><span>Button label</span><input name="hero_button_text" value="<%= t.hero_button_text %>"></label>
+          <label class="field"><span>Button link</span><input name="hero_button_link" value="<%= t.hero_button_link %>"></label>
+        </div>
+      </details>
+      <details>
+        <summary>Home page · Featured collection</summary>
+        <label class="field"><span>Collection</span><select name="featured_collection"><option value="">All products</option><% for (const c of collections) { %><option value="<%= c.handle %>" <%= t.featured_collection === c.handle ? 'selected' : '' %>><%= c.title %></option><% } %></select></label>
+        <label class="field"><span>Products to show</span><input type="number" name="featured_count" value="<%= t.featured_count %>" min="1" max="24"></label>
+        <label class="check"><input type="checkbox" name="show_collection_list" value="1" <%= t.show_collection_list ? 'checked' : '' %>> Show collection list</label>
+        <label class="check"><input type="checkbox" name="show_blog" value="1" <%= t.show_blog ? 'checked' : '' %>> Show blog posts</label>
+      </details>
+      <details>
+        <summary>Home page · Testimonial</summary>
+        <label class="check"><input type="checkbox" name="testimonial_enabled" value="1" <%= t.testimonial_enabled ? 'checked' : '' %>> Show testimonial</label>
+        <label class="field"><span>Quote</span><textarea name="testimonial_quote" rows="3"><%= t.testimonial_quote %></textarea></label>
+        <label class="field"><span>Author</span><input name="testimonial_author" value="<%= t.testimonial_author %>"></label>
+      </details>
+      <details>
+        <summary>Product cards &amp; collections</summary>
+        <label class="field"><span>Products per page</span><input type="number" name="products_per_page" value="<%= t.products_per_page %>" min="4" max="48"></label>
+        <label class="check"><input type="checkbox" name="show_vendor" value="1" <%= t.show_vendor ? 'checked' : '' %>> Show vendor</label>
+        <label class="check"><input type="checkbox" name="show_sale_badge" value="1" <%= t.show_sale_badge ? 'checked' : '' %>> Show sale badge</label>
+        <label class="check"><input type="checkbox" name="show_sold_out_badge" value="1" <%= t.show_sold_out_badge ? 'checked' : '' %>> Show sold out badge</label>
+      </details>
+      <details>
+        <summary>Footer &amp; newsletter</summary>
+        <label class="field"><span>Footer text</span><input name="footer_text" value="<%= t.footer_text %>"></label>
+        <label class="check"><input type="checkbox" name="show_newsletter" value="1" <%= t.show_newsletter ? 'checked' : '' %>> Show newsletter signup</label>
+        <label class="field"><span>Newsletter heading</span><input name="newsletter_heading" value="<%= t.newsletter_heading %>"></label>
+        <label class="field"><span>Newsletter text</span><input name="newsletter_text" value="<%= t.newsletter_text %>"></label>
+      </details>
+      <details>
+        <summary>Social media</summary>
+        <% for (const [key, label] of [['social_instagram', 'Instagram'], ['social_facebook', 'Facebook'], ['social_pinterest', 'Pinterest'], ['social_tiktok', 'TikTok']]) { %>
+          <label class="field"><span><%= label %> URL</span><input name="<%= key %>" value="<%= t[key] %>" placeholder="https://"></label>
+        <% } %>
+      </details>
+      <div class="editor-reset">
+        <button class="btn btn-plain critical-text small" formaction="/admin/themes/reset" formenctype="application/x-www-form-urlencoded" data-confirm-click="Reset all theme settings to their defaults?">Reset theme to defaults</button>
+      </div>
+    </aside>
+    <section class="editor-preview">
+      <div class="preview-frame" data-preview-frame><iframe src="/" title="Live store preview" data-preview></iframe></div>
+    </section>
+  </div>
+</form>
+<script src="/public/js/admin.js" defer></script>
+</body>
+</html>

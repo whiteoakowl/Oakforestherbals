@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Blog posts', actions: '<a class="btn btn-primary" href="/admin/content/blog/new">Add blog post</a>' }) %>
+  <div class="card flush">
+    <table class="table">
+      <thead><tr><th></th><th>Title</th><th>Visibility</th><th>Author</th><th>Published</th></tr></thead>
+      <tbody>
+      <% for (const a of articles) { %>
+        <tr class="row-link" data-href="/admin/content/blog/<%= a.id %>">
+          <td class="thumb-col"><% if (a.image) { %><img class="thumb" src="<%= a.image %>" alt=""><% } else { %><span class="thumb"></span><% } %></td>
+          <td><a href="/admin/content/blog/<%= a.id %>"><strong><%= a.title %></strong></a></td>
+          <td><%- include('../partials/status', { value: a.published ? 'active' : 'draft' }) %></td>
+          <td><%= a.author %></td>
+          <td class="muted"><%= formatDate(a.published_at) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+    <% if (!articles.length) { %><div class="empty-card"><h2>Write your first blog post</h2><p class="muted">Share stories, recipes and news with your customers.</p></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

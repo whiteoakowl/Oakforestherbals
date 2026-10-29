@@ -4,6 +4,9 @@
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+  // Inside the admin theme editor preview, hide the staff bar so the preview matches what shoppers see.
+  if (window.self !== window.top) { const bar = $('.staff-bar'); if (bar) bar.hidden = true; }
+
   // Mobile menu
   const toggle = $('[data-menu-toggle]');
   const menu = $('[data-menu]');

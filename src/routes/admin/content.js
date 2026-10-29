@@ -6,7 +6,7 @@ const express = require('express');
 const { get, all, run } = require('../../db');
 const { upload, fileUrl, UPLOAD_DIR } = require('../../uploads');
 const { flash, verifyCsrf } = require('../../middleware');
-const { toInt, uniqueHandle, asBool, parseTags } = require('../../utils');
+const { toInt, uniqueHandle, asBool, parseTags, asList } = require('../../utils');
 
 const router = express.Router();
 
@@ -107,7 +107,7 @@ router.post('/navigation/new', (req, res) => {
 
 router.post('/navigation/:id', (req, res) => {
   // Items post as items[i][title|url|parent]; parent is the index of a top-level item for dropdowns.
-  const raw = [].concat(req.body.items || []).filter((i) => i && String(i.title || '').trim() && String(i.url || '').trim());
+  const raw = asList(req.body.items).filter((i) => i && String(i.title || '').trim() && String(i.url || '').trim());
   const top = [];
   const byIndex = new Map();
   raw.forEach((i, idx) => {

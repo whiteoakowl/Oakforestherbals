@@ -22,7 +22,6 @@ const DEFAULTS = {
     require_phone: false,
     require_company: false,
     order_notes: true,
-    tipping: false,
     marketing_checkbox_default: false,
     thank_you_message: 'Thank you for supporting a small herbal apothecary!',
   },

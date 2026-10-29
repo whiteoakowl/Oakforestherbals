@@ -1,0 +1,27 @@
+<%- include('_top') %>
+<form action="/admin/settings/payments" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card form-stack">
+    <div class="card-head"><h2>Card payments (Stripe)</h2><span class="badge badge-<%= s.stripe_enabled && s.stripe_secret_key ? 'success' : 'default' %>"><%= s.stripe_enabled && s.stripe_secret_key ? 'Active' : 'Inactive' %></span></div>
+    <p class="muted small">Accept Visa, Mastercard, Amex, Apple Pay and Google Pay through Stripe Checkout. Create API keys in your Stripe dashboard under Developers → API keys.</p>
+    <label class="check"><input type="checkbox" name="stripe_enabled" value="1" <%= s.stripe_enabled ? 'checked' : '' %>> Enable card payments</label>
+    <label class="field"><span>Publishable key</span><input name="stripe_publishable_key" value="<%= s.stripe_publishable_key %>" placeholder="pk_live_…"></label>
+    <label class="field"><span>Secret key</span><input type="password" name="stripe_secret_key" placeholder="<%= s.stripe_secret_key ? '•••••••• (saved — leave blank to keep)' : 'sk_live_…' %>" autocomplete="off"></label>
+    <label class="field"><span>Webhook signing secret (recommended)</span><input type="password" name="stripe_webhook_secret" placeholder="<%= s.stripe_webhook_secret ? '•••••••• (saved — leave blank to keep)' : 'whsec_…' %>" autocomplete="off">
+      <small class="muted">Add a webhook endpoint in Stripe pointing to <code>https://your-domain/webhooks/stripe</code> for the <code>checkout.session.completed</code> event.</small></label>
+    <label class="check"><input type="checkbox" name="test_mode" value="1" <%= s.test_mode ? 'checked' : '' %>> Test mode (use Stripe test keys)</label>
+  </div>
+  <div class="card form-stack">
+    <h2>Manual payment methods</h2>
+    <p class="muted small">Payments made outside your online store. Orders paid manually must be marked as paid before you fulfill them.</p>
+    <% for (const m of s.manual) { %>
+      <div class="sub-card form-stack">
+        <label class="check"><input type="checkbox" name="manual[<%= m.id %>][enabled]" value="1" <%= m.enabled ? 'checked' : '' %>> <strong>Enable</strong></label>
+        <label class="field"><span>Name shown at checkout</span><input name="manual[<%= m.id %>][name]" value="<%= m.name %>"></label>
+        <label class="field"><span>Payment instructions</span><textarea name="manual[<%= m.id %>][instructions]" rows="2"><%= m.instructions %></textarea></label>
+      </div>
+    <% } %>
+  </div>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<%- include('_bottom') %>

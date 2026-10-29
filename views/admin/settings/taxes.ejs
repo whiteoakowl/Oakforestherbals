@@ -1,0 +1,31 @@
+<%- include('_top') %>
+<form action="/admin/settings/taxes" method="post" class="card form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h2>Tax calculations</h2>
+  <label class="check"><input type="checkbox" name="prices_include_tax" value="1" <%= s.prices_include_tax ? 'checked' : '' %>> All prices include tax</label>
+  <label class="check"><input type="checkbox" name="charge_tax_on_shipping" value="1" <%= s.charge_tax_on_shipping ? 'checked' : '' %>> Charge tax on shipping rates</label>
+  <label class="field narrow-field"><span>Default tax rate (%) for regions without a rate</span><input name="default_rate" value="<%= s.default_rate %>" inputmode="decimal"></label>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<div class="card flush">
+  <div class="card-head pad"><h2>Regional tax rates</h2></div>
+  <table class="table">
+    <thead><tr><th>Country</th><th>State / province</th><th>Name</th><th class="num">Rate</th><th></th></tr></thead>
+    <tbody>
+    <% for (const r of rates) { %>
+      <tr><td><%= r.country %></td><td><%= r.province || 'All' %></td><td><%= r.name %></td><td class="num"><%= r.rate %>%</td>
+        <td class="num"><form action="/admin/settings/taxes/rates/<%= r.id %>/delete" method="post" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Delete</button></form></td></tr>
+    <% } %>
+    </tbody>
+  </table>
+  <form action="/admin/settings/taxes/rates" method="post" class="inline-fields pad">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <select name="country" aria-label="Country"><% for (const [code, name] of COUNTRIES) { %><option value="<%= code %>"><%= name %></option><% } %></select>
+    <input name="province" placeholder="State code (e.g. CA) or blank" aria-label="State or province">
+    <input name="name" placeholder="Sales tax" aria-label="Tax name">
+    <input name="rate" placeholder="Rate %" inputmode="decimal" class="tiny-input" aria-label="Rate" required>
+    <button class="btn">Add rate</button>
+  </form>
+  <p class="muted small pad-x pad-b">You are responsible for charging the correct tax. Consult a tax professional for your obligations.</p>
+</div>
+<%- include('_bottom') %>

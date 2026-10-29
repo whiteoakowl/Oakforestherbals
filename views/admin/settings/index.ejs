@@ -1,0 +1,10 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Settings' }) %>
+  <div class="card flush settings-grid">
+    <% for (const [key, label, desc] of SECTIONS) { %>
+      <a href="/admin/settings/<%= key %>" class="settings-tile"><strong><%= label %></strong><span class="muted small"><%= desc %></span></a>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

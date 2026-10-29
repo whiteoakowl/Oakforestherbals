@@ -1,0 +1,22 @@
+<%- include('_top') %>
+<form action="/admin/settings/preferences" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card form-stack">
+    <h2>Title and meta description</h2>
+    <label class="field"><span>Home page title</span><input name="home_title" value="<%= seo.home_title %>" placeholder="<%= store.name %>"></label>
+    <label class="field"><span>Home page meta description</span><textarea name="home_description" rows="2"><%= seo.home_description %></textarea></label>
+  </div>
+  <div class="card form-stack">
+    <h2>Tracking code</h2>
+    <p class="muted small">Paste a snippet from Google Analytics, Meta Pixel, etc. It is added to the &lt;head&gt; of every storefront page. Only paste code from providers you trust.</p>
+    <textarea name="analytics_head_html" rows="5" class="mono" aria-label="Tracking code"><%= seo.analytics_head_html %></textarea>
+  </div>
+  <div class="card form-stack">
+    <h2>Password protection</h2>
+    <label class="check"><input type="checkbox" name="password_enabled" value="1" <%= s.password_enabled ? 'checked' : '' %>> Restrict access to visitors with the password</label>
+    <label class="field"><span>Password</span><input name="password" value="<%= s.password %>" autocomplete="off"></label>
+    <label class="field"><span>Message for your visitors</span><input name="password_message" value="<%= s.password_message %>"></label>
+  </div>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<%- include('_bottom') %>

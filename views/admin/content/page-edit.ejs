@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<% const p = page || { title: '', handle: '', body_html: '', published: 1, seo_title: '', seo_description: '' }; %>
+<form action="/admin/content/pages/<%= page ? page.id : 'new' %>" method="post" class="page" data-dirty-form>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="save-bar" data-save-bar hidden><span>Unsaved changes</span><div><button class="btn btn-primary">Save</button></div></div>
+  <%- include('../partials/page-header', { heading: page ? page.title : 'Add page', backHref: '/admin/content/pages',
+    actions: page ? `<a class="btn" href="/pages/${page.handle}" target="_blank" rel="noopener">View page</a>` : '' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card form-stack">
+        <label class="field"><span>Title</span><input name="title" value="<%= p.title %>" placeholder="e.g. Contact us, Sizing chart, FAQs" required></label>
+        <div class="field"><span>Content</span><%- include('../partials/rte', { name: 'body_html', value: p.body_html }) %></div>
+      </div>
+      <div class="card form-stack">
+        <h2>Search engine listing</h2>
+        <label class="field"><span>Page title</span><input name="seo_title" value="<%= p.seo_title %>"></label>
+        <label class="field"><span>Meta description</span><textarea name="seo_description" rows="2"><%= p.seo_description %></textarea></label>
+        <label class="field"><span>URL handle</span><div class="input-prefix"><span>/pages/</span><input name="handle" value="<%= p.handle %>"></div></label>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Visibility</h2>
+        <label class="check"><input type="radio" name="published" value="1" <%= p.published ? 'checked' : '' %>> Visible</label>
+        <label class="check"><input type="radio" name="published" value="0" <%= p.published ? '' : 'checked' %>> Hidden</label>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <% if (page) { %><button class="btn btn-critical" formaction="/admin/content/pages/<%= page.id %>/delete" formnovalidate data-confirm-click="Delete this page?">Delete page</button><% } else { %><span></span><% } %>
+    <button class="btn btn-primary">Save</button>
+  </div>
+</form>
+<%- include('../partials/footer') %>

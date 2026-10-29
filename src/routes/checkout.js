@@ -170,8 +170,15 @@ router.post('/payment', async (req, res, next) => {
 
     if (method.kind === 'stripe') {
       const base = `${req.protocol}://${req.get('host')}`;
-      const url = await stripe.createCheckoutSession(order, base);
-      return res.redirect(303, url);
+      try {
+        return res.redirect(303, await stripe.createCheckoutSession(order, base));
+      } catch (err) {
+        console.error('[stripe]', err.message);
+        req.session.cart = order.items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }));
+        orders.cancel(order.id, { restock: true, reason: `Card payment could not start: ${err.message}`, notify: false });
+        flash(req, 'error', 'We could not start the card payment. Please try again or choose another payment method.');
+        return res.redirect('/cart');
+      }
     }
     if (order.total === 0) orders.markPaid(order.id, { ref: 'zero-total' });
     res.redirect(`/checkout/thank-you/${order.token}`);

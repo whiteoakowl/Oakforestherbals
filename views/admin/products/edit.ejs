@@ -30,9 +30,9 @@
           <% p.images.forEach((img, i) => { %>
             <div class="media-item">
               <img src="<%= img.url %>" alt="<%= img.alt %>">
-              <input type="text" name="image_alt[<%= img.id %>]" value="<%= img.alt %>" placeholder="Alt text" aria-label="Alt text">
+              <input type="text" name="image_alt[id<%= img.id %>]" value="<%= img.alt %>" placeholder="Alt text" aria-label="Alt text">
               <div class="media-controls">
-                <label class="small">Position <input type="number" name="image_position[<%= img.id %>]" value="<%= img.position %>" class="tiny-input"></label>
+                <label class="small">Position <input type="number" name="image_position[id<%= img.id %>]" value="<%= img.position %>" class="tiny-input"></label>
                 <label class="small check"><input type="checkbox" name="remove_images" value="<%= img.id %>"> Remove</label>
               </div>
             </div>
@@ -107,13 +107,13 @@
             <% for (const v of p.variants) { %>
               <tr>
                 <td><strong><%= v.title %></strong></td>
-                <td><input name="variants[<%= v.id %>][price]" value="<%= centsToInput(v.price) %>" inputmode="decimal" class="cell-input" aria-label="Price for <%= v.title %>"></td>
-                <td><input name="variants[<%= v.id %>][compare_at_price]" value="<%= centsToInput(v.compare_at_price) %>" inputmode="decimal" class="cell-input" aria-label="Compare-at price for <%= v.title %>"></td>
-                <td><input name="variants[<%= v.id %>][cost]" value="<%= centsToInput(v.cost) %>" inputmode="decimal" class="cell-input" aria-label="Cost for <%= v.title %>"></td>
-                <td><input name="variants[<%= v.id %>][sku]" value="<%= v.sku %>" class="cell-input" aria-label="SKU for <%= v.title %>"></td>
-                <td><input name="variants[<%= v.id %>][barcode]" value="<%= v.barcode %>" class="cell-input" aria-label="Barcode for <%= v.title %>"></td>
-                <td><input type="number" name="variants[<%= v.id %>][inventory_qty]" value="<%= v.inventory_qty %>" class="cell-input narrow" aria-label="Quantity for <%= v.title %>"></td>
-                <td><input type="number" name="variants[<%= v.id %>][weight_grams]" value="<%= v.weight_grams %>" class="cell-input narrow" aria-label="Weight for <%= v.title %>"></td>
+                <td><input name="variants[id<%= v.id %>][price]" value="<%= centsToInput(v.price) %>" inputmode="decimal" class="cell-input" aria-label="Price for <%= v.title %>"></td>
+                <td><input name="variants[id<%= v.id %>][compare_at_price]" value="<%= centsToInput(v.compare_at_price) %>" inputmode="decimal" class="cell-input" aria-label="Compare-at price for <%= v.title %>"></td>
+                <td><input name="variants[id<%= v.id %>][cost]" value="<%= centsToInput(v.cost) %>" inputmode="decimal" class="cell-input" aria-label="Cost for <%= v.title %>"></td>
+                <td><input name="variants[id<%= v.id %>][sku]" value="<%= v.sku %>" class="cell-input" aria-label="SKU for <%= v.title %>"></td>
+                <td><input name="variants[id<%= v.id %>][barcode]" value="<%= v.barcode %>" class="cell-input" aria-label="Barcode for <%= v.title %>"></td>
+                <td><input type="number" name="variants[id<%= v.id %>][inventory_qty]" value="<%= v.inventory_qty %>" class="cell-input narrow" aria-label="Quantity for <%= v.title %>"></td>
+                <td><input type="number" name="variants[id<%= v.id %>][weight_grams]" value="<%= v.weight_grams %>" class="cell-input narrow" aria-label="Weight for <%= v.title %>"></td>
               </tr>
             <% } %>
             </tbody>

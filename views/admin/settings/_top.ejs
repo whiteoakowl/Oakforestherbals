@@ -1,0 +1,8 @@
+<%- include('../partials/header') %>
+<div class="page settings-page">
+  <div class="settings-layout">
+    <nav class="settings-nav card flush">
+      <% for (const [key, label] of SECTIONS) { %><a href="/admin/settings/<%= key %>" class="<%= adminPath === `/admin/settings/${key}` ? 'active' : '' %>"><%= label %></a><% } %>
+    </nav>
+    <div class="settings-main">
+      <%- include('../partials/page-header', { heading: title }) %>

@@ -1,0 +1,49 @@
+<%- include('_top') %>
+<% const rateForm = (r) => { r = r || { id: '', name: '', price: 0, min_subtotal: 0, max_subtotal: null, countries: '*', delivery_estimate: '', position: 0 }; return r; }; %>
+<div class="card flush">
+  <div class="card-head pad"><h2>Shipping rates</h2></div>
+  <p class="muted small pad-x">Customers see every rate whose destination and order-price condition matches their cart. Use price conditions for free shipping thresholds.</p>
+  <table class="table">
+    <thead><tr><th>Rate</th><th>Destinations</th><th>Condition</th><th class="num">Price</th><th></th></tr></thead>
+    <tbody>
+    <% for (const r of rates) { %>
+      <tr>
+        <td><strong><%= r.name %></strong><div class="muted small"><%= r.delivery_estimate %></div></td>
+        <td class="small"><%= r.countries === '*' ? 'All countries' : r.countries %></td>
+        <td class="small muted"><%= r.min_subtotal || r.max_subtotal !== null ? `${money(r.min_subtotal)} – ${r.max_subtotal !== null ? money(r.max_subtotal) : 'and up'}` : 'None' %></td>
+        <td class="num"><%= r.price ? money(r.price) : 'Free' %></td>
+        <td class="num nowrap">
+          <button type="button" class="link-plain small" data-dialog-open="rate-<%= r.id %>">Edit</button>
+          <form action="/admin/settings/shipping/<%= r.id %>/delete" method="post" class="inline" data-confirm="Delete this rate?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Delete</button></form>
+        </td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table>
+  <% if (!rates.length) { %><div class="empty-card"><p class="muted">No shipping rates — customers won't be able to check out physical products.</p></div><% } %>
+  <div class="pad"><button type="button" class="btn btn-primary" data-dialog-open="rate-new">Add rate</button></div>
+</div>
+<% for (const r of [...rates, null]) { const x = rateForm(r); const selected = x.countries === '*' ? [] : x.countries.split(','); %>
+<dialog id="rate-<%= r ? r.id : 'new' %>" class="dialog">
+  <form action="/admin/settings/shipping" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="id" value="<%= x.id %>">
+    <h2><%= r ? 'Edit rate' : 'Add rate' %></h2>
+    <div class="grid-2">
+      <label class="field"><span>Rate name</span><input name="name" value="<%= x.name %>" placeholder="Standard" required></label>
+      <label class="field"><span>Price</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="price" value="<%= centsToInput(x.price) %>" inputmode="decimal"></div></label>
+    </div>
+    <label class="field"><span>Delivery estimate</span><input name="delivery_estimate" value="<%= x.delivery_estimate %>" placeholder="3 to 5 business days"></label>
+    <div class="grid-2">
+      <label class="field"><span>Minimum order price</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="min_subtotal" value="<%= centsToInput(x.min_subtotal) %>" inputmode="decimal"></div></label>
+      <label class="field"><span>Maximum order price</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="max_subtotal" value="<%= centsToInput(x.max_subtotal) %>" inputmode="decimal" placeholder="No limit"></div></label>
+    </div>
+    <label class="field"><span>Countries (leave empty for all)</span>
+      <select name="countries" multiple size="6"><% for (const [code, name] of COUNTRIES) { %><option value="<%= code %>" <%= selected.includes(code) ? 'selected' : '' %>><%= name %></option><% } %></select>
+    </label>
+    <label class="field narrow-field"><span>Sort position</span><input type="number" name="position" value="<%= x.position %>"></label>
+    <div class="dialog-actions"><button type="button" class="btn" data-dialog-close>Cancel</button><button class="btn btn-primary">Save</button></div>
+  </form>
+</dialog>
+<% } %>
+<%- include('_bottom') %>

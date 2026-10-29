@@ -1,0 +1,26 @@
+<%- include('_top') %>
+<form action="/admin/settings/checkout" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card form-stack">
+    <h2>Customer accounts</h2>
+    <% for (const [k, l, d] of [['disabled', 'Accounts are disabled', 'Customers check out as guests only.'], ['optional', 'Accounts are optional', 'Customers can check out with or without an account.'], ['required', 'Accounts are required', 'Customers must log in before checking out.']]) { %>
+      <label class="check"><input type="radio" name="customer_accounts" value="<%= k %>" <%= s.customer_accounts === k ? 'checked' : '' %>> <span><strong><%= l %></strong> <span class="muted small">— <%= d %></span></span></label>
+    <% } %>
+  </div>
+  <div class="card form-stack">
+    <h2>Customer information</h2>
+    <label class="check"><input type="checkbox" name="require_phone" value="1" <%= s.require_phone ? 'checked' : '' %>> Require a phone number at checkout</label>
+    <label class="check"><input type="checkbox" name="require_company" value="1" <%= s.require_company ? 'checked' : '' %>> Require a company name</label>
+    <label class="check"><input type="checkbox" name="order_notes" value="1" <%= s.order_notes ? 'checked' : '' %>> Let customers add an order note</label>
+  </div>
+  <div class="card form-stack">
+    <h2>Marketing</h2>
+    <label class="check"><input type="checkbox" name="marketing_checkbox_default" value="1" <%= s.marketing_checkbox_default ? 'checked' : '' %>> Pre-select the email marketing checkbox</label>
+  </div>
+  <div class="card form-stack">
+    <h2>Order status page</h2>
+    <label class="field"><span>Thank-you message</span><textarea name="thank_you_message" rows="2"><%= s.thank_you_message %></textarea></label>
+  </div>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<%- include('_bottom') %>

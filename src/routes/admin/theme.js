@@ -1,7 +1,7 @@
 'use strict';
 // Theme editor: every storefront design setting, with a live preview beside the form.
 const express = require('express');
-const { all } = require('../../db');
+const { get, all } = require('../../db');
 const settings = require('../../settings');
 const { upload, fileUrl } = require('../../uploads');
 const { flash, verifyCsrf } = require('../../middleware');
@@ -20,7 +20,10 @@ router.get('/', (req, res) => {
 
 router.get('/customize', (req, res) => {
   const collections = all('SELECT handle, title FROM collections ORDER BY title');
-  res.render('admin/theme/customize', { title: 'Customize theme', bare: true, FONTS, collections, t: settings.load('theme') });
+  const product = get("SELECT handle FROM products WHERE status = 'active' ORDER BY id LIMIT 1");
+  res.render('admin/theme/customize', {
+    title: 'Customize theme', FONTS, collections, t: settings.load('theme'), previewProduct: product ? product.handle : '',
+  });
 });
 
 const fields = upload.fields(IMAGE_FIELDS.map((name) => ({ name: `${name}_file`, maxCount: 1 })));

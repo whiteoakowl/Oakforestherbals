@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Themes', actions: '<a class="btn" href="/" target="_blank" rel="noopener">View your store</a>' }) %>
+  <div class="card theme-card">
+    <div class="theme-preview"><iframe src="/" title="Store preview" loading="lazy" tabindex="-1"></iframe></div>
+    <div class="theme-meta">
+      <div>
+        <div class="row-gap"><h2>Forest</h2><span class="badge badge-success">Current theme</span></div>
+        <p class="muted small">Fonts: <%= theme.font_heading %> / <%= theme.font_body %></p>
+        <div class="swatches">
+          <% for (const key of ['color_primary', 'color_accent', 'color_background', 'color_text']) { %><span class="swatch" style="background: <%= theme[key] %>" title="<%= key.replace('color_', '') %>"></span><% } %>
+        </div>
+      </div>
+      <a class="btn btn-primary" href="/admin/themes/customize">Customize</a>
+    </div>
+  </div>
+  <div class="layout-halves">
+    <div class="card"><h2>Navigation</h2><p class="muted small">Edit the menus in your header and footer.</p><a class="btn" href="/admin/content/navigation">Edit menus</a></div>
+    <div class="card"><h2>Preferences</h2><p class="muted small">Home page title, meta description, tracking code and store password.</p><a class="btn" href="/admin/settings/preferences">Edit preferences</a></div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

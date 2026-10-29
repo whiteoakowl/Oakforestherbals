@@ -39,7 +39,7 @@
                 <td class="thumb-col"><% if (i.image) { %><img class="thumb" src="<%= i.image %>" alt=""><% } %></td>
                 <td><strong><%= i.title %></strong><% if (i.variant_title) { %><div class="muted small"><%= i.variant_title %></div><% } %><% if (i.sku) { %><div class="muted small">SKU: <%= i.sku %></div><% } %></td>
                 <td class="num nowrap"><%= money(i.price) %> × <%= i.quantity %></td>
-                <td class="num"><label class="small">Ship <input type="number" name="qty[<%= i.id %>]" value="<%= i.quantity - i.fulfilled_qty %>" min="0" max="<%= i.quantity - i.fulfilled_qty %>" class="tiny-input"></label></td>
+                <td class="num"><label class="small">Ship <input type="number" name="qty[id<%= i.id %>]" value="<%= i.quantity - i.fulfilled_qty %>" min="0" max="<%= i.quantity - i.fulfilled_qty %>" class="tiny-input"></label></td>
               </tr>
             <% } %>
             </tbody>

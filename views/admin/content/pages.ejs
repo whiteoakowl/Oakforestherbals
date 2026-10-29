@@ -1,0 +1,21 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Pages', actions: '<a class="btn btn-primary" href="/admin/content/pages/new">Add page</a>' }) %>
+  <div class="card flush">
+    <table class="table">
+      <thead><tr><th>Title</th><th>Visibility</th><th>URL</th><th>Updated</th></tr></thead>
+      <tbody>
+      <% for (const p of pages) { %>
+        <tr class="row-link" data-href="/admin/content/pages/<%= p.id %>">
+          <td><a href="/admin/content/pages/<%= p.id %>"><strong><%= p.title %></strong></a></td>
+          <td><%- include('../partials/status', { value: p.published ? 'active' : 'draft' }) %></td>
+          <td class="muted">/pages/<%= p.handle %></td>
+          <td class="muted"><%= formatDate(p.updated_at) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+    <% if (!pages.length) { %><div class="empty-card"><h2>Add pages to your online store</h2><p class="muted">Write About us, FAQ or contact pages.</p></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

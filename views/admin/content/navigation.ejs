@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Navigation' }) %>
+  <div class="card flush">
+    <table class="table">
+      <thead><tr><th>Menu</th><th>Menu items</th></tr></thead>
+      <tbody>
+      <% for (const m of menus) { %>
+        <tr class="row-link" data-href="/admin/content/navigation/<%= m.id %>">
+          <td><a href="/admin/content/navigation/<%= m.id %>"><strong><%= m.title %></strong></a><div class="muted small">Handle: <%= m.handle %></div></td>
+          <td class="muted"><%= m.items.map((i) => i.title).join(', ') %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+  <form action="/admin/content/navigation/new" method="post" class="card inline-fields">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input name="title" placeholder="New menu name" required aria-label="Menu name" class="grow">
+    <button class="btn">Create menu</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

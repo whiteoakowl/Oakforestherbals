@@ -109,9 +109,20 @@ function parseCsv(text) {
   return body.map((r) => Object.fromEntries(header.map((h, i) => [h.trim(), r[i] ?? ''])));
 }
 
+// Form arrays may arrive as arrays, index-keyed objects (qs with large indices) or a single value.
+function asList(v) {
+  if (Array.isArray(v)) return v;
+  if (v && typeof v === 'object') return Object.values(v);
+  return v === undefined || v === null || v === '' ? [] : [v];
+}
+
+// Rows keyed by record id are posted as field[id123] so qs/multer keep them as object keys
+// (purely numeric keys get compacted into arrays).
+const idFromKey = (key) => toInt(String(key).replace(/^id/, ''));
+
 const asBool = (v) => v === true || v === 'on' || v === '1' || v === 'true' || v === 1;
 
 module.exports = {
   formatMoney, parseMoney, centsToInput, toInt, slugify, uniqueHandle, parseTags, token,
-  escapeHtml, stripHtml, formatDate, paginate, csvRow, parseCsv, asBool,
+  escapeHtml, stripHtml, formatDate, paginate, csvRow, parseCsv, asBool, asList, idFromKey,
 };

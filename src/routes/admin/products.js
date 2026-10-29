@@ -4,7 +4,7 @@ const { get, all, run, tx } = require('../../db');
 const catalog = require('../../catalog');
 const { upload, csvUpload, fileUrl } = require('../../uploads');
 const { flash, verifyCsrf } = require('../../middleware');
-const { parseMoney, toInt, uniqueHandle, parseTags, paginate, csvRow, parseCsv, asBool, centsToInput } = require('../../utils');
+const { parseMoney, toInt, uniqueHandle, parseTags, paginate, csvRow, parseCsv, asBool, asList, idFromKey, centsToInput } = require('../../utils');
 
 const router = express.Router();
 
@@ -62,7 +62,7 @@ router.post('/inventory', (req, res) => {
   const qty = req.body.qty || {};
   tx(() => {
     for (const [id, value] of Object.entries(qty)) {
-      if (value !== '') run('UPDATE variants SET inventory_qty = ? WHERE id = ?', toInt(value), toInt(id));
+      if (value !== '') run('UPDATE variants SET inventory_qty = ? WHERE id = ?', toInt(value), idFromKey(id));
     }
   });
   flash(req, 'success', 'Inventory saved.');
@@ -175,7 +175,7 @@ const asInput = (v) => ({ ...v, price: centsToInput(v.price), compare_at_price: 
 function saveProduct(id, body, files) {
   const title = String(body.title || '').trim() || 'Untitled product';
   const status = STATUSES.includes(body.status) ? body.status : 'draft';
-  const options = [].concat(body.options || [])
+  const options = asList(body.options)
     .map((o) => ({ name: String(o.name || '').trim(), values: parseTags(o.values) }))
     .filter((o) => o.name && o.values.length)
     .slice(0, 3);
@@ -211,7 +211,7 @@ function saveProduct(id, body, files) {
         : existing[0];
       let fields;
       if (!options.length) fields = variantFields(body);
-      else if (match) fields = variantFields(posted[match.id], asInput(match));
+      else if (match) fields = variantFields(posted[`id${match.id}`], asInput(match));
       else fields = { ...variantFields(body), sku: '', barcode: '', inventory_qty: 0 };
       const vtitle = combo.length ? combo.join(' / ') : 'Default Title';
       const cols = [vtitle, o1, o2, o3, fields.price, fields.compare_at_price, fields.cost, fields.sku, fields.barcode,
@@ -232,8 +232,8 @@ function saveProduct(id, body, files) {
 
     // Media
     for (const imgId of [].concat(body.remove_images || [])) run('DELETE FROM product_images WHERE id = ? AND product_id = ?', toInt(imgId), id);
-    for (const [imgId, alt] of Object.entries(body.image_alt || {})) run('UPDATE product_images SET alt = ? WHERE id = ? AND product_id = ?', String(alt), toInt(imgId), id);
-    for (const [imgId, pos] of Object.entries(body.image_position || {})) run('UPDATE product_images SET position = ? WHERE id = ? AND product_id = ?', toInt(pos), toInt(imgId), id);
+    for (const [imgId, alt] of Object.entries(body.image_alt || {})) run('UPDATE product_images SET alt = ? WHERE id = ? AND product_id = ?', String(alt), idFromKey(imgId), id);
+    for (const [imgId, pos] of Object.entries(body.image_position || {})) run('UPDATE product_images SET position = ? WHERE id = ? AND product_id = ?', toInt(pos), idFromKey(imgId), id);
     let next = (get('SELECT MAX(position) AS m FROM product_images WHERE product_id = ?', id).m ?? -1) + 1;
     for (const file of files || []) run('INSERT INTO product_images (product_id, url, alt, position) VALUES (?, ?, ?, ?)', id, fileUrl(file), title, next++);
     const imageUrl = String(body.image_url || '').trim();

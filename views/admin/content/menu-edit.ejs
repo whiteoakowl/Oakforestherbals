@@ -1,0 +1,41 @@
+<%- include('../partials/header') %>
+<% const rows = []; menu.items.forEach((it) => { rows.push({ ...it, parent: '' }); const pi = rows.length - 1; (it.children || []).forEach((ch) => rows.push({ ...ch, parent: String(pi) })); }); %>
+<form action="/admin/content/navigation/<%= menu.id %>" method="post" class="page narrow">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <%- include('../partials/page-header', { heading: menu.title, backHref: '/admin/content/navigation' }) %>
+  <div class="card form-stack">
+    <label class="field"><span>Title</span><input name="title" value="<%= menu.title %>"></label>
+    <p class="muted small">Handle: <code><%= menu.handle %></code><%= ['main-menu', 'footer'].includes(menu.handle) ? ' · used by your theme' : '' %></p>
+  </div>
+  <div class="card">
+    <h2>Menu items</h2>
+    <p class="muted small">Choose a link or type any URL. To make a dropdown, set an item's parent to a top-level item.</p>
+    <datalist id="link-targets"><% for (const [url, label] of targets) { %><option value="<%= url %>"><%= label %></option><% } %></datalist>
+    <div data-menu-items>
+      <% rows.forEach((r, i) => { %>
+        <div class="menu-row <%= r.parent !== '' ? 'child' : '' %>" data-menu-row>
+          <input name="items[<%= i %>][title]" value="<%= r.title %>" placeholder="Label" aria-label="Label">
+          <input name="items[<%= i %>][url]" value="<%= r.url %>" list="link-targets" placeholder="/collections/all" aria-label="Link" class="grow">
+          <label class="small">Parent <input name="items[<%= i %>][parent]" value="<%= r.parent %>" class="tiny-input" placeholder="—" aria-label="Parent item number"></label>
+          <span class="muted small row-num">#<%= i %></span>
+          <button type="button" class="btn btn-plain" data-remove-row aria-label="Remove item">✕</button>
+        </div>
+      <% }) %>
+    </div>
+    <button type="button" class="btn" data-add-menu-item>+ Add menu item</button>
+    <template data-menu-template>
+      <div class="menu-row" data-menu-row>
+        <input name="items[__i__][title]" placeholder="Label" aria-label="Label">
+        <input name="items[__i__][url]" list="link-targets" placeholder="/collections/all" aria-label="Link" class="grow">
+        <label class="small">Parent <input name="items[__i__][parent]" class="tiny-input" placeholder="—" aria-label="Parent item number"></label>
+        <span class="muted small row-num">#__i__</span>
+        <button type="button" class="btn btn-plain" data-remove-row aria-label="Remove item">✕</button>
+      </div>
+    </template>
+  </div>
+  <div class="page-footer">
+    <% if (!['main-menu', 'footer'].includes(menu.handle)) { %><button class="btn btn-critical" formaction="/admin/content/navigation/<%= menu.id %>/delete" data-confirm-click="Delete this menu?">Delete menu</button><% } else { %><span></span><% } %>
+    <button class="btn btn-primary">Save menu</button>
+  </div>
+</form>
+<%- include('../partials/footer') %>

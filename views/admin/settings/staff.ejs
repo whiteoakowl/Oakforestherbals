@@ -1,0 +1,29 @@
+<%- include('_top') %>
+<div class="card flush">
+  <div class="card-head pad"><h2>Staff (<%= members.length %>)</h2></div>
+  <table class="table">
+    <thead><tr><th>Name</th><th>Role</th><th>Last login</th><th></th></tr></thead>
+    <tbody>
+    <% for (const m of members) { %>
+      <tr><td><strong><%= m.name %></strong><div class="muted small"><%= m.email %></div></td>
+        <td><span class="badge badge-<%= m.role === 'owner' ? 'info' : 'default' %>"><%= m.role === 'owner' ? 'Store owner' : 'Staff' %></span></td>
+        <td class="muted small"><%= m.last_login_at ? formatDate(m.last_login_at, true) : 'Never' %></td>
+        <td class="num"><% if (m.id !== staff.id) { %><form action="/admin/settings/staff/<%= m.id %>/delete" method="post" class="inline" data-confirm="Remove <%= m.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Remove</button></form><% } %></td></tr>
+    <% } %>
+    </tbody>
+  </table>
+</div>
+<form action="/admin/settings/staff" method="post" class="card form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h2>Add staff</h2>
+  <div class="grid-2">
+    <label class="field"><span>Name</span><input name="name" required></label>
+    <label class="field"><span>Email</span><input type="email" name="email" required></label>
+  </div>
+  <div class="grid-2">
+    <label class="field"><span>Temporary password</span><input type="text" name="password" minlength="8" required autocomplete="off"></label>
+    <label class="field"><span>Permissions</span><select name="role"><option value="staff">Staff — everything except settings</option><option value="owner">Owner — full access</option></select></label>
+  </div>
+  <div class="right"><button class="btn btn-primary">Add staff</button></div>
+</form>
+<%- include('_bottom') %>

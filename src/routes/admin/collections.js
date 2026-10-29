@@ -4,7 +4,7 @@ const { get, all, run, tx } = require('../../db');
 const catalog = require('../../catalog');
 const { upload, fileUrl } = require('../../uploads');
 const { flash, verifyCsrf } = require('../../middleware');
-const { toInt, uniqueHandle, asBool } = require('../../utils');
+const { toInt, uniqueHandle, asBool, asList } = require('../../utils');
 
 const router = express.Router();
 
@@ -41,7 +41,7 @@ router.get('/:id', (req, res, next) => {
 function save(id, body, file) {
   const title = String(body.title || '').trim() || 'Untitled collection';
   const kind = body.kind === 'smart' ? 'smart' : 'manual';
-  const rules = [].concat(body.rules || [])
+  const rules = asList(body.rules)
     .filter((r) => r && r.field && r.relation && String(r.value || '').trim() !== '')
     .map((r) => ({ field: r.field, relation: r.relation, value: String(r.value).trim() }));
   const sort = SORT_ORDERS.some(([k]) => k === body.sort_order) ? body.sort_order : 'manual';

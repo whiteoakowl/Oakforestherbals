@@ -27,7 +27,7 @@
             </td>
             <td>
               <div class="qty-inline">
-                <input type="number" name="quantities[<%= l.variant_id %>]" value="<%= l.quantity %>" min="0" max="<%= l.max %>" aria-label="Quantity for <%= l.title %>">
+                <input type="number" name="quantities[id<%= l.variant_id %>]" value="<%= l.quantity %>" min="0" max="<%= l.max %>" aria-label="Quantity for <%= l.title %>">
                 <button class="link-btn" name="remove" value="<%= l.variant_id %>">Remove</button>
               </div>
             </td>

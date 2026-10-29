@@ -1,0 +1,50 @@
+<%- include('../partials/header') %>
+<% const a = article || { title: '', handle: '', author: staff.name, excerpt: '', body_html: '', image: '', tags: '', published: 1, published_at: '', seo_title: '', seo_description: '' }; %>
+<form action="/admin/content/blog/<%= article ? article.id : 'new' %>" method="post" enctype="multipart/form-data" class="page" data-dirty-form>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="save-bar" data-save-bar hidden><span>Unsaved changes</span><div><button class="btn btn-primary">Save</button></div></div>
+  <%- include('../partials/page-header', { heading: article ? article.title : 'Add blog post', backHref: '/admin/content/blog',
+    actions: article ? `<a class="btn" href="/blogs/news/${article.handle}" target="_blank" rel="noopener">View</a>` : '' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card form-stack">
+        <label class="field"><span>Title</span><input name="title" value="<%= a.title %>" required></label>
+        <div class="field"><span>Content</span><%- include('../partials/rte', { name: 'body_html', value: a.body_html }) %></div>
+      </div>
+      <div class="card form-stack">
+        <h2>Excerpt</h2>
+        <textarea name="excerpt" rows="3" aria-label="Excerpt" placeholder="Shown on the blog listing and home page"><%= a.excerpt %></textarea>
+      </div>
+      <div class="card form-stack">
+        <h2>Search engine listing</h2>
+        <label class="field"><span>Page title</span><input name="seo_title" value="<%= a.seo_title %>"></label>
+        <label class="field"><span>Meta description</span><textarea name="seo_description" rows="2"><%= a.seo_description %></textarea></label>
+        <label class="field"><span>URL handle</span><div class="input-prefix"><span>/blogs/news/</span><input name="handle" value="<%= a.handle %>"></div></label>
+      </div>
+    </div>
+    <div>
+      <div class="card form-stack">
+        <h2>Visibility</h2>
+        <label class="check"><input type="radio" name="published" value="1" <%= a.published ? 'checked' : '' %>> Visible</label>
+        <label class="check"><input type="radio" name="published" value="0" <%= a.published ? '' : 'checked' %>> Hidden</label>
+        <label class="field"><span>Publish date</span><input type="datetime-local" name="published_at" value="<%= String(a.published_at || '').replace(' ', 'T').slice(0, 16) %>"></label>
+      </div>
+      <div class="card">
+        <h2>Featured image</h2>
+        <% if (a.image) { %><img src="<%= a.image %>" alt="" class="preview-img"><label class="check"><input type="checkbox" name="remove_image" value="1"> Remove image</label><% } %>
+        <input type="hidden" name="image" value="<%= a.image %>">
+        <input type="file" name="image_file" accept="image/*">
+      </div>
+      <div class="card form-stack">
+        <h2>Organization</h2>
+        <label class="field"><span>Author</span><input name="author" value="<%= a.author %>"></label>
+        <label class="field"><span>Tags</span><input name="tags" value="<%= a.tags %>"></label>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <% if (article) { %><button class="btn btn-critical" formaction="/admin/content/blog/<%= article.id %>/delete" formenctype="application/x-www-form-urlencoded" formnovalidate data-confirm-click="Delete this blog post?">Delete post</button><% } else { %><span></span><% } %>
+    <button class="btn btn-primary">Save</button>
+  </div>
+</form>
+<%- include('../partials/footer') %>

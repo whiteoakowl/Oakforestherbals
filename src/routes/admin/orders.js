@@ -5,7 +5,7 @@ const orders = require('../../orders');
 const pricing = require('../../pricing');
 const { COUNTRIES } = require('../../countries');
 const { flash } = require('../../middleware');
-const { toInt, parseMoney, paginate, csvRow, parseTags, centsToInput, asBool } = require('../../utils');
+const { toInt, parseMoney, paginate, csvRow, parseTags, centsToInput, asBool, asList, idFromKey } = require('../../utils');
 
 const router = express.Router();
 
@@ -75,7 +75,7 @@ router.get('/new', (req, res) => {
 });
 
 router.post('/new', (req, res) => {
-  const lines = [].concat(req.body.lines || []).filter((l) => l && toInt(l.variant_id) && toInt(l.quantity) > 0);
+  const lines = asList(req.body.lines).filter((l) => l && toInt(l.variant_id) && toInt(l.quantity) > 0);
   const email = String(req.body.email || '').trim().toLowerCase();
   if (!lines.length || !email.includes('@')) {
     flash(req, 'error', 'Add at least one product and a customer email.');
@@ -135,7 +135,7 @@ router.post('/:id/paid', (req, res) => {
 
 router.post('/:id/fulfill', (req, res) => {
   const qty = req.body.qty || {};
-  const items = Object.entries(qty).map(([id, quantity]) => ({ id: toInt(id), quantity: toInt(quantity) })).filter((i) => i.quantity > 0);
+  const items = Object.entries(qty).map(([key, quantity]) => ({ id: idFromKey(key), quantity: toInt(quantity) })).filter((i) => i.quantity > 0);
   if (!items.length) {
     flash(req, 'error', 'Choose at least one item to fulfill.');
     return res.redirect(back(req.params.id));
