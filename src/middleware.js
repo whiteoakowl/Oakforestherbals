@@ -4,6 +4,7 @@ const { get, run } = require('./db');
 const settings = require('./settings');
 const utils = require('./utils');
 const catalog = require('./catalog');
+const { themeColors } = require('./colors');
 
 // CSRF: one token per session, required on every non-GET request.
 function csrfToken(req) {
@@ -37,6 +38,7 @@ function locals(req, res, next) {
   const store = settings.load('store');
   res.locals.store = store;
   res.locals.theme = settings.load('theme');
+  res.locals.themeColors = themeColors(res.locals.theme);
   res.locals.seoSettings = settings.load('seo');
   res.locals.settingsAccounts = settings.load('checkout').customer_accounts;
   res.locals.csrf = csrfToken(req);

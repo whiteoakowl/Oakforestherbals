@@ -96,7 +96,7 @@ const COLLECTIONS = [
 
 function seedCatalog() {
   fs.mkdirSync(DEMO_DIR, { recursive: true });
-  illustration('hero.svg', { bg: '#21402a', fg: '#7fa37a', accent: '#d9a45b', kind: 'hero' });
+  illustration('hero.svg', { bg: '#2f4f3a', fg: '#77b48a', accent: '#809ec4', kind: 'hero' });
   const ids = new Map();
   PRODUCTS.forEach((p, i) => {
     const palette = PALETTES[i % PALETTES.length];
@@ -148,8 +148,8 @@ function seedContent() {
 }
 
 function seedSettingsData() {
-  run("INSERT INTO shipping_rates (name, price, min_subtotal, max_subtotal, countries, delivery_estimate, position) VALUES ('Standard', 600, 0, 4999, 'US', '3 to 5 business days', 0)");
-  run("INSERT INTO shipping_rates (name, price, min_subtotal, max_subtotal, countries, delivery_estimate, position) VALUES ('Free standard shipping', 0, 5000, NULL, 'US', '3 to 5 business days', 1)");
+  run("INSERT INTO shipping_rates (name, price, min_subtotal, max_subtotal, countries, delivery_estimate, position) VALUES ('Standard', 600, 0, 9999, 'US', '3 to 5 business days', 0)");
+  run("INSERT INTO shipping_rates (name, price, min_subtotal, max_subtotal, countries, delivery_estimate, position) VALUES ('Free standard shipping', 0, 10000, NULL, 'US', '3 to 5 business days', 1)");
   run("INSERT INTO shipping_rates (name, price, min_subtotal, max_subtotal, countries, delivery_estimate, position) VALUES ('Express', 1800, 0, NULL, 'US', '1 to 2 business days', 2)");
   run("INSERT INTO shipping_rates (name, price, min_subtotal, max_subtotal, countries, delivery_estimate, position) VALUES ('International', 2400, 0, NULL, 'CA,GB,AU,IE,DE,FR,NZ', '7 to 14 business days', 3)");
   run("INSERT INTO tax_rates (country, province, name, rate) VALUES ('US', '', 'Sales tax', 0)");
@@ -177,7 +177,7 @@ function seedOrders() {
     const picks = [variants[(i * 3) % variants.length], variants[(i * 5 + 2) % variants.length]].slice(0, 1 + (i % 2));
     const items = picks.map((v) => ({ v, qty: 1 + (i % 3 === 0 ? 1 : 0) }));
     const subtotal = items.reduce((s, x) => s + x.v.price * x.qty, 0);
-    const shipping = subtotal >= 5000 ? 0 : 600;
+    const shipping = subtotal >= 10000 ? 0 : 600;
     const tax = province === 'CA' ? Math.round(subtotal * 0.0725) : province === 'NY' ? Math.round(subtotal * 0.04) : 0;
     const daysAgo = Math.floor(((35 - i) * 45) / 36); // later order numbers are more recent
     const paid = i % 7 !== 0;

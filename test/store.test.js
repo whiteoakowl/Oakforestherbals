@@ -39,8 +39,10 @@ test('guest checkout with discount places an order and decrements inventory', as
   await c.post('/checkout/discount', { code: 'WELCOME10', step: 'shipping' }, '/checkout/shipping');
   const shippingPage = await c.get('/checkout/shipping');
   assert.match(shippingPage.text, /WELCOME10/);
-  // 3 x $22 = $66 subtotal, minus 10% = $59.40 -> free shipping tier applies
-  const rate = get("SELECT id FROM shipping_rates WHERE name = 'Free standard shipping'");
+  // 3 x $22 = $66 subtotal, minus 10% = $59.40 -> under the $100 free shipping threshold
+  const options = await c.get('/checkout/shipping');
+  assert.doesNotMatch(options.text, /Free standard shipping/);
+  const rate = get("SELECT id FROM shipping_rates WHERE name = 'Standard'");
   res = await c.post('/checkout/shipping', { shipping_rate_id: String(rate.id) }, '/checkout/shipping');
   assert.equal(res.location, '/checkout/payment');
 
@@ -53,9 +55,9 @@ test('guest checkout with discount places an order and decrements inventory', as
   const order = get("SELECT * FROM orders WHERE email = 'buyer@example.com'");
   assert.equal(order.subtotal, 6600);
   assert.equal(order.discount_total, 660);
-  assert.equal(order.shipping_total, 0);
+  assert.equal(order.shipping_total, 600);
   assert.equal(order.tax_total, Math.round(5940 * 0.0725)); // CA rate
-  assert.equal(order.total, 5940 + order.tax_total);
+  assert.equal(order.total, 5940 + 600 + order.tax_total);
   assert.equal(order.financial_status, 'pending');
   assert.equal(get('SELECT inventory_qty FROM variants WHERE id = ?', variant.id).inventory_qty, variant.inventory_qty - 3);
   assert.equal(get("SELECT used_count FROM discounts WHERE code = 'WELCOME10'").used_count, 1);
@@ -99,4 +101,14 @@ test('smart collections match their rules', () => {
   const tinctures = catalog.collectionProducts(catalog.collectionByHandle('tinctures'));
   assert.deepEqual([...new Set(tinctures.map((p) => p.product_type))].sort(), ['Syrup', 'Tincture']);
   assert.ok(all('SELECT * FROM collections').length >= 5);
+});
+
+test('theme text colors stay readable on light brand colors', () => {
+  const { themeColors, contrast } = require('../src/colors');
+  const theme = { color_primary: '#77b48a', color_accent: '#809ec4', color_background: '#ffffff' };
+  const c = themeColors(theme);
+  assert.ok(contrast(c.onPrimary, theme.color_primary) >= 4.5);
+  assert.ok(contrast(c.onAccent, theme.color_accent) >= 4.5);
+  assert.ok(contrast(c.primaryInk, theme.color_background) >= 4.5);
+  assert.ok(contrast(c.accentInk, theme.color_background) >= 4.5);
 });

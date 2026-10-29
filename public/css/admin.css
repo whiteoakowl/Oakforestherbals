@@ -140,7 +140,7 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
 /* Top bar */
 .topbar { position: sticky; top: 0; z-index: 30; height: 56px; background: var(--topbar); display: flex; align-items: center; gap: 16px; padding: 0 12px 0 16px; color: #e3e3e3; }
 .topbar-brand { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 600; width: 216px; text-decoration: none !important; }
-.brand-mark { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #2f5d3a; color: #fff; font-weight: 700; }
+.brand-mark { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #77b48a; color: #1a1a1a; font-weight: 700; }
 .topbar-search { flex: 1; max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 8px; background: #303030; border: 1px solid #4a4a4a; border-radius: 10px; padding: 0 10px; color: #b5b5b5; }
 .topbar-search input { background: transparent !important; border: 0 !important; color: #fff !important; padding-left: 0 !important; }
 .topbar-search input::placeholder { color: #b5b5b5; }
@@ -365,7 +365,7 @@ address { font-style: normal; line-height: 1.6; margin-bottom: 8px; }
 .rte-source { border: 0 !important; border-radius: 0 !important; min-height: 180px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
 
 /* Auth */
-.auth-page { display: grid; place-items: center; min-height: 100vh; padding: 16px; background: linear-gradient(160deg, #1d3a26, #0f1f14); }
+.auth-page { display: grid; place-items: center; min-height: 100vh; padding: 16px; background: linear-gradient(160deg, #77b48a, #809ec4); }
 .auth-card { width: min(400px, 100%); background: var(--surface); border-radius: 16px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
 .auth-card h1 { margin-bottom: 4px; }
 .auth-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 24px; color: var(--text-strong); }

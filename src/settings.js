@@ -64,9 +64,9 @@ const DEFAULTS = {
     contact: '',
   },
   theme: {
-    color_primary: '#2f5d3a',
-    color_accent: '#c8873a',
-    color_background: '#fbf8f2',
+    color_primary: '#77b48a', // brand green
+    color_accent: '#809ec4', // brand blue
+    color_background: '#ffffff',
     color_surface: '#ffffff',
     color_text: '#1f2a22',
     font_heading: 'Cormorant Garamond',
@@ -76,7 +76,7 @@ const DEFAULTS = {
     favicon: '',
     button_radius: 6,
     announcement_enabled: true,
-    announcement_text: 'Free shipping on orders over $50',
+    announcement_text: 'FREE shipping on all orders over $100',
     announcement_link: '/collections/all',
     hero_enabled: true,
     hero_heading: 'Rooted in the forest. Crafted by hand.',

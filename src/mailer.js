@@ -7,6 +7,7 @@ const nodemailer = require('nodemailer');
 const { run } = require('./db');
 const settings = require('./settings');
 const { formatMoney, formatDate } = require('./utils');
+const { themeColors } = require('./colors');
 
 const VIEWS = path.join(__dirname, '..', 'views', 'emails');
 
@@ -27,7 +28,7 @@ async function send(to, subject, template, data = {}) {
   const theme = settings.load('theme');
   const baseUrl = process.env.BASE_URL || '';
   const html = await ejs.renderFile(path.join(VIEWS, `${template}.ejs`), {
-    ...data, store, theme, baseUrl, subject,
+    ...data, store, theme, themeColors: themeColors(theme), baseUrl, subject,
     money: (c) => formatMoney(c, store.currency_symbol), formatDate,
   });
   const { lastInsertRowid } = run('INSERT INTO email_outbox (to_address, subject, html) VALUES (?, ?, ?)', to, subject, html);
