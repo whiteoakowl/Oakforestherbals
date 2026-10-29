@@ -1,0 +1,14 @@
+<%- include('../partials/header') %>
+<div class="container auth-box section">
+  <h1 class="page-title">Log in</h1>
+  <form action="/account/login" method="post" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="next" value="<%= next %>">
+    <label class="field">Email <input type="email" name="email" required autocomplete="email"></label>
+    <label class="field">Password <input type="password" name="password" required autocomplete="current-password"></label>
+    <button class="btn btn-block">Sign in</button>
+  </form>
+  <p class="small"><a href="/account/recover">Forgot your password?</a></p>
+  <p class="small">New here? <a href="/account/register">Create an account</a></p>
+</div>
+<%- include('../partials/footer') %>

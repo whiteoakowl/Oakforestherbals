@@ -1,0 +1,182 @@
+<%- include('../partials/header') %>
+<% const unfulfilled = order.items.filter((i) => i.requires_shipping && i.quantity > i.fulfilled_qty); %>
+<% const refundable = order.total - order.refunded_total; %>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title-row">
+      <a href="/admin/orders" class="back-btn" aria-label="Back to orders"><%- include('../partials/icon', { name: 'back' }) %></a>
+      <h1><%= order.name %></h1>
+      <%- include('../partials/status', { value: order.financial_status }) %>
+      <%- include('../partials/status', { value: order.status === 'cancelled' ? 'cancelled' : order.fulfillment_status }) %>
+      <% if (order.status === 'archived') { %><%- include('../partials/status', { value: 'archived' }) %><% } %>
+    </div>
+    <div class="page-actions">
+      <a class="btn" href="/admin/orders/<%= order.id %>/packing-slip" target="_blank">Print packing slip</a>
+      <% if (refundable > 0) { %><button class="btn" type="button" data-dialog-open="refund-dialog">Refund</button><% } %>
+      <% if (order.status !== 'cancelled') { %>
+        <form action="/admin/orders/<%= order.id %>/archive" method="post" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%= order.status === 'archived' ? 'Unarchive' : 'Archive' %></button></form>
+        <button class="btn" type="button" data-dialog-open="cancel-dialog">Cancel order</button>
+      <% } %>
+      <span class="pager-mini">
+        <a class="btn btn-icon <%= prevOrder ? '' : 'disabled' %>" href="<%= prevOrder ? `/admin/orders/${prevOrder.id}` : '#' %>" aria-label="Previous order">‹</a>
+        <a class="btn btn-icon <%= nextOrder ? '' : 'disabled' %>" href="<%= nextOrder ? `/admin/orders/${nextOrder.id}` : '#' %>" aria-label="Next order">›</a>
+      </span>
+    </div>
+  </div>
+  <p class="muted small sub-head"><%= formatDate(order.created_at, true) %> from Online Store</p>
+
+  <div class="layout-2">
+    <div>
+      <% if (unfulfilled.length && order.status !== 'cancelled') { %>
+      <div class="card">
+        <div class="card-head"><h2><%- include('../partials/status', { value: 'unfulfilled' }) %> (<%= unfulfilled.reduce((s, i) => s + i.quantity - i.fulfilled_qty, 0) %>)</h2></div>
+        <form action="/admin/orders/<%= order.id %>/fulfill" method="post" class="form-stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <table class="table compact">
+            <tbody>
+            <% for (const i of unfulfilled) { %>
+              <tr>
+                <td class="thumb-col"><% if (i.image) { %><img class="thumb" src="<%= i.image %>" alt=""><% } %></td>
+                <td><strong><%= i.title %></strong><% if (i.variant_title) { %><div class="muted small"><%= i.variant_title %></div><% } %><% if (i.sku) { %><div class="muted small">SKU: <%= i.sku %></div><% } %></td>
+                <td class="num nowrap"><%= money(i.price) %> × <%= i.quantity %></td>
+                <td class="num"><label class="small">Ship <input type="number" name="qty[<%= i.id %>]" value="<%= i.quantity - i.fulfilled_qty %>" min="0" max="<%= i.quantity - i.fulfilled_qty %>" class="tiny-input"></label></td>
+              </tr>
+            <% } %>
+            </tbody>
+          </table>
+          <div class="grid-3">
+            <label class="field"><span>Shipping carrier</span>
+              <input name="tracking_company" list="carriers" placeholder="USPS">
+              <datalist id="carriers"><option value="USPS"><option value="UPS"><option value="FedEx"><option value="DHL"><option value="Canada Post"><option value="Royal Mail"></datalist>
+            </label>
+            <label class="field"><span>Tracking number</span><input name="tracking_number"></label>
+            <label class="field"><span>Tracking URL</span><input name="tracking_url" placeholder="https://"></label>
+          </div>
+          <div class="row-between">
+            <label class="check"><input type="checkbox" name="notify" value="1" checked> Send shipment details to customer</label>
+            <button class="btn btn-primary">Fulfill items</button>
+          </div>
+        </form>
+      </div>
+      <% } %>
+
+      <% for (const f of order.fulfillments) { %>
+      <div class="card">
+        <div class="card-head"><h2><%- include('../partials/status', { value: 'fulfilled' }) %></h2><span class="muted small"><%= formatDate(f.created_at, true) %></span></div>
+        <ul class="list">
+          <% for (const i of JSON.parse(f.items)) { %><li><%= i.quantity %> × <%= i.title %><%= i.variant_title ? ` – ${i.variant_title}` : '' %></li><% } %>
+        </ul>
+        <% if (f.tracking_number) { %><p class="small">Tracking: <% if (f.tracking_url) { %><a href="<%= f.tracking_url %>" target="_blank" rel="noopener"><%= f.tracking_company %> <%= f.tracking_number %></a><% } else { %><%= f.tracking_company %> <%= f.tracking_number %><% } %></p><% } %>
+      </div>
+      <% } %>
+
+      <div class="card">
+        <div class="card-head"><h2><%- include('../partials/status', { value: order.financial_status }) %></h2></div>
+        <table class="table compact summary-table">
+          <tr><td>Subtotal</td><td class="muted"><%= order.items.reduce((s, i) => s + i.quantity, 0) %> items</td><td class="num"><%= money(order.subtotal) %></td></tr>
+          <% if (order.discount_total) { %><tr><td>Discount</td><td class="muted"><%= order.discount_code %></td><td class="num">−<%= money(order.discount_total) %></td></tr><% } %>
+          <tr><td>Shipping</td><td class="muted"><%= order.shipping_method %></td><td class="num"><%= money(order.shipping_total) %></td></tr>
+          <tr><td>Tax</td><td></td><td class="num"><%= money(order.tax_total) %></td></tr>
+          <tr class="strong"><td>Total</td><td></td><td class="num"><%= money(order.total) %></td></tr>
+          <% if (order.refunded_total) { %><tr><td>Refunded</td><td></td><td class="num">−<%= money(order.refunded_total) %></td></tr><tr class="strong"><td>Net payment</td><td></td><td class="num"><%= money(order.total - order.refunded_total) %></td></tr><% } %>
+          <tr><td>Payment method</td><td class="muted" colspan="2"><%= order.payment_method %><%= order.payment_ref ? ` · ref ${order.payment_ref}` : '' %></td></tr>
+        </table>
+        <% if (order.financial_status === 'pending' && order.status !== 'cancelled') { %>
+          <form action="/admin/orders/<%= order.id %>/paid" method="post" class="row-between mt-sm">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <input name="ref" placeholder="Payment reference (optional)" aria-label="Payment reference">
+            <button class="btn btn-primary">Mark as paid</button>
+          </form>
+        <% } %>
+      </div>
+
+      <div class="card">
+        <h2>Timeline</h2>
+        <form action="/admin/orders/<%= order.id %>/comment" method="post" class="comment-box">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input name="message" placeholder="Leave a comment…" aria-label="Comment" class="grow">
+          <button class="btn">Post</button>
+        </form>
+        <ol class="timeline">
+          <% for (const e of order.events) { %>
+            <li><span class="timeline-dot"></span><div><div><%= e.message %></div><div class="muted small"><%= formatDate(e.created_at, true) %><%= e.author ? ` · ${e.author}` : '' %></div></div></li>
+          <% } %>
+        </ol>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Notes</h2>
+        <form action="/admin/orders/<%= order.id %>/details" method="post" class="form-stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <textarea name="note" rows="3" placeholder="No notes from customer" aria-label="Order note"><%= order.note %></textarea>
+          <label class="field"><span>Tags</span><input name="tags" value="<%= order.tags %>" placeholder="wholesale, gift"></label>
+          <button class="btn">Save</button>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Customer</h2>
+        <% if (order.customer) { %>
+          <p><a href="/admin/customers/<%= order.customer.id %>"><%= [order.customer.first_name, order.customer.last_name].filter(Boolean).join(' ') || order.customer.email %></a></p>
+          <% if (customerStats) { %><p class="muted small"><%= customerStats.orders %> order<%= customerStats.orders === 1 ? '' : 's' %> · <%= money(customerStats.spent) %> spent</p><% } %>
+        <% } %>
+        <h3>Contact information</h3>
+        <p class="small"><a href="mailto:<%= order.email %>"><%= order.email %></a><% if (order.phone) { %><br><%= order.phone %><% } %></p>
+        <div class="card-head"><h3>Shipping address</h3><button type="button" class="link-plain small" data-dialog-open="address-dialog">Edit</button></div>
+        <%- include('../../partials/address', { a: order.shipping_address }) %>
+        <h3>Billing address</h3>
+        <% if (JSON.stringify(order.billing_address) === JSON.stringify(order.shipping_address)) { %><p class="muted small">Same as shipping address</p><% } else { %><%- include('../../partials/address', { a: order.billing_address }) %><% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="refund-dialog" class="dialog">
+  <form action="/admin/orders/<%= order.id %>/refund" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Refund payment</h2>
+    <p class="muted small">Up to <%= money(refundable) %> can be refunded. Record the refund here, then return funds through your payment provider.</p>
+    <label class="field"><span>Refund amount</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="amount" value="<%= centsToInput(refundable) %>" inputmode="decimal"></div></label>
+    <label class="field"><span>Reason</span><input name="reason" placeholder="Only you and other staff can see this reason"></label>
+    <label class="check"><input type="checkbox" name="restock" value="1"> Restock items</label>
+    <div class="dialog-actions"><button type="button" class="btn" data-dialog-close>Cancel</button><button class="btn btn-primary">Refund</button></div>
+  </form>
+</dialog>
+<dialog id="cancel-dialog" class="dialog">
+  <form action="/admin/orders/<%= order.id %>/cancel" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Cancel order <%= order.name %>?</h2>
+    <label class="field"><span>Reason for cancellation</span>
+      <select name="reason"><option>Customer changed or canceled order</option><option>Payment declined</option><option>Fraudulent order</option><option>Items unavailable</option><option>Other</option></select>
+    </label>
+    <label class="check"><input type="checkbox" name="restock" value="1" checked> Restock items</label>
+    <p class="muted small">Cancelling does not refund the payment; use Refund for that.</p>
+    <div class="dialog-actions"><button type="button" class="btn" data-dialog-close>Keep order</button><button class="btn btn-critical">Cancel order</button></div>
+  </form>
+</dialog>
+<dialog id="address-dialog" class="dialog">
+  <% const a = order.shipping_address; %>
+  <form action="/admin/orders/<%= order.id %>/address" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Edit shipping address</h2>
+    <div class="grid-2">
+      <label class="field"><span>First name</span><input name="first_name" value="<%= a.first_name || '' %>"></label>
+      <label class="field"><span>Last name</span><input name="last_name" value="<%= a.last_name || '' %>"></label>
+    </div>
+    <label class="field"><span>Company</span><input name="company" value="<%= a.company || '' %>"></label>
+    <label class="field"><span>Address</span><input name="address1" value="<%= a.address1 || '' %>"></label>
+    <label class="field"><span>Apartment, suite, etc.</span><input name="address2" value="<%= a.address2 || '' %>"></label>
+    <div class="grid-3">
+      <label class="field"><span>City</span><input name="city" value="<%= a.city || '' %>"></label>
+      <label class="field"><span>State</span><input name="province" value="<%= a.province || '' %>"></label>
+      <label class="field"><span>ZIP</span><input name="zip" value="<%= a.zip || '' %>"></label>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>Country code</span><input name="country" value="<%= a.country || '' %>"></label>
+      <label class="field"><span>Phone</span><input name="phone" value="<%= a.phone || '' %>"></label>
+    </div>
+    <div class="dialog-actions"><button type="button" class="btn" data-dialog-close>Cancel</button><button class="btn btn-primary">Save</button></div>
+  </form>
+</dialog>
+<%- include('../partials/footer') %>

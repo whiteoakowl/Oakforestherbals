@@ -1,0 +1,59 @@
+<%- include('head') %>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<% if (theme.announcement_enabled && theme.announcement_text) { %>
+  <div class="announcement">
+    <% if (theme.announcement_link) { %><a href="<%= theme.announcement_link %>"><%= theme.announcement_text %></a><% } else { %><%= theme.announcement_text %><% } %>
+  </div>
+<% } %>
+<header class="site-header">
+  <div class="container header-inner">
+    <button class="icon-btn menu-toggle" aria-label="Open menu" aria-expanded="false" data-menu-toggle>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <a href="/" class="logo">
+      <% if (theme.logo) { %><img src="<%= theme.logo %>" alt="<%= store.name %>" style="width: <%= theme.logo_width %>px"><% } else { %><%= store.name %><% } %>
+    </a>
+    <nav class="main-nav" data-menu>
+      <ul>
+        <% for (const item of menu('main-menu')) { %>
+          <li class="<%= item.children && item.children.length ? 'has-dropdown' : '' %>">
+            <a href="<%= item.url %>" class="<%= path === item.url ? 'active' : '' %>"><%= item.title %></a>
+            <% if (item.children && item.children.length) { %>
+              <ul class="dropdown">
+                <% for (const child of item.children) { %><li><a href="<%= child.url %>"><%= child.title %></a></li><% } %>
+              </ul>
+            <% } %>
+          </li>
+        <% } %>
+      </ul>
+    </nav>
+    <div class="header-actions">
+      <form action="/search" method="get" class="header-search" role="search">
+        <input type="search" name="q" placeholder="Search" aria-label="Search" autocomplete="off" data-predictive-search value="<%= typeof q !== 'undefined' ? q : '' %>">
+        <div class="predictive" hidden data-predictive-results></div>
+      </form>
+      <a class="icon-btn search-link" href="/search" aria-label="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </a>
+      <% if (settingsAccounts !== 'disabled') { %>
+      <a class="icon-btn" href="/account" aria-label="Account">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      </a>
+      <% } %>
+      <a class="icon-btn cart-link" href="/cart" aria-label="Cart, <%= cartCount %> items">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14l-1.2 12.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9z"/><path d="M9 7V6a3 3 0 0 1 6 0v1"/></svg>
+        <span class="cart-count" data-cart-count <%= cartCount ? '' : 'hidden' %>><%= cartCount %></span>
+      </a>
+    </div>
+  </div>
+</header>
+<% if (staff) { %>
+  <div class="staff-bar">Signed in as staff · <a href="/admin">Back to admin</a></div>
+<% } %>
+<main id="main">
+<% if (flash.length) { %>
+  <div class="container flash-stack">
+    <% for (const f of flash) { %><div class="flash flash-<%= f.type %>" role="status"><%= f.message %></div><% } %>
+  </div>
+<% } %>

@@ -1,0 +1,14 @@
+<%- include('partials/header') %>
+<div class="container section">
+  <h1 class="page-title">Collections</h1>
+  <div class="collection-grid">
+    <a class="collection-card" href="/collections/all"><div class="placeholder"></div><span>All products →</span></a>
+    <% for (const c of collections) { %>
+      <a class="collection-card" href="/collections/<%= c.handle %>">
+        <% if (c.image) { %><img src="<%= c.image %>" alt="" loading="lazy"><% } else { %><div class="placeholder"></div><% } %>
+        <span><%= c.title %> →</span>
+      </a>
+    <% } %>
+  </div>
+</div>
+<%- include('partials/footer') %>

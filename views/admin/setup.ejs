@@ -1,0 +1,14 @@
+<%- include('auth-layout') %>
+  <h1>Set up your store</h1>
+  <p class="muted">Create the owner account for your store admin.</p>
+  <form action="/admin/setup" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Store name</span><input name="store_name" value="<%= store.name %>" required></label>
+    <label class="field"><span>Your name</span><input name="name" required autocomplete="name"></label>
+    <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="username"></label>
+    <label class="field"><span>Password</span><input type="password" name="password" minlength="8" required autocomplete="new-password"><small class="muted">At least 8 characters</small></label>
+    <button class="btn btn-primary btn-block">Create store</button>
+  </form>
+</main>
+</body>
+</html>

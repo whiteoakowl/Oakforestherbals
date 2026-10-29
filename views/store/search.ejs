@@ -1,0 +1,22 @@
+<%- include('partials/header') %>
+<div class="container section">
+  <h1 class="page-title">Search</h1>
+  <form action="/search" method="get" class="search-page-form" role="search">
+    <input type="search" name="q" value="<%= q %>" placeholder="Search products, pages and articles" aria-label="Search" autofocus>
+    <button class="btn">Search</button>
+  </form>
+  <% if (q) { %>
+    <p class="muted"><%= products.length + pages.length + articles.length %> results for “<%= q %>”</p>
+    <% if (products.length) { %>
+      <div class="product-grid"><% for (const p of products) { %><%- include('partials/product-card', { p }) %><% } %></div>
+    <% } %>
+    <% if (pages.length || articles.length) { %>
+      <h2 class="mt">Pages &amp; articles</h2>
+      <ul class="result-list">
+        <% for (const p of pages) { %><li><a href="/pages/<%= p.handle %>"><%= p.title %></a></li><% } %>
+        <% for (const a of articles) { %><li><a href="/blogs/news/<%= a.handle %>"><%= a.title %></a></li><% } %>
+      </ul>
+    <% } %>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

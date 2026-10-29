@@ -1,0 +1,18 @@
+<div class="rte-editor" data-rte>
+  <div class="rte-toolbar" role="toolbar" aria-label="Formatting">
+    <button type="button" data-cmd="formatBlock" data-value="P" title="Paragraph">¶</button>
+    <button type="button" data-cmd="formatBlock" data-value="H2" title="Heading">H2</button>
+    <button type="button" data-cmd="formatBlock" data-value="H3" title="Subheading">H3</button>
+    <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+    <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+    <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+    <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
+    <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+    <button type="button" data-cmd="createLink" title="Insert link">Link</button>
+    <button type="button" data-cmd="insertImage" title="Insert image by URL">Image</button>
+    <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+    <button type="button" data-html-toggle title="Edit HTML" class="rte-html-btn">&lt;/&gt;</button>
+  </div>
+  <div class="rte-area" contenteditable="true" data-rte-area><%- value || '' %></div>
+  <textarea name="<%= name %>" class="rte-source" data-rte-source hidden><%= value || '' %></textarea>
+</div>

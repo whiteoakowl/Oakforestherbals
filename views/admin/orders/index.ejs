@@ -1,0 +1,39 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Orders', actions: `<a class="btn" href="/admin/orders/export.csv?${new URLSearchParams({ tab, q }).toString()}">Export</a> <a class="btn btn-primary" href="/admin/orders/new">Create order</a>` }) %>
+  <div class="card flush">
+    <div class="tabs">
+      <% for (const t of TABS) { %><a href="?tab=<%= t %>" class="tab <%= tab === t ? 'active' : '' %>"><%= t.charAt(0).toUpperCase() + t.slice(1) %></a><% } %>
+    </div>
+    <form class="filter-bar" method="get">
+      <input type="hidden" name="tab" value="<%= tab %>">
+      <input name="q" value="<%= q %>" placeholder="Search by order number, email or address" class="grow" aria-label="Search orders">
+      <button class="btn">Search</button>
+    </form>
+    <% if (!orders.length) { %>
+      <div class="empty-card"><h2>No orders found</h2><p class="muted">Orders will appear here when customers check out.</p></div>
+    <% } else { %>
+    <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Order</th><th>Date</th><th>Customer</th><th class="num">Total</th><th>Payment status</th><th>Fulfillment status</th><th class="num">Items</th><th>Delivery method</th></tr></thead>
+      <tbody>
+      <% for (const o of orders) { %>
+        <tr class="row-link" data-href="/admin/orders/<%= o.id %>">
+          <td><a href="/admin/orders/<%= o.id %>"><strong><%= o.name %></strong></a></td>
+          <td class="muted nowrap"><%= formatDate(o.created_at, true) %></td>
+          <td><%= [o.shipping_address.first_name, o.shipping_address.last_name].filter(Boolean).join(' ') || o.email %></td>
+          <td class="num"><%= money(o.total) %></td>
+          <td><%- include('../partials/status', { value: o.financial_status }) %></td>
+          <td><%- include('../partials/status', { value: o.status === 'cancelled' ? 'cancelled' : o.fulfillment_status }) %></td>
+          <td class="num"><%= o.item_count %></td>
+          <td class="muted"><%= o.shipping_method %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+    <%- include('../partials/pagination') %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

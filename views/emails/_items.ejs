@@ -1,0 +1,13 @@
+<table width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;margin:16px 0;font-size:14px">
+<% for (const i of order.items) { %>
+  <tr style="border-bottom:1px solid #eee">
+    <td><%= i.title %><% if (i.variant_title) { %> <span style="color:#888">– <%= i.variant_title %></span><% } %> × <%= i.quantity %></td>
+    <td align="right"><%= money(i.price * i.quantity) %></td>
+  </tr>
+<% } %>
+  <tr><td>Subtotal</td><td align="right"><%= money(order.subtotal) %></td></tr>
+  <% if (order.discount_total) { %><tr><td>Discount (<%= order.discount_code %>)</td><td align="right">−<%= money(order.discount_total) %></td></tr><% } %>
+  <tr><td>Shipping</td><td align="right"><%= money(order.shipping_total) %></td></tr>
+  <tr><td>Tax</td><td align="right"><%= money(order.tax_total) %></td></tr>
+  <tr><td><strong>Total</strong></td><td align="right"><strong><%= money(order.total) %> <%= order.currency %></strong></td></tr>
+</table>

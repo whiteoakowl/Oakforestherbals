@@ -1,0 +1,54 @@
+<%- include('partials/header') %>
+<% if (theme.hero_enabled) { %>
+<section class="hero" style="<%= theme.hero_image ? `--hero-image: url('${theme.hero_image}')` : '' %>">
+  <div class="container hero-inner">
+    <h1><%= theme.hero_heading %></h1>
+    <p><%= theme.hero_subheading %></p>
+    <% if (theme.hero_button_text) { %><a class="btn btn-lg" href="<%= theme.hero_button_link || '/collections/all' %>"><%= theme.hero_button_text %></a><% } %>
+  </div>
+</section>
+<% } %>
+
+<section class="section container">
+  <div class="section-head">
+    <h2><%= featured ? featured.title : 'Featured products' %></h2>
+    <a href="/collections/<%= featured ? featured.handle : 'all' %>" class="link">View all</a>
+  </div>
+  <div class="product-grid">
+    <% for (const p of featuredProducts) { %><%- include('partials/product-card', { p }) %><% } %>
+  </div>
+  <% if (!featuredProducts.length) { %><p class="muted">Products you add in the admin will appear here.</p><% } %>
+</section>
+
+<% if (theme.show_collection_list && collections.length) { %>
+<section class="section container">
+  <div class="section-head"><h2>Shop by collection</h2><a href="/collections" class="link">All collections</a></div>
+  <div class="collection-grid">
+    <% for (const c of collections) { %>
+      <a class="collection-card" href="/collections/<%= c.handle %>">
+        <% if (c.image) { %><img src="<%= c.image %>" alt="" loading="lazy"><% } else { %><div class="placeholder"></div><% } %>
+        <span><%= c.title %> →</span>
+      </a>
+    <% } %>
+  </div>
+</section>
+<% } %>
+
+<% if (theme.testimonial_enabled && theme.testimonial_quote) { %>
+<section class="testimonial">
+  <div class="container">
+    <blockquote>“<%= theme.testimonial_quote %>”</blockquote>
+    <cite>— <%= theme.testimonial_author %></cite>
+  </div>
+</section>
+<% } %>
+
+<% if (theme.show_blog && articles.length) { %>
+<section class="section container">
+  <div class="section-head"><h2>From the journal</h2><a href="/blogs/news" class="link">Read more</a></div>
+  <div class="article-grid">
+    <% for (const a of articles) { %><%- include('partials/article-card', { a }) %><% } %>
+  </div>
+</section>
+<% } %>
+<%- include('partials/footer') %>

@@ -1,0 +1,24 @@
+<%- include('layout-top') %>
+<%- include('review-box') %>
+<form action="/checkout/shipping" method="post" class="stack-form checkout-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h2>Shipping method</h2>
+  <% if (!options.length) { %>
+    <div class="flash flash-error">We don't ship to this address yet. Please <a href="/checkout/information">use a different address</a>.</div>
+  <% } else { %>
+    <div class="radio-list">
+      <% options.forEach((o, i) => { %>
+        <label class="radio-row">
+          <input type="radio" name="shipping_rate_id" value="<%= o.id %>" <%= (co.shipping_rate_id === o.id || (!co.shipping_rate_id && i === 0)) ? 'checked' : '' %>>
+          <span class="radio-label"><%= o.name %><% if (o.delivery_estimate) { %><br><span class="muted small"><%= o.delivery_estimate %></span><% } %></span>
+          <strong><%= o.price ? money(o.price) : 'Free' %></strong>
+        </label>
+      <% }) %>
+    </div>
+  <% } %>
+  <div class="checkout-actions">
+    <a href="/checkout/information" class="link">← Return to information</a>
+    <button class="btn btn-lg" <%= options.length ? '' : 'disabled' %>>Continue to payment</button>
+  </div>
+</form>
+<%- include('layout-bottom') %>

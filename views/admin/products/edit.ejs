@@ -1,0 +1,178 @@
+<%- include('../partials/header') %>
+<% const p = product || { title: '', handle: '', description_html: '', status: 'draft', vendor: '', product_type: '', tags: '', options: [], variants: [], images: [], seo_title: '', seo_description: '' }; %>
+<% const v0 = p.variants[0] || { price: 0, compare_at_price: null, cost: null, sku: '', barcode: '', inventory_qty: 0, track_inventory: 1, continue_selling: 0, weight_grams: 0, requires_shipping: 1, taxable: 1 }; %>
+<% const hasVariants = p.options.length > 0; %>
+<form action="/admin/products/<%= product ? product.id : 'new' %>" method="post" enctype="multipart/form-data" class="page" data-dirty-form>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="save-bar" data-save-bar hidden>
+    <span>Unsaved product</span>
+    <div><a class="btn btn-dark" href="<%= product ? `/admin/products/${product.id}` : '/admin/products' %>">Discard</a> <button class="btn btn-primary">Save</button></div>
+  </div>
+
+  <%- include('../partials/page-header', {
+    heading: product ? product.title : 'Add product',
+    backHref: '/admin/products',
+    badges: product ? [[product.status === 'active' ? 'Active' : product.status === 'draft' ? 'Draft' : 'Archived', product.status === 'active' ? 'success' : 'info']] : [],
+    actions: product ? `<a class="btn" href="/products/${product.handle}" target="_blank" rel="noopener">Preview</a>
+      <button class="btn" formaction="/admin/products/${product.id}/duplicate" formmethod="post" formenctype="application/x-www-form-urlencoded" formnovalidate>Duplicate</button>` : '',
+  }) %>
+
+  <div class="layout-2">
+    <div>
+      <div class="card form-stack">
+        <label class="field"><span>Title</span><input name="title" value="<%= p.title %>" placeholder="Short sleeve t-shirt" required data-title-input></label>
+        <div class="field"><span>Description</span><%- include('../partials/rte', { name: 'description_html', value: p.description_html }) %></div>
+      </div>
+
+      <div class="card">
+        <h2>Media</h2>
+        <div class="media-grid">
+          <% p.images.forEach((img, i) => { %>
+            <div class="media-item">
+              <img src="<%= img.url %>" alt="<%= img.alt %>">
+              <input type="text" name="image_alt[<%= img.id %>]" value="<%= img.alt %>" placeholder="Alt text" aria-label="Alt text">
+              <div class="media-controls">
+                <label class="small">Position <input type="number" name="image_position[<%= img.id %>]" value="<%= img.position %>" class="tiny-input"></label>
+                <label class="small check"><input type="checkbox" name="remove_images" value="<%= img.id %>"> Remove</label>
+              </div>
+            </div>
+          <% }) %>
+          <label class="media-drop">
+            <input type="file" name="images" accept="image/*" multiple data-image-input>
+            <span class="btn">Add files</span>
+            <span class="muted small">Accepts images up to 8 MB</span>
+            <span class="small" data-image-names></span>
+          </label>
+        </div>
+        <label class="field mt-sm"><span>Or add from URL</span><input name="image_url" placeholder="https://…"></label>
+      </div>
+
+      <div class="card">
+        <h2>Pricing</h2>
+        <% if (hasVariants) { %><p class="muted small">Variant prices are edited in the Variants table below. These values are used for newly added variants.</p><% } %>
+        <div class="grid-3">
+          <label class="field"><span>Price</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="price" inputmode="decimal" value="<%= centsToInput(v0.price) %>" placeholder="0.00"></div></label>
+          <label class="field"><span>Compare-at price</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="compare_at_price" inputmode="decimal" value="<%= centsToInput(v0.compare_at_price) %>" placeholder="0.00"></div></label>
+          <label class="field"><span>Cost per item</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="cost" inputmode="decimal" value="<%= centsToInput(v0.cost) %>" placeholder="0.00" data-cost></div><small class="muted" data-margin></small></label>
+        </div>
+        <label class="check mt-sm"><input type="checkbox" name="taxable" value="1" <%= v0.taxable ? 'checked' : '' %>> Charge tax on this product</label>
+      </div>
+
+      <div class="card">
+        <h2>Inventory</h2>
+        <label class="check"><input type="checkbox" name="track_inventory" value="1" <%= v0.track_inventory ? 'checked' : '' %>> Track quantity</label>
+        <label class="check"><input type="checkbox" name="continue_selling" value="1" <%= v0.continue_selling ? 'checked' : '' %>> Continue selling when out of stock</label>
+        <% if (!hasVariants) { %>
+        <div class="grid-3 mt-sm">
+          <label class="field"><span>Quantity</span><input type="number" name="inventory_qty" value="<%= v0.inventory_qty %>"></label>
+          <label class="field"><span>SKU (Stock Keeping Unit)</span><input name="sku" value="<%= v0.sku %>"></label>
+          <label class="field"><span>Barcode (ISBN, UPC, GTIN…)</span><input name="barcode" value="<%= v0.barcode %>"></label>
+        </div>
+        <% } %>
+      </div>
+
+      <div class="card">
+        <h2>Shipping</h2>
+        <label class="check"><input type="checkbox" name="requires_shipping" value="1" <%= v0.requires_shipping ? 'checked' : '' %>> This is a physical product</label>
+        <label class="field mt-sm narrow-field"><span>Weight (grams)</span><input type="number" name="weight_grams" value="<%= v0.weight_grams %>" min="0"></label>
+      </div>
+
+      <div class="card">
+        <h2>Variants</h2>
+        <p class="muted small">Add options like size or color. A variant is created for every combination of option values.</p>
+        <div class="options-editor" data-options>
+          <% const optionRows = p.options.map((name, i) => ({ name, values: [...new Set(p.variants.map((v) => v['option' + (i + 1)]).filter((x) => x !== null))].join(', ') })); %>
+          <% optionRows.forEach((o, i) => { %>
+            <div class="option-row" data-option-row>
+              <label class="field"><span>Option name</span><input name="options[<%= i %>][name]" value="<%= o.name %>" placeholder="Size"></label>
+              <label class="field grow"><span>Option values (comma separated)</span><input name="options[<%= i %>][values]" value="<%= o.values %>" placeholder="Small, Medium, Large"></label>
+              <button type="button" class="btn btn-plain" data-remove-option aria-label="Remove option">✕</button>
+            </div>
+          <% }) %>
+        </div>
+        <button type="button" class="btn btn-plain add-option" data-add-option <%= p.options.length >= 3 ? 'hidden' : '' %>>+ Add <%= hasVariants ? 'another option' : 'options like size or color' %></button>
+        <template data-option-template>
+          <div class="option-row" data-option-row>
+            <label class="field"><span>Option name</span><input name="options[__i__][name]" placeholder="Size"></label>
+            <label class="field grow"><span>Option values (comma separated)</span><input name="options[__i__][values]" placeholder="Small, Medium, Large"></label>
+            <button type="button" class="btn btn-plain" data-remove-option aria-label="Remove option">✕</button>
+          </div>
+        </template>
+
+        <% if (hasVariants) { %>
+        <div class="table-scroll mt-sm">
+          <table class="table compact variant-table">
+            <thead><tr><th>Variant</th><th>Price</th><th>Compare-at</th><th>Cost</th><th>SKU</th><th>Barcode</th><th>Available</th><th>Weight (g)</th></tr></thead>
+            <tbody>
+            <% for (const v of p.variants) { %>
+              <tr>
+                <td><strong><%= v.title %></strong></td>
+                <td><input name="variants[<%= v.id %>][price]" value="<%= centsToInput(v.price) %>" inputmode="decimal" class="cell-input" aria-label="Price for <%= v.title %>"></td>
+                <td><input name="variants[<%= v.id %>][compare_at_price]" value="<%= centsToInput(v.compare_at_price) %>" inputmode="decimal" class="cell-input" aria-label="Compare-at price for <%= v.title %>"></td>
+                <td><input name="variants[<%= v.id %>][cost]" value="<%= centsToInput(v.cost) %>" inputmode="decimal" class="cell-input" aria-label="Cost for <%= v.title %>"></td>
+                <td><input name="variants[<%= v.id %>][sku]" value="<%= v.sku %>" class="cell-input" aria-label="SKU for <%= v.title %>"></td>
+                <td><input name="variants[<%= v.id %>][barcode]" value="<%= v.barcode %>" class="cell-input" aria-label="Barcode for <%= v.title %>"></td>
+                <td><input type="number" name="variants[<%= v.id %>][inventory_qty]" value="<%= v.inventory_qty %>" class="cell-input narrow" aria-label="Quantity for <%= v.title %>"></td>
+                <td><input type="number" name="variants[<%= v.id %>][weight_grams]" value="<%= v.weight_grams %>" class="cell-input narrow" aria-label="Weight for <%= v.title %>"></td>
+              </tr>
+            <% } %>
+            </tbody>
+          </table>
+        </div>
+        <% } %>
+      </div>
+
+      <div class="card">
+        <h2>Search engine listing</h2>
+        <div class="seo-preview">
+          <div class="seo-title" data-seo-preview-title><%= p.seo_title || p.title || 'Product title' %></div>
+          <div class="seo-url"><%= `${store.name.toLowerCase().replace(/\s+/g, '')}.com › products › ${p.handle || 'handle'}` %></div>
+          <div class="seo-desc muted small"><%= p.seo_description || stripHtml(p.description_html).slice(0, 160) %></div>
+        </div>
+        <div class="form-stack mt-sm">
+          <label class="field"><span>Page title</span><input name="seo_title" value="<%= p.seo_title %>" maxlength="70" data-seo-title><small class="muted">Up to 70 characters</small></label>
+          <label class="field"><span>Meta description</span><textarea name="seo_description" rows="3" maxlength="320"><%= p.seo_description %></textarea></label>
+          <label class="field"><span>URL handle</span><div class="input-prefix"><span>/products/</span><input name="handle" value="<%= p.handle %>"></div></label>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Status</h2>
+        <select name="status" aria-label="Status" class="full">
+          <% for (const s of STATUSES) { %><option value="<%= s %>" <%= p.status === s ? 'selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option><% } %>
+        </select>
+        <p class="muted small mt-sm">Active products are visible on your online store. Drafts are hidden.</p>
+      </div>
+      <% if (product) { %>
+      <div class="card">
+        <h2>Insights</h2>
+        <p class="small"><strong><%= sold %></strong> units sold all time</p>
+      </div>
+      <% } %>
+      <div class="card form-stack">
+        <h2>Product organization</h2>
+        <label class="field"><span>Product type</span><input name="product_type" value="<%= p.product_type %>" list="types-list"></label>
+        <datalist id="types-list"><% for (const t of types) { %><option value="<%= t %>"><% } %></datalist>
+        <label class="field"><span>Vendor</span><input name="vendor" value="<%= p.vendor %>" list="vendors-list"></label>
+        <datalist id="vendors-list"><% for (const v of vendors) { %><option value="<%= v %>"><% } %></datalist>
+        <div class="field"><span>Collections</span>
+          <div class="checklist">
+            <% for (const c of collections) { %><label class="check"><input type="checkbox" name="collections" value="<%= c.id %>" <%= memberOf.includes(c.id) ? 'checked' : '' %>> <%= c.title %></label><% } %>
+            <% if (!collections.length) { %><span class="muted small">No manual collections yet.</span><% } %>
+          </div>
+        </div>
+        <label class="field"><span>Tags</span><input name="tags" value="<%= p.tags %>" placeholder="organic, tea, calming"><small class="muted">Separate tags with commas</small></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <% if (product) { %>
+      <button class="btn btn-critical" formaction="/admin/products/<%= product.id %>/delete" formmethod="post" formenctype="application/x-www-form-urlencoded" formnovalidate data-confirm-click="Delete <%= product.title %>? This cannot be undone.">Delete product</button>
+    <% } else { %><span></span><% } %>
+    <button class="btn btn-primary">Save</button>
+  </div>
+</form>
+<%- include('../partials/footer') %>

@@ -1,0 +1,10 @@
+<%- include('partials/header') %>
+<article class="container narrow section">
+  <nav class="breadcrumbs"><a href="/">Home</a> / <a href="/blogs/news">Journal</a></nav>
+  <h1 class="page-title"><%= article.title %></h1>
+  <p class="muted"><%= formatDate(article.published_at) %><%= article.author ? ` · ${article.author}` : '' %></p>
+  <% if (article.image) { %><img class="article-hero" src="<%= article.image %>" alt=""><% } %>
+  <div class="rte"><%- article.body_html %></div>
+  <% if (article.tags) { %><div class="tags"><% for (const t of article.tags.split(',')) { %><span class="tag"><%= t.trim() %></span><% } %></div><% } %>
+</article>
+<%- include('partials/footer') %>

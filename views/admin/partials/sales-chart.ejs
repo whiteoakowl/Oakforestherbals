@@ -1,0 +1,39 @@
+<%#
+  Single-series column chart of net sales per bucket, server-rendered SVG.
+  One series, so no legend: the card title names it. Hover/focus shows a tooltip; a table view is provided.
+%>
+<%
+const W = 720, H = 220, padL = 48, padB = 28, padT = 12, padR = 8;
+const max = Math.max(10000, ...series.map((d) => d.sales));
+const nice = (() => { const exp = Math.pow(10, Math.floor(Math.log10(max / 100))); const step = Math.ceil(max / 100 / 4 / exp) * exp; return step * 4 * 100; })();
+const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(nice * t));
+const band = (W - padL - padR) / series.length;
+const barW = Math.min(24, Math.max(2, band - 2));
+const y = (v) => padT + (H - padT - padB) * (1 - v / nice);
+const compact = (c) => { const v = c / 100; return v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(Math.round(v)); };
+const labelEvery = Math.ceil(series.length / 8);
+%>
+<div class="chart" data-chart>
+  <svg viewBox="0 0 <%= W %> <%= H %>" role="img" aria-label="Net sales by <%= series.length > 60 ? 'week' : 'day' %>" preserveAspectRatio="none">
+    <% for (const t of ticks) { %>
+      <line x1="<%= padL %>" x2="<%= W - padR %>" y1="<%= y(t) %>" y2="<%= y(t) %>" class="grid"/>
+      <text x="<%= padL - 8 %>" y="<%= y(t) + 4 %>" text-anchor="end" class="tick"><%= store.currency_symbol %><%= compact(t) %></text>
+    <% } %>
+    <% series.forEach((d, i) => { const x = padL + i * band + (band - barW) / 2; const h = Math.max(0, y(0) - y(d.sales)); const r = Math.min(4, barW / 2, h); %>
+      <g class="bar-g" tabindex="0" data-tip="<%= d.label %>: <%= money(d.sales) %> · <%= d.orders %> order<%= d.orders === 1 ? '' : 's' %>">
+        <rect class="hit" x="<%= padL + i * band %>" y="<%= padT %>" width="<%= band %>" height="<%= H - padT - padB %>"/>
+        <% if (h > 0) { %><path class="bar" d="M<%= x %>,<%= y(0) %> V<%= y(0) - h + r %> Q<%= x %>,<%= y(0) - h %> <%= x + r %>,<%= y(0) - h %> H<%= x + barW - r %> Q<%= x + barW %>,<%= y(0) - h %> <%= x + barW %>,<%= y(0) - h + r %> V<%= y(0) %> Z"/><% } %>
+      </g>
+      <% if (i % labelEvery === 0) { %><text x="<%= padL + i * band + band / 2 %>" y="<%= H - 8 %>" text-anchor="middle" class="tick"><%= d.label.replace('Week of ', '') %></text><% } %>
+    <% }) %>
+    <line x1="<%= padL %>" x2="<%= W - padR %>" y1="<%= y(0) %>" y2="<%= y(0) %>" class="axis"/>
+  </svg>
+  <div class="chart-tip" hidden data-chart-tip></div>
+  <details class="chart-table">
+    <summary class="small">View as table</summary>
+    <table class="table compact">
+      <thead><tr><th><%= series.length > 60 ? 'Week' : 'Day' %></th><th class="num">Orders</th><th class="num">Net sales</th></tr></thead>
+      <tbody><% for (const d of series) { %><tr><td><%= d.label %></td><td class="num"><%= d.orders %></td><td class="num"><%= money(d.sales) %></td></tr><% } %></tbody>
+    </table>
+  </details>
+</div>

@@ -1,0 +1,31 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Customers', actions: '<a class="btn" href="/admin/customers/export.csv">Export</a> <a class="btn btn-primary" href="/admin/customers/new">Add customer</a>' }) %>
+  <div class="card flush">
+    <div class="tabs">
+      <% for (const [k, l] of [['', 'All customers'], ['subscribers', 'Email subscribers'], ['repeat', 'Repeat customers'], ['prospects', 'Prospects'], ['accounts', 'With accounts']]) { %>
+        <a href="?segment=<%= k %>" class="tab <%= segment === k ? 'active' : '' %>"><%= l %></a>
+      <% } %>
+    </div>
+    <form class="filter-bar" method="get"><input type="hidden" name="segment" value="<%= segment %>"><input name="q" value="<%= q %>" placeholder="Search customers" class="grow" aria-label="Search customers"><button class="btn">Search</button></form>
+    <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Customer name</th><th>Email subscription</th><th>Tags</th><th class="num">Orders</th><th class="num">Amount spent</th></tr></thead>
+      <tbody>
+      <% for (const c of customers) { %>
+        <tr class="row-link" data-href="/admin/customers/<%= c.id %>">
+          <td><a href="/admin/customers/<%= c.id %>"><strong><%= [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email %></strong></a><div class="muted small"><%= c.email %></div></td>
+          <td><span class="badge badge-<%= c.accepts_marketing ? 'success' : 'default' %>"><%= c.accepts_marketing ? 'Subscribed' : 'Not subscribed' %></span></td>
+          <td class="muted"><%= c.tags %></td>
+          <td class="num"><%= c.order_count %> order<%= c.order_count === 1 ? '' : 's' %></td>
+          <td class="num"><%= money(c.spent) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+    </div>
+    <% if (!customers.length) { %><div class="empty-card"><h2>No customers found</h2><p class="muted">Customers appear here after they check out, sign up or subscribe.</p></div><% } %>
+    <%- include('../partials/pagination') %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

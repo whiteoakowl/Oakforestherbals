@@ -1,0 +1,57 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: title, backHref: '/admin/customers' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card stat-inline">
+        <div><div class="stat-label">Amount spent</div><div class="stat-value sm"><%= money(customer.spent) %></div></div>
+        <div><div class="stat-label">Orders</div><div class="stat-value sm"><%= customer.order_count %></div></div>
+        <div><div class="stat-label">Customer since</div><div class="stat-value sm"><%= formatDate(customer.created_at) %></div></div>
+      </div>
+      <div class="card flush">
+        <div class="card-head pad"><h2>Orders</h2></div>
+        <% if (!orders.length) { %><p class="muted pad">This customer hasn't placed any orders yet.</p><% } else { %>
+        <table class="table">
+          <tbody>
+          <% for (const o of orders) { %>
+            <tr class="row-link" data-href="/admin/orders/<%= o.id %>">
+              <td><a href="/admin/orders/<%= o.id %>"><strong><%= o.name %></strong></a></td>
+              <td class="muted"><%= formatDate(o.created_at, true) %></td>
+              <td><%- include('../partials/status', { value: o.financial_status }) %></td>
+              <td><%- include('../partials/status', { value: o.status === 'cancelled' ? 'cancelled' : o.fulfillment_status }) %></td>
+              <td class="num"><%= money(o.total) %></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+    </div>
+    <div>
+      <form action="/admin/customers/<%= customer.id %>" method="post" class="card form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h2>Customer</h2>
+        <div class="grid-2">
+          <label class="field"><span>First name</span><input name="first_name" value="<%= customer.first_name %>"></label>
+          <label class="field"><span>Last name</span><input name="last_name" value="<%= customer.last_name %>"></label>
+        </div>
+        <p class="small"><a href="mailto:<%= customer.email %>"><%= customer.email %></a></p>
+        <label class="field"><span>Phone</span><input name="phone" value="<%= customer.phone %>"></label>
+        <label class="check"><input type="checkbox" name="accepts_marketing" value="1" <%= customer.accepts_marketing ? 'checked' : '' %>> Subscribed to email marketing</label>
+        <p class="muted small"><%= customer.password_hash ? 'Has a customer account' : 'No customer account' %></p>
+        <label class="field"><span>Tags</span><input name="tags" value="<%= customer.tags %>"></label>
+        <label class="field"><span>Notes</span><textarea name="note" rows="3"><%= customer.note %></textarea></label>
+        <button class="btn btn-primary">Save</button>
+      </form>
+      <div class="card">
+        <h2>Addresses</h2>
+        <% if (!addresses.length) { %><p class="muted small">No saved addresses.</p><% } %>
+        <% for (const a of addresses) { %><%- include('../../partials/address', { a }) %><% } %>
+      </div>
+      <form action="/admin/customers/<%= customer.id %>/delete" method="post" data-confirm="Delete this customer? Their orders will be kept.">
+        <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-critical btn-block">Delete customer</button>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

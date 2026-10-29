@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+<div class="container narrow section">
+  <h1 class="page-title"><%= page ? page.title : 'Contact us' %></h1>
+  <% if (page) { %><div class="rte"><%- page.body_html %></div><% } %>
+  <form action="/contact" method="post" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="hp" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+    <div class="grid-2">
+      <label class="field">Name <input name="name" autocomplete="name"></label>
+      <label class="field">Email <input type="email" name="email" required autocomplete="email"></label>
+    </div>
+    <label class="field">Message <textarea name="message" rows="6" required></textarea></label>
+    <button class="btn">Send message</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

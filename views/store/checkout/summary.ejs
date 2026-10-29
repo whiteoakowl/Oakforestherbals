@@ -1,0 +1,33 @@
+<details class="summary-toggle" open>
+  <summary>Order summary <strong><%= money(totals.total) %></strong></summary>
+  <ul class="summary-lines">
+    <% for (const l of cart.lines) { %>
+      <li>
+        <span class="summary-thumb"><% if (l.image) { %><img src="<%= l.image %>" alt=""><% } %><span class="qty-badge"><%= l.quantity %></span></span>
+        <span class="summary-title"><%= l.title %><% if (l.variant_title) { %><br><span class="muted small"><%= l.variant_title %></span><% } %></span>
+        <span><%= money(l.line_price) %></span>
+      </li>
+    <% } %>
+  </ul>
+  <form action="/checkout/discount" method="post" class="inline-form discount-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="step" value="<%= step %>">
+    <% if (discount) { %>
+      <span class="tag">🏷 <%= discount.code %></span>
+      <button class="link-btn" name="remove" value="1">Remove</button>
+    <% } else { %>
+      <input name="code" placeholder="Discount code" aria-label="Discount code">
+      <button class="btn btn-secondary">Apply</button>
+    <% } %>
+  </form>
+  <% if (discountError) { %><p class="error small"><%= discountError %></p><% } %>
+  <div class="summary-rows">
+    <div class="summary-row"><span>Subtotal</span><span><%= money(totals.subtotal) %></span></div>
+    <% if (totals.discount_total) { %><div class="summary-row"><span>Discount</span><span>−<%= money(totals.discount_total) %></span></div><% } %>
+    <div class="summary-row"><span>Shipping</span><span><%= shipping ? (shipping.price ? money(shipping.price) : 'Free') : 'Calculated at next step' %></span></div>
+    <% if (address) { %>
+      <div class="summary-row"><span><%= totals.tax_included ? `Including ${totals.tax_name}` : totals.tax_name %><% if (totals.tax_rate) { %> (<%= totals.tax_rate %>%)<% } %></span><span><%= money(totals.tax_total) %></span></div>
+    <% } %>
+    <div class="summary-row total"><span>Total</span><span><small class="muted"><%= store.currency %></small> <%= money(totals.total) %></span></div>
+  </div>
+</details>

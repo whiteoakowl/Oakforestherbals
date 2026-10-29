@@ -1,0 +1,5 @@
+<%- include('partials/head') %>
+<body class="auth-page">
+<main class="auth-card">
+  <div class="auth-brand"><span class="brand-mark"><%= store.name.charAt(0) %></span> <%= store.name %></div>
+  <% for (const f of flash) { %><div class="banner banner-<%= f.type === 'error' ? 'critical' : 'success' %>"><%= f.message %></div><% } %>

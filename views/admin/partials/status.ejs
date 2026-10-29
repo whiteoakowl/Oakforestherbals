@@ -1,0 +1,10 @@
+<%
+const labels = {
+  pending: ['Payment pending', 'warning'], paid: ['Paid', 'default'], refunded: ['Refunded', 'default'],
+  partially_refunded: ['Partially refunded', 'warning'], voided: ['Voided', 'default'],
+  unfulfilled: ['Unfulfilled', 'attention'], partial: ['Partially fulfilled', 'warning'], fulfilled: ['Fulfilled', 'default'],
+  active: ['Active', 'success'], draft: ['Draft', 'info'], archived: ['Archived', 'default'],
+  open: ['Open', 'default'], cancelled: ['Cancelled', 'default'], scheduled: ['Scheduled', 'info'], expired: ['Expired', 'default'], disabled: ['Disabled', 'default'],
+};
+const [label, tone] = labels[value] || [value, 'default'];
+%><span class="badge badge-<%= tone %>"><span class="dot"></span><%= label %></span>

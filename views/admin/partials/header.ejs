@@ -1,0 +1,73 @@
+<%- include('head') %>
+<body>
+<header class="topbar">
+  <button class="topbar-menu" data-sidebar-toggle aria-label="Toggle navigation">☰</button>
+  <a href="/admin" class="topbar-brand"><span class="brand-mark"><%= store.name.charAt(0) %></span><span class="brand-name"><%= store.name %></span></a>
+  <form class="topbar-search" action="/admin/products" method="get" role="search">
+    <%- include('icon', { name: 'search', size: 16 }) %>
+    <input name="q" placeholder="Search products" aria-label="Search products">
+  </form>
+  <div class="topbar-user">
+    <details class="user-menu">
+      <summary><span class="avatar"><%= staff.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() %></span><span class="user-name"><%= staff.name %></span></summary>
+      <div class="menu-pop">
+        <div class="muted small"><%= staff.email %></div>
+        <a href="/admin/profile">Your profile</a>
+        <a href="/" target="_blank" rel="noopener">View online store</a>
+        <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain">Log out</button></form>
+      </div>
+    </details>
+  </div>
+</header>
+<div class="admin-shell">
+  <nav class="sidebar" data-sidebar>
+    <% const isActive = (prefix, exact) => exact ? adminPath === prefix : adminPath.startsWith(prefix); %>
+    <% const nav = [
+      ['/admin', 'Home', 'home', true],
+      ['/admin/orders', 'Orders', 'orders'],
+      ['/admin/products', 'Products', 'products', false, [['/admin/products', 'All products', true], ['/admin/collections', 'Collections'], ['/admin/products/inventory', 'Inventory']]],
+      ['/admin/customers', 'Customers', 'customers'],
+      ['/admin/content', 'Content', 'content', false, [['/admin/content/pages', 'Pages'], ['/admin/content/blog', 'Blog posts'], ['/admin/content/files', 'Files'], ['/admin/content/navigation', 'Navigation']]],
+      ['/admin/analytics', 'Analytics', 'analytics'],
+      ['/admin/discounts', 'Discounts', 'discounts'],
+    ]; %>
+    <ul>
+      <% for (const [href, label, icon, exact, children] of nav) { %>
+        <% const open = isActive(href, exact) || (children && children.some(([h]) => isActive(h))); %>
+        <li>
+          <a href="<%= children ? children[0][0] : href %>" class="nav-item <%= open && !children ? 'active' : '' %> <%= open && children ? 'open' : '' %>"><%- include('icon', { name: icon }) %><%= label %></a>
+          <% if (children && open) { %>
+            <ul class="subnav">
+              <% for (const [ch, cl, cexact] of children) { %>
+                <% const childActive = cexact ? (adminPath === ch || /^\/admin\/products\/(\d+|new)$/.test(adminPath)) : isActive(ch); %>
+                <li><a href="<%= ch %>" class="<%= childActive ? 'active' : '' %>"><%= cl %></a></li>
+              <% } %>
+            </ul>
+          <% } %>
+        </li>
+      <% } %>
+    </ul>
+    <div class="nav-label">Sales channels</div>
+    <ul>
+      <li>
+        <a href="/admin/themes" class="nav-item <%= isActive('/admin/themes') ? 'active' : '' %>"><%- include('icon', { name: 'store' }) %>Online Store
+          <span class="nav-eye" title="View store" data-open-store><%- include('icon', { name: 'eye', size: 16 }) %></span>
+        </a>
+        <% if (isActive('/admin/themes') || isActive('/admin/settings/preferences')) { %>
+          <ul class="subnav">
+            <li><a href="/admin/themes" class="<%= adminPath === '/admin/themes' ? 'active' : '' %>">Themes</a></li>
+            <li><a href="/admin/settings/preferences" class="<%= isActive('/admin/settings/preferences') ? 'active' : '' %>">Preferences</a></li>
+          </ul>
+        <% } %>
+      </li>
+    </ul>
+    <ul class="sidebar-bottom">
+      <li><a href="/admin/settings" class="nav-item <%= isActive('/admin/settings') && !isActive('/admin/settings/preferences') ? 'active' : '' %>"><%- include('icon', { name: 'settings' }) %>Settings</a></li>
+    </ul>
+  </nav>
+  <main class="main">
+    <% if (flash.length) { %>
+      <div class="toasts">
+        <% for (const f of flash) { %><div class="toast toast-<%= f.type %>" role="status"><%= f.message %></div><% } %>
+      </div>
+    <% } %>

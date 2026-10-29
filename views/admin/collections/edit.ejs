@@ -1,0 +1,98 @@
+<%- include('../partials/header') %>
+<% const c = collection || { title: '', handle: '', description_html: '', image: '', kind: 'manual', match_any: 0, sort_order: 'manual', published: 1, seo_title: '', seo_description: '' }; %>
+<form action="/admin/collections/<%= collection ? collection.id : 'new' %>" method="post" enctype="multipart/form-data" class="page" data-dirty-form>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="save-bar" data-save-bar hidden><span>Unsaved changes</span><div><button class="btn btn-primary">Save</button></div></div>
+  <%- include('../partials/page-header', { heading: collection ? collection.title : 'Create collection', backHref: '/admin/collections',
+    actions: collection ? `<a class="btn" href="/collections/${collection.handle}" target="_blank" rel="noopener">View</a>` : '' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card form-stack">
+        <label class="field"><span>Title</span><input name="title" value="<%= c.title %>" placeholder="e.g. Summer collection, Under $100" required></label>
+        <div class="field"><span>Description</span><%- include('../partials/rte', { name: 'description_html', value: c.description_html }) %></div>
+      </div>
+      <div class="card">
+        <h2>Collection type</h2>
+        <div class="radio-cards">
+          <label class="radio-card"><input type="radio" name="kind" value="manual" <%= c.kind === 'manual' ? 'checked' : '' %> data-kind><span><strong>Manual</strong><br><span class="muted small">Add products to this collection one by one.</span></span></label>
+          <label class="radio-card"><input type="radio" name="kind" value="smart" <%= c.kind === 'smart' ? 'checked' : '' %> data-kind><span><strong>Automated</strong><br><span class="muted small">Products that match the conditions are included automatically.</span></span></label>
+        </div>
+        <div class="mt-sm" data-kind-panel="smart" <%= c.kind === 'smart' ? '' : 'hidden' %>>
+          <div class="inline-fields">
+            <span>Products must match:</span>
+            <label class="check"><input type="radio" name="match_any" value="0" <%= c.match_any ? '' : 'checked' %>> all conditions</label>
+            <label class="check"><input type="radio" name="match_any" value="1" <%= c.match_any ? 'checked' : '' %>> any condition</label>
+          </div>
+          <div data-rules>
+            <% const ruleRows = rules.length ? rules : [{ field: 'tag', relation: 'equals', value: '' }]; %>
+            <% ruleRows.forEach((r, i) => { %>
+              <div class="rule-row" data-rule-row>
+                <select name="rules[<%= i %>][field]" aria-label="Field"><% for (const [k, l] of RULE_FIELDS) { %><option value="<%= k %>" <%= r.field === k ? 'selected' : '' %>><%= l %></option><% } %></select>
+                <select name="rules[<%= i %>][relation]" aria-label="Relation"><% for (const [k, l] of RELATIONS) { %><option value="<%= k %>" <%= r.relation === k ? 'selected' : '' %>><%= l %></option><% } %></select>
+                <input name="rules[<%= i %>][value]" value="<%= r.value %>" aria-label="Value">
+                <button type="button" class="btn btn-plain" data-remove-rule aria-label="Remove condition">✕</button>
+              </div>
+            <% }) %>
+          </div>
+          <button type="button" class="btn" data-add-rule>+ Add another condition</button>
+        </div>
+      </div>
+      <div class="card" data-kind-panel="manual" <%= c.kind === 'manual' ? '' : 'hidden' %>>
+        <div class="card-head"><h2>Products</h2>
+        </div>
+        <div class="product-picker">
+          <select data-product-picker aria-label="Add product">
+            <option value="">Browse products to add…</option>
+            <% for (const ap of allProducts) { %><option value="<%= ap.id %>" data-title="<%= ap.title %>"><%= ap.title %><%= ap.status !== 'active' ? ` (${ap.status})` : '' %></option><% } %>
+          </select>
+        </div>
+        <ol class="sortable-list" data-picked>
+          <% if (c.kind === 'manual') { for (const pr of products) { %>
+            <li data-id="<%= pr.id %>"><input type="hidden" name="product_ids" value="<%= pr.id %>">
+              <span class="drag" title="Move">⋮⋮</span><% if (pr.image) { %><img class="thumb" src="<%= pr.image %>" alt=""><% } %>
+              <span class="grow"><%= pr.title %></span><%- include('../partials/status', { value: pr.status }) %>
+              <button type="button" class="btn btn-plain" data-move="-1" aria-label="Move up">↑</button>
+              <button type="button" class="btn btn-plain" data-move="1" aria-label="Move down">↓</button>
+              <button type="button" class="btn btn-plain" data-unpick aria-label="Remove">✕</button>
+            </li>
+          <% } } %>
+        </ol>
+      </div>
+      <% if (c.kind === 'smart' && collection) { %>
+      <div class="card">
+        <div class="card-head"><h2>Matching products (<%= products.length %>)</h2>
+        </div>
+        <ul class="list"><% for (const pr of products.slice(0, 50)) { %><li><a href="/admin/products/<%= pr.id %>"><%= pr.title %></a></li><% } %></ul>
+      </div>
+      <% } %>
+      <div class="card form-stack">
+        <h2>Search engine listing</h2>
+        <label class="field"><span>Page title</span><input name="seo_title" value="<%= c.seo_title %>"></label>
+        <label class="field"><span>Meta description</span><textarea name="seo_description" rows="2"><%= c.seo_description %></textarea></label>
+        <label class="field"><span>URL handle</span><div class="input-prefix"><span>/collections/</span><input name="handle" value="<%= c.handle %>"></div></label>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Publishing</h2>
+        <label class="check"><input type="checkbox" name="published" value="1" <%= c.published ? 'checked' : '' %>> Visible on online store</label>
+      </div>
+      <div class="card">
+        <h2>Sort products</h2>
+        <select name="sort_order" aria-label="Sort products" class="full"><% for (const [k, l] of SORT_ORDERS) { %><option value="<%= k %>" <%= c.sort_order === k ? 'selected' : '' %>><%= l %></option><% } %></select>
+        <p class="muted small mt-sm">“Manually” uses the order of the product list.</p>
+      </div>
+      <div class="card">
+        <h2>Image</h2>
+        <% if (c.image) { %><img src="<%= c.image %>" alt="" class="preview-img"><label class="check"><input type="checkbox" name="remove_image" value="1"> Remove image</label><% } %>
+        <input type="hidden" name="image" value="<%= c.image %>">
+        <input type="file" name="image_file" accept="image/*">
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <% if (collection) { %><button class="btn btn-critical" formaction="/admin/collections/<%= collection.id %>/delete" formenctype="application/x-www-form-urlencoded" formnovalidate data-confirm-click="Delete this collection?">Delete collection</button><% } else { %><span></span><% } %>
+    <button class="btn btn-primary">Save</button>
+  </div>
+</form>
+<%- include('../partials/footer') %>

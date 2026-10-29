@@ -1,0 +1,13 @@
+<%- include('auth-layout') %>
+  <h1>Log in</h1>
+  <p class="muted">Continue to your store admin</p>
+  <form action="/admin/login" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="next" value="<%= next %>">
+    <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="username" autofocus></label>
+    <label class="field"><span>Password</span><input type="password" name="password" required autocomplete="current-password"></label>
+    <button class="btn btn-primary btn-block">Log in</button>
+  </form>
+</main>
+</body>
+</html>

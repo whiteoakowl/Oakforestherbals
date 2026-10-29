@@ -1,0 +1,71 @@
+<%- include('partials/header') %>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title-row"><h1>Good <%= new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening' %>, <%= staff.name.split(' ')[0] %></h1></div>
+    <div class="page-actions"><%- include('partials/range') %></div>
+  </div>
+
+  <div class="stat-row">
+    <div class="card stat"><div class="stat-label">Total sales</div><div class="stat-value"><%= money(m.totalSales) %></div></div>
+    <div class="card stat"><div class="stat-label">Orders</div><div class="stat-value"><%= m.totalOrders %></div></div>
+    <div class="card stat"><div class="stat-label">Average order value</div><div class="stat-value"><%= money(m.aov) %></div></div>
+    <div class="card stat"><div class="stat-label">Online store visitors</div><div class="stat-value"><%= m.visitors %></div><div class="stat-sub"><%= m.conversion.toFixed(1) %>% conversion</div></div>
+  </div>
+
+  <div class="layout-2">
+    <div>
+      <div class="card">
+        <div class="card-head"><h2>Net sales over time</h2><a href="/admin/analytics?range=<%= range %>" class="link small">View report</a></div>
+        <%- include('partials/sales-chart', { series: m.series }) %>
+      </div>
+      <div class="card flush">
+        <div class="card-head pad"><h2>Recent orders</h2><a class="link small" href="/admin/orders">View all</a></div>
+        <% if (!recent.length) { %><p class="muted pad">No orders yet. When customers buy from your store, orders will appear here.</p><% } else { %>
+        <table class="table">
+          <tbody>
+          <% for (const o of recent) { %>
+            <tr class="row-link" data-href="/admin/orders/<%= o.id %>">
+              <td><a href="/admin/orders/<%= o.id %>"><strong><%= o.name %></strong></a></td>
+              <td class="muted"><%= formatDate(o.created_at, true) %></td>
+              <td><%= o.email %></td>
+              <td><%- include('partials/status', { value: o.financial_status }) %></td>
+              <td><%- include('partials/status', { value: o.status === 'cancelled' ? 'cancelled' : o.fulfillment_status }) %></td>
+              <td class="num"><%= money(o.total) %></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Things to do</h2>
+        <ul class="todo">
+          <li><a href="/admin/orders?tab=unfulfilled"><strong><%= todo.unfulfilled %></strong> order<%= todo.unfulfilled === 1 ? '' : 's' %> to fulfill</a></li>
+          <li><a href="/admin/orders?tab=unpaid"><strong><%= todo.pending %></strong> payment<%= todo.pending === 1 ? '' : 's' %> to capture</a></li>
+          <% if (!productCount) { %><li><a href="/admin/products/new">Add your first product</a></li><% } %>
+          <li><a href="/admin/themes/customize">Customize your online store</a></li>
+          <li><a href="/admin/settings/payments">Set up payments</a></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>Low stock</h2>
+        <% if (!todo.lowStock.length) { %><p class="muted small">All tracked products have more than 5 units.</p><% } else { %>
+          <ul class="list">
+            <% for (const v of todo.lowStock) { %>
+              <li><a href="/admin/products/<%= v.pid %>"><%= v.product_title %></a><% if (v.title !== 'Default Title') { %> <span class="muted">· <%= v.title %></span><% } %>
+                <span class="badge badge-<%= v.inventory_qty <= 0 ? 'critical' : 'warning' %>"><%= v.inventory_qty %> left</span></li>
+            <% } %>
+          </ul>
+        <% } %>
+      </div>
+      <div class="card">
+        <h2>Your store</h2>
+        <p class="muted small">Your online store is <%= store.password_enabled ? 'password protected' : 'live' %>.</p>
+        <a class="btn" href="/" target="_blank" rel="noopener">View store</a>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer') %>

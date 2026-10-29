@@ -1,0 +1,17 @@
+<%- include('../partials/head') %>
+<body class="checkout-page">
+<div class="checkout-grid">
+  <div class="checkout-main">
+    <a href="/" class="logo checkout-logo">
+      <% if (theme.logo) { %><img src="<%= theme.logo %>" alt="<%= store.name %>" style="width: <%= theme.logo_width %>px"><% } else { %><%= store.name %><% } %>
+    </a>
+    <% if (typeof step !== 'undefined') { %>
+    <ol class="steps">
+      <li><a href="/cart">Cart</a></li>
+      <% const steps = [['information', 'Information'], ['shipping', 'Shipping'], ['payment', 'Payment']]; const idx = steps.findIndex(([k]) => k === step); %>
+      <% steps.forEach(([key, label], i) => { %>
+        <li class="<%= i === idx ? 'current' : '' %>"><% if (i < idx) { %><a href="/checkout/<%= key %>"><%= label %></a><% } else { %><%= label %><% } %></li>
+      <% }) %>
+    </ol>
+    <% } %>
+    <% for (const f of flash) { %><div class="flash flash-<%= f.type %>" role="status"><%= f.message %></div><% } %>

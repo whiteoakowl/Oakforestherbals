@@ -1,0 +1,6 @@
+<%- include('_top') %>
+<h2 style="margin:0 0 8px">New order <%= order.name %></h2>
+<p><%= order.email %> placed an order for <strong><%= money(order.total) %></strong> using <%= order.payment_method %>.</p>
+<%- include('_items') %>
+<% if (order.note) { %><p><strong>Note:</strong> <%= order.note %></p><% } %>
+<%- include('_bottom') %>

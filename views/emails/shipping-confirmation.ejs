@@ -1,0 +1,8 @@
+<%- include('_top') %>
+<h2 style="margin:0 0 8px">Your order is on the way</h2>
+<p>Items from order <strong><%= order.name %></strong> have shipped.</p>
+<% if (fulfillment.tracking_number) { %>
+  <p><strong>Tracking:</strong> <%= fulfillment.tracking_company %> <% if (fulfillment.tracking_url) { %><a href="<%= fulfillment.tracking_url %>"><%= fulfillment.tracking_number %></a><% } else { %><%= fulfillment.tracking_number %><% } %></p>
+<% } %>
+<ul><% for (const i of fulfillment.items) { %><li><%= i.quantity %> × <%= i.title %><%= i.variant_title ? ` – ${i.variant_title}` : '' %></li><% } %></ul>
+<%- include('_bottom') %>

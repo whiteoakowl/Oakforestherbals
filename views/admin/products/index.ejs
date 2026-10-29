@@ -1,0 +1,73 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Products', actions: `
+    <a class="btn" href="/admin/products/export.csv">Export</a>
+    <button class="btn" type="button" data-dialog-open="import-dialog">Import</button>
+    <a class="btn btn-primary" href="/admin/products/new">Add product</a>` }) %>
+
+  <div class="card flush">
+    <div class="tabs">
+      <% for (const [key, label] of [['', 'All'], ['active', 'Active'], ['draft', 'Draft'], ['archived', 'Archived']]) { %>
+        <a href="?status=<%= key %>" class="tab <%= filters.status === key ? 'active' : '' %>"><%= label %><% if (key) { %> <span class="count"><%= counts[key] || 0 %></span><% } %></a>
+      <% } %>
+    </div>
+    <form class="filter-bar" method="get">
+      <input type="hidden" name="status" value="<%= filters.status %>">
+      <input name="q" value="<%= filters.q %>" placeholder="Search products" class="grow" aria-label="Search products">
+      <select name="type" aria-label="Product type"><option value="">Product type</option><% for (const t of types) { %><option <%= filters.type === t ? 'selected' : '' %>><%= t %></option><% } %></select>
+      <select name="vendor" aria-label="Vendor"><option value="">Vendor</option><% for (const v of vendors) { %><option <%= filters.vendor === v ? 'selected' : '' %>><%= v %></option><% } %></select>
+      <select name="sort" aria-label="Sort">
+        <% for (const [k, l] of [['-created', 'Newest'], ['created', 'Oldest'], ['title', 'Title A–Z'], ['-title', 'Title Z–A'], ['updated', 'Recently updated']]) { %><option value="<%= k %>" <%= sort === k ? 'selected' : '' %>><%= l %></option><% } %>
+      </select>
+      <button class="btn">Filter</button>
+    </form>
+    <form action="/admin/products/bulk" method="post" data-bulk-form>
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="bulk-bar" hidden data-bulk-bar>
+        <span data-bulk-count>0 selected</span>
+        <button class="btn btn-sm" name="action" value="active">Set as active</button>
+        <button class="btn btn-sm" name="action" value="draft">Set as draft</button>
+        <button class="btn btn-sm" name="action" value="archived">Archive</button>
+        <button class="btn btn-sm btn-critical" name="action" value="delete" data-confirm-click="Delete the selected products? This cannot be undone.">Delete</button>
+      </div>
+      <% if (!products.length) { %>
+        <div class="empty-card">
+          <h2>No products found</h2>
+          <p class="muted">Add products or change your filters.</p>
+          <a class="btn btn-primary" href="/admin/products/new">Add product</a>
+        </div>
+      <% } else { %>
+      <table class="table">
+        <thead><tr><th class="check-col"><input type="checkbox" data-check-all aria-label="Select all"></th><th></th><th>Product</th><th>Status</th><th>Inventory</th><th>Type</th><th>Vendor</th></tr></thead>
+        <tbody>
+        <% for (const p of products) { %>
+          <tr class="row-link" data-href="/admin/products/<%= p.id %>">
+            <td class="check-col"><input type="checkbox" name="ids" value="<%= p.id %>" data-check aria-label="Select <%= p.title %>"></td>
+            <td class="thumb-col"><% if (p.image) { %><img class="thumb" src="<%= p.image %>" alt=""><% } else { %><span class="thumb"></span><% } %></td>
+            <td><a href="/admin/products/<%= p.id %>"><strong><%= p.title %></strong></a></td>
+            <td><%- include('../partials/status', { value: p.status }) %></td>
+            <td class="<%= p.inventory_total <= 0 && p.variants.some((v) => v.track_inventory) ? 'critical-text' : '' %>">
+              <% if (p.variants.every((v) => !v.track_inventory)) { %><span class="muted">Not tracked</span><% } else { %><%= p.inventory_total %> in stock<% if (p.variants.length > 1) { %> for <%= p.variants.length %> variants<% } %><% } %>
+            </td>
+            <td><%= p.product_type %></td>
+            <td><%= p.vendor %></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+      <% } %>
+    </form>
+    <%- include('../partials/pagination') %>
+  </div>
+</div>
+
+<dialog id="import-dialog" class="dialog">
+  <form action="/admin/products/import" method="post" enctype="multipart/form-data" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Import products by CSV</h2>
+    <p class="muted small">Use the same columns as the export (Handle, Title, Body (HTML), Vendor, Type, Tags, Status, Option1 Name/Value…, Variant SKU, Variant Price, Variant Inventory Qty, Image Src). Products whose handle already exists are skipped.</p>
+    <input type="file" name="file" accept=".csv,text/csv" required>
+    <div class="dialog-actions"><button type="button" class="btn" data-dialog-close>Cancel</button><button class="btn btn-primary">Upload and import</button></div>
+  </form>
+</dialog>
+<%- include('../partials/footer') %>

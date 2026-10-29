@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+<form action="/admin/customers/new" method="post" class="page narrow">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <%- include('../partials/page-header', { heading: 'New customer', backHref: '/admin/customers' }) %>
+  <div class="card form-stack">
+    <h2>Customer overview</h2>
+    <div class="grid-2">
+      <label class="field"><span>First name</span><input name="first_name"></label>
+      <label class="field"><span>Last name</span><input name="last_name"></label>
+    </div>
+    <label class="field"><span>Email</span><input type="email" name="email" required></label>
+    <label class="field"><span>Phone</span><input name="phone"></label>
+    <label class="check"><input type="checkbox" name="accepts_marketing" value="1"> Customer agreed to receive marketing emails</label>
+  </div>
+  <div class="card form-stack">
+    <h2>Address</h2>
+    <label class="field"><span>Address</span><input name="address1"></label>
+    <label class="field"><span>Apartment, suite, etc.</span><input name="address2"></label>
+    <div class="grid-3">
+      <label class="field"><span>City</span><input name="city"></label>
+      <label class="field"><span>State / province</span><input name="province"></label>
+      <label class="field"><span>ZIP</span><input name="zip"></label>
+    </div>
+    <label class="field"><span>Country</span><select name="country"><% for (const [code, name] of COUNTRIES) { %><option value="<%= code %>"><%= name %></option><% } %></select></label>
+  </div>
+  <div class="card form-stack">
+    <h2>Notes &amp; tags</h2>
+    <label class="field"><span>Note</span><textarea name="note" rows="3"></textarea></label>
+    <label class="field"><span>Tags</span><input name="tags" placeholder="vip, wholesale"></label>
+  </div>
+  <div class="page-footer"><span></span><button class="btn btn-primary">Save</button></div>
+</form>
+<%- include('../partials/footer') %>

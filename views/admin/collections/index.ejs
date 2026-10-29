@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Collections', actions: '<a class="btn btn-primary" href="/admin/collections/new">Create collection</a>' }) %>
+  <div class="card flush">
+    <form class="filter-bar" method="get"><input name="q" value="<%= q %>" placeholder="Search collections" class="grow" aria-label="Search collections"><button class="btn">Search</button></form>
+    <table class="table">
+      <thead><tr><th></th><th>Title</th><th>Products</th><th>Product conditions</th><th>Status</th></tr></thead>
+      <tbody>
+      <% for (const c of collections) { %>
+        <tr class="row-link" data-href="/admin/collections/<%= c.id %>">
+          <td class="thumb-col"><% if (c.image) { %><img class="thumb" src="<%= c.image %>" alt=""><% } else { %><span class="thumb"></span><% } %></td>
+          <td><a href="/admin/collections/<%= c.id %>"><strong><%= c.title %></strong></a></td>
+          <td><%= c.count %></td>
+          <td class="muted small"><%= c.kind === 'smart' ? JSON.parse(c.rules).map((r) => `${r.field} ${r.relation.replace('_', ' ')} ${r.value}`).join(c.match_any ? ' or ' : ' and ') || 'All products' : 'Manual' %></td>
+          <td><%- include('../partials/status', { value: c.published ? 'active' : 'draft' }) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+    <% if (!collections.length) { %><div class="empty-card"><h2>Group your products into collections</h2><p class="muted">Collections help customers find products by category.</p><a class="btn btn-primary" href="/admin/collections/new">Create collection</a></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,12 @@
+<%- include('../partials/header') %>
+<div class="container auth-box section">
+  <h1 class="page-title">Reset your password</h1>
+  <p class="muted">We will send you an email with a link to reset your password.</p>
+  <form action="/account/recover" method="post" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field">Email <input type="email" name="email" required autocomplete="email"></label>
+    <button class="btn btn-block">Send reset link</button>
+  </form>
+  <p class="small"><a href="/account/login">Back to log in</a></p>
+</div>
+<%- include('../partials/footer') %>

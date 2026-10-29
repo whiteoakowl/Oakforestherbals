@@ -1,0 +1,10 @@
+<%- include('../partials/header') %>
+<div class="container auth-box section">
+  <h1 class="page-title">Choose a new password</h1>
+  <form action="/account/reset/<%= token %>" method="post" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field">New password <input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn btn-block">Reset password</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

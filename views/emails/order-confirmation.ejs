@@ -1,0 +1,7 @@
+<%- include('_top') %>
+<h2 style="margin:0 0 8px">Thank you for your purchase!</h2>
+<p>Hi <%= order.shipping_address.first_name || 'there' %>, we're getting your order <strong><%= order.name %></strong> ready. We'll notify you when it has been sent.</p>
+<% if (baseUrl) { %><p><a href="<%= baseUrl %>/checkout/thank-you/<%= order.token %>" style="background:<%= theme.color_primary %>;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none">View your order</a></p><% } %>
+<%- include('_items') %>
+<p><strong>Payment:</strong> <%= order.payment_method %><br><strong>Shipping:</strong> <%= order.shipping_method %></p>
+<%- include('_bottom') %>

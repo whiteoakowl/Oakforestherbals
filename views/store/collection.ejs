@@ -1,0 +1,42 @@
+<%- include('partials/header') %>
+<div class="container section">
+  <nav class="breadcrumbs"><a href="/">Home</a> / <a href="/collections">Collections</a> / <span><%= collection.title %></span></nav>
+  <h1 class="page-title"><%= collection.title %></h1>
+  <% if (collection.description_html) { %><div class="rte collection-description"><%- collection.description_html %></div><% } %>
+
+  <form class="toolbar" method="get" data-autosubmit>
+    <div class="toolbar-filters">
+      <label>Availability
+        <select name="availability">
+          <option value="">All</option>
+          <option value="in" <%= query.availability === 'in' ? 'selected' : '' %>>In stock</option>
+          <option value="out" <%= query.availability === 'out' ? 'selected' : '' %>>Out of stock</option>
+        </select>
+      </label>
+      <% if (types.length > 1) { %>
+      <label>Type
+        <select name="type">
+          <option value="">All</option>
+          <% for (const t of types) { %><option <%= query.type === t ? 'selected' : '' %>><%= t %></option><% } %>
+        </select>
+      </label>
+      <% } %>
+    </div>
+    <div class="toolbar-sort">
+      <span class="muted small"><%= pager.total %> products</span>
+      <label>Sort by
+        <select name="sort">
+          <% for (const [key, label] of SORT_OPTIONS) { %><option value="<%= key %>" <%= sort === key ? 'selected' : '' %>><%= label %></option><% } %>
+        </select>
+      </label>
+    </div>
+    <noscript><button class="btn">Apply</button></noscript>
+  </form>
+
+  <div class="product-grid">
+    <% for (const p of products) { %><%- include('partials/product-card', { p }) %><% } %>
+  </div>
+  <% if (!products.length) { %><p class="empty">No products match these filters.</p><% } %>
+  <%- include('partials/pagination') %>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,5 @@
+<nav class="account-nav">
+  <a href="/account" class="<%= path === '/account' ? 'active' : '' %>">Orders &amp; profile</a>
+  <a href="/account/addresses" class="<%= path === '/account/addresses' ? 'active' : '' %>">Addresses</a>
+  <form action="/account/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-btn">Log out</button></form>
+</nav>

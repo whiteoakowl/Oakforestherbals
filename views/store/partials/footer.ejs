@@ -1,0 +1,38 @@
+</main>
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <div class="footer-brand"><%= store.name %></div>
+      <p class="muted"><%= theme.footer_text %></p>
+      <div class="social">
+        <% for (const [key, label] of [['social_instagram', 'Instagram'], ['social_facebook', 'Facebook'], ['social_pinterest', 'Pinterest'], ['social_tiktok', 'TikTok']]) { %>
+          <% if (theme[key]) { %><a href="<%= theme[key] %>" rel="noopener" target="_blank"><%= label %></a><% } %>
+        <% } %>
+      </div>
+    </div>
+    <div>
+      <h4>Explore</h4>
+      <ul class="footer-links">
+        <% for (const item of menu('footer')) { %><li><a href="<%= item.url %>"><%= item.title %></a></li><% } %>
+      </ul>
+    </div>
+    <% if (theme.show_newsletter) { %>
+    <div>
+      <h4><%= theme.newsletter_heading %></h4>
+      <p class="muted"><%= theme.newsletter_text %></p>
+      <form action="/newsletter" method="post" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <input type="email" name="email" placeholder="Email address" required aria-label="Email address">
+        <button class="btn">Subscribe</button>
+      </form>
+    </div>
+    <% } %>
+  </div>
+  <div class="container footer-bottom">
+    <span>© <%= new Date().getFullYear() %> <%= store.name %></span>
+    <span class="payment-note">Secure checkout</span>
+  </div>
+</footer>
+<script src="/public/js/store.js" defer></script>
+</body>
+</html>

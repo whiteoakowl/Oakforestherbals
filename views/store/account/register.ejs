@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<div class="container auth-box section">
+  <h1 class="page-title">Create account</h1>
+  <form action="/account/register" method="post" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="grid-2">
+      <label class="field">First name <input name="first_name" autocomplete="given-name"></label>
+      <label class="field">Last name <input name="last_name" autocomplete="family-name"></label>
+    </div>
+    <label class="field">Email <input type="email" name="email" required autocomplete="email"></label>
+    <label class="field">Password <input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+    <label class="check"><input type="checkbox" name="accepts_marketing" value="1"> Email me with news and offers</label>
+    <button class="btn btn-block">Create account</button>
+  </form>
+  <p class="small">Already have an account? <a href="/account/login">Log in</a></p>
+</div>
+<%- include('../partials/footer') %>

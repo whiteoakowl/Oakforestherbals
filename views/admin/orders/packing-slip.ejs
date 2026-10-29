@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title><%= title %></title>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; color: #111; max-width: 720px; margin: 32px auto; padding: 0 16px; }
+  .head { display: flex; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+  .cols { display: flex; gap: 48px; }
+  address { font-style: normal; line-height: 1.5; }
+  @media print { .noprint { display: none; } }
+</style></head>
+<body>
+  <p class="noprint"><button onclick="window.print()">Print</button></p>
+  <div class="head"><strong><%= store.name %></strong><span>Order <%= order.name %> · <%= formatDate(order.created_at) %></span></div>
+  <div class="cols">
+    <div><h4>Ship to</h4><%- include('../../partials/address', { a: order.shipping_address }) %></div>
+    <div><h4>Bill to</h4><%- include('../../partials/address', { a: order.billing_address }) %></div>
+  </div>
+  <table>
+    <thead><tr><th>Item</th><th>SKU</th><th>Qty</th></tr></thead>
+    <tbody><% for (const i of order.items) { %><tr><td><%= i.title %><%= i.variant_title ? ` – ${i.variant_title}` : '' %></td><td><%= i.sku %></td><td><%= i.quantity %></td></tr><% } %></tbody>
+  </table>
+  <% if (order.note) { %><p><strong>Note:</strong> <%= order.note %></p><% } %>
+  <p style="margin-top:32px">Thank you for shopping with us! <%= store.email %></p>
+</body></html>

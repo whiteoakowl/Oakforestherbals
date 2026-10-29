@@ -1,0 +1,5 @@
+<form method="get" class="range-form" data-autosubmit>
+  <select name="range" aria-label="Date range">
+    <% for (const [k, label] of Object.entries(RANGES)) { %><option value="<%= k %>" <%= Number(k) === range ? 'selected' : '' %>><%= label %></option><% } %>
+  </select>
+</form>

@@ -1,0 +1,62 @@
+<%- include('../partials/header') %>
+<% const d = discount || { code: suggested, kind: 'percentage', value: 10, min_subtotal: 0, usage_limit: null, once_per_customer: 0, starts_at: '', ends_at: '', active: 1 }; %>
+<form action="/admin/discounts/<%= discount ? discount.id : 'new' %>" method="post" class="page">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <%- include('../partials/page-header', { heading: discount ? discount.code : 'Create discount', backHref: '/admin/discounts' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card form-stack">
+        <h2>Discount code</h2>
+        <label class="field"><span>Code</span>
+          <div class="input-action"><input name="code" value="<%= d.code %>" required data-code-input><button type="button" class="btn" data-generate-code>Generate</button></div>
+          <small class="muted">Customers enter this code at checkout.</small>
+        </label>
+      </div>
+      <div class="card form-stack">
+        <h2>Value</h2>
+        <div class="grid-2">
+          <label class="field"><span>Type</span>
+            <select name="kind" data-discount-kind><% for (const [k, l] of KINDS) { %><option value="<%= k %>" <%= d.kind === k ? 'selected' : '' %>><%= l %></option><% } %></select>
+          </label>
+          <label class="field" data-discount-value <%= d.kind === 'free_shipping' ? 'hidden' : '' %>><span>Discount value</span>
+            <input name="value" value="<%= d.kind === 'fixed_amount' ? centsToInput(d.value) : d.value %>" inputmode="decimal">
+          </label>
+        </div>
+      </div>
+      <div class="card form-stack">
+        <h2>Minimum purchase requirements</h2>
+        <label class="field narrow-field"><span>Minimum subtotal (0 for none)</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="min_subtotal" value="<%= centsToInput(d.min_subtotal) %>" inputmode="decimal"></div></label>
+      </div>
+      <div class="card form-stack">
+        <h2>Maximum discount uses</h2>
+        <label class="field narrow-field"><span>Total number of times this discount can be used</span><input type="number" name="usage_limit" min="0" value="<%= d.usage_limit ?? '' %>" placeholder="Unlimited"></label>
+        <label class="check"><input type="checkbox" name="once_per_customer" value="1" <%= d.once_per_customer ? 'checked' : '' %>> Limit to one use per customer</label>
+      </div>
+      <div class="card form-stack">
+        <h2>Active dates</h2>
+        <div class="grid-2">
+          <label class="field"><span>Start date</span><input type="datetime-local" name="starts_at" value="<%= d.starts_at || '' %>"></label>
+          <label class="field"><span>End date</span><input type="datetime-local" name="ends_at" value="<%= d.ends_at || '' %>"></label>
+        </div>
+        <small class="muted">Dates use the server's UTC clock.</small>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Summary</h2>
+        <label class="check"><input type="checkbox" name="active" value="1" <%= d.active ? 'checked' : '' %>> Active</label>
+        <% if (discount) { %>
+          <ul class="list small mt-sm">
+            <li>Used <%= discount.used_count %> time<%= discount.used_count === 1 ? '' : 's' %></li>
+            <li><%= revenue.orders %> order<%= revenue.orders === 1 ? '' : 's' %> · <%= money(revenue.sales) %> in sales</li>
+          </ul>
+        <% } %>
+      </div>
+    </div>
+  </div>
+  <div class="page-footer">
+    <% if (discount) { %><button class="btn btn-critical" formaction="/admin/discounts/<%= discount.id %>/delete" formnovalidate data-confirm-click="Delete this discount?">Delete discount</button><% } else { %><span></span><% } %>
+    <button class="btn btn-primary">Save discount</button>
+  </div>
+</form>
+<%- include('../partials/footer') %>

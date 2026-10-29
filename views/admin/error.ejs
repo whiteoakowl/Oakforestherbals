@@ -1,0 +1,13 @@
+<% if (typeof staff !== 'undefined' && staff) { %>
+<%- include('partials/header') %>
+<div class="page narrow">
+  <div class="card empty-card">
+    <h1><%= title %></h1>
+    <p class="muted"><%= message %></p>
+    <a class="btn btn-primary" href="/admin">Go to Home</a>
+  </div>
+</div>
+<%- include('partials/footer') %>
+<% } else { %>
+<%- include('partials/head') %><body class="auth-page"><main class="auth-card"><h1><%= title %></h1><p><%= message %></p><a href="/admin">Back to admin</a></main></body></html>
+<% } %>

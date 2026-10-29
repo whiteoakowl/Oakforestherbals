@@ -1,0 +1,38 @@
+<%- include('layout-top') %>
+<form action="/checkout/information" method="post" class="stack-form checkout-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="section-row">
+    <h2>Contact</h2>
+    <% if (!customer && settingsAccounts !== 'disabled') { %><span class="small">Have an account? <a href="/account/login?next=/checkout">Log in</a></span><% } %>
+  </div>
+  <label class="field">Email <input type="email" name="email" value="<%= co.email || '' %>" required autocomplete="email"></label>
+  <label class="check"><input type="checkbox" name="accepts_marketing" value="1" <%= (co.accepts_marketing ?? checkoutSettings.marketing_checkbox_default) ? 'checked' : '' %>> Email me with news and offers</label>
+
+  <h2>Shipping address</h2>
+  <label class="field">Country / region
+    <select name="country" autocomplete="country">
+      <% for (const [code, name] of COUNTRIES) { %><option value="<%= code %>" <%= prefill.country === code ? 'selected' : '' %>><%= name %></option><% } %>
+    </select>
+  </label>
+  <div class="grid-2">
+    <label class="field">First name <input name="first_name" value="<%= prefill.first_name || '' %>" autocomplete="given-name"></label>
+    <label class="field">Last name <input name="last_name" value="<%= prefill.last_name || '' %>" required autocomplete="family-name"></label>
+  </div>
+  <label class="field">Company<%= checkoutSettings.require_company ? '' : ' (optional)' %> <input name="company" value="<%= prefill.company || '' %>" <%= checkoutSettings.require_company ? 'required' : '' %> autocomplete="organization"></label>
+  <label class="field">Address <input name="address1" value="<%= prefill.address1 || '' %>" required autocomplete="address-line1"></label>
+  <label class="field">Apartment, suite, etc. (optional) <input name="address2" value="<%= prefill.address2 || '' %>" autocomplete="address-line2"></label>
+  <div class="grid-3">
+    <label class="field">City <input name="city" value="<%= prefill.city || '' %>" required autocomplete="address-level2"></label>
+    <label class="field">State / province <input name="province" value="<%= prefill.province || '' %>" autocomplete="address-level1"></label>
+    <label class="field">ZIP / postal code <input name="zip" value="<%= prefill.zip || '' %>" required autocomplete="postal-code"></label>
+  </div>
+  <label class="field">Phone<%= checkoutSettings.require_phone ? '' : ' (optional)' %> <input type="tel" name="phone" value="<%= prefill.phone || '' %>" <%= checkoutSettings.require_phone ? 'required' : '' %> autocomplete="tel"></label>
+  <% if (checkoutSettings.order_notes) { %>
+    <label class="field">Order note (optional) <textarea name="note" rows="2"><%= note %></textarea></label>
+  <% } %>
+  <div class="checkout-actions">
+    <a href="/cart" class="link">← Return to cart</a>
+    <button class="btn btn-lg">Continue to shipping</button>
+  </div>
+</form>
+<%- include('layout-bottom') %>

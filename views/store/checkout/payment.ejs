@@ -1,0 +1,47 @@
+<%- include('layout-top') %>
+<%- include('review-box') %>
+<form action="/checkout/payment" method="post" class="stack-form checkout-form" data-payment-form>
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h2>Payment</h2>
+  <p class="muted small">All transactions are secure and encrypted.</p>
+  <% if (!methods.length) { %>
+    <div class="flash flash-error">This store has no payment methods enabled yet. Please contact us to complete your order.</div>
+  <% } else { %>
+    <div class="radio-list">
+      <% methods.forEach((m, i) => { %>
+        <label class="radio-row radio-expand">
+          <input type="radio" name="payment_method" value="<%= m.id %>" <%= i === 0 ? 'checked' : '' %>>
+          <span class="radio-label"><%= m.name %></span>
+          <% if (m.kind === 'stripe') { %><span class="card-icons">VISA · MC · AMEX</span><% } %>
+          <span class="radio-detail muted small"><%= m.instructions %></span>
+        </label>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <h2>Billing address</h2>
+  <div class="radio-list">
+    <label class="radio-row"><input type="radio" name="billing_same" value="yes" checked data-billing-toggle> <span class="radio-label">Same as shipping address</span></label>
+    <label class="radio-row"><input type="radio" name="billing_same" value="no" data-billing-toggle> <span class="radio-label">Use a different billing address</span></label>
+  </div>
+  <div class="billing-fields" hidden data-billing-fields>
+    <div class="grid-2">
+      <label class="field">First name <input name="billing[first_name]"></label>
+      <label class="field">Last name <input name="billing[last_name]"></label>
+    </div>
+    <label class="field">Address <input name="billing[address1]"></label>
+    <div class="grid-3">
+      <label class="field">City <input name="billing[city]"></label>
+      <label class="field">State / province <input name="billing[province]"></label>
+      <label class="field">ZIP <input name="billing[zip]"></label>
+    </div>
+    <label class="field">Country
+      <select name="billing[country]"><% for (const [code, name] of COUNTRIES) { %><option value="<%= code %>" <%= address.country === code ? 'selected' : '' %>><%= name %></option><% } %></select>
+    </label>
+  </div>
+  <div class="checkout-actions">
+    <a href="/checkout/shipping" class="link">← Return to shipping</a>
+    <button class="btn btn-lg" <%= methods.length ? '' : 'disabled' %> data-submit-once>Pay now · <%= money(totals.total) %></button>
+  </div>
+</form>
+<%- include('layout-bottom') %>

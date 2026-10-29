@@ -1,0 +1,8 @@
+<a class="article-card" href="/blogs/news/<%= a.handle %>">
+  <% if (a.image) { %><img src="<%= a.image %>" alt="" loading="lazy"><% } %>
+  <div class="article-card-body">
+    <time class="muted small"><%= formatDate(a.published_at) %></time>
+    <h3><%= a.title %></h3>
+    <p class="muted"><%= a.excerpt || stripHtml(a.body_html).slice(0, 140) %></p>
+  </div>
+</a>

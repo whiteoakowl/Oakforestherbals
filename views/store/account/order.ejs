@@ -1,0 +1,19 @@
+<%- include('../partials/header') %>
+<div class="container section">
+  <p><a href="/account" class="link">← Back to account</a></p>
+  <h1 class="page-title">Order <%= order.name %></h1>
+  <p class="muted">Placed on <%= formatDate(order.created_at, true) %></p>
+  <%- include('../../partials/order-items', { order }) %>
+  <div class="grid-2 mt">
+    <div><h3>Shipping address</h3><%- include('../../partials/address', { a: order.shipping_address }) %></div>
+    <div>
+      <h3>Status</h3>
+      <p>Payment: <span class="status status-<%= order.financial_status %>"><%= order.financial_status.replace('_', ' ') %></span></p>
+      <p>Fulfillment: <span class="status status-<%= order.fulfillment_status %>"><%= order.fulfillment_status %></span></p>
+      <% for (const f of order.fulfillments) { %>
+        <% if (f.tracking_number) { %><p class="small">Tracking: <% if (f.tracking_url) { %><a href="<%= f.tracking_url %>" rel="noopener" target="_blank"><%= f.tracking_company %> <%= f.tracking_number %></a><% } else { %><%= f.tracking_company %> <%= f.tracking_number %><% } %></p><% } %>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

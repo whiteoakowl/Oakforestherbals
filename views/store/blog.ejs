@@ -1,0 +1,10 @@
+<%- include('partials/header') %>
+<div class="container section">
+  <h1 class="page-title">Journal</h1>
+  <div class="article-grid">
+    <% for (const a of articles) { %><%- include('partials/article-card', { a }) %><% } %>
+  </div>
+  <% if (!articles.length) { %><p class="empty">No posts yet.</p><% } %>
+  <%- include('partials/pagination') %>
+</div>
+<%- include('partials/footer') %>

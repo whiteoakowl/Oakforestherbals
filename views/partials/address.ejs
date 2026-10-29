@@ -1,0 +1,9 @@
+<address class="address">
+  <% if (a.first_name || a.last_name) { %><%= [a.first_name, a.last_name].filter(Boolean).join(' ') %><br><% } %>
+  <% if (a.company) { %><%= a.company %><br><% } %>
+  <% if (a.address1) { %><%= a.address1 %><br><% } %>
+  <% if (a.address2) { %><%= a.address2 %><br><% } %>
+  <%= [a.city, a.province, a.zip].filter(Boolean).join(', ') %><br>
+  <%= a.country %>
+  <% if (a.phone) { %><br><%= a.phone %><% } %>
+</address>

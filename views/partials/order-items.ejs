@@ -1,0 +1,21 @@
+<table class="data-table order-items">
+  <thead><tr><th>Product</th><th class="right">Price</th><th class="right">Qty</th><th class="right">Total</th></tr></thead>
+  <tbody>
+  <% for (const i of order.items) { %>
+    <tr>
+      <td><%= i.title %><% if (i.variant_title) { %><div class="muted small"><%= i.variant_title %></div><% } %><% if (i.sku) { %><div class="muted small">SKU: <%= i.sku %></div><% } %></td>
+      <td class="right"><%= money(i.price) %></td>
+      <td class="right"><%= i.quantity %></td>
+      <td class="right"><%= money(i.price * i.quantity) %></td>
+    </tr>
+  <% } %>
+  </tbody>
+  <tfoot>
+    <tr><td colspan="3">Subtotal</td><td class="right"><%= money(order.subtotal) %></td></tr>
+    <% if (order.discount_total) { %><tr><td colspan="3">Discount <%= order.discount_code ? `(${order.discount_code})` : '' %></td><td class="right">−<%= money(order.discount_total) %></td></tr><% } %>
+    <tr><td colspan="3">Shipping <%= order.shipping_method ? `(${order.shipping_method})` : '' %></td><td class="right"><%= money(order.shipping_total) %></td></tr>
+    <tr><td colspan="3">Tax</td><td class="right"><%= money(order.tax_total) %></td></tr>
+    <tr class="total"><td colspan="3">Total</td><td class="right"><%= money(order.total) %> <%= order.currency %></td></tr>
+    <% if (order.refunded_total) { %><tr><td colspan="3">Refunded</td><td class="right">−<%= money(order.refunded_total) %></td></tr><% } %>
+  </tfoot>
+</table>

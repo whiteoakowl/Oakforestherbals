@@ -1,0 +1,7 @@
+<%- include('partials/header') %>
+<div class="container narrow section center">
+  <h1 class="page-title"><%= title %></h1>
+  <p class="muted"><%= typeof message !== 'undefined' && message ? message : 'The page you were looking for does not exist.' %></p>
+  <a class="btn" href="/collections/all">Continue shopping</a>
+</div>
+<%- include('partials/footer') %>

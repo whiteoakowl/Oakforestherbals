@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= typeof title !== 'undefined' && title !== store.name ? `${title} – ${store.name}` : store.name %></title>
+<% const metaDescription = (typeof description !== 'undefined' && description) || store.tagline; %>
+<meta name="description" content="<%= metaDescription %>">
+<meta property="og:title" content="<%= typeof title !== 'undefined' ? title : store.name %>">
+<meta property="og:description" content="<%= metaDescription %>">
+<meta property="og:site_name" content="<%= store.name %>">
+<% if (typeof ogImage !== 'undefined' && ogImage) { %><meta property="og:image" content="<%= ogImage %>"><% } %>
+<% if (theme.favicon) { %><link rel="icon" href="<%= theme.favicon %>"><% } else { %><link rel="icon" href="/images/favicon.svg" type="image/svg+xml"><% } %>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=<%= encodeURIComponent(theme.font_heading) %>:wght@400;500;600;700&family=<%= encodeURIComponent(theme.font_body) %>:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/public/css/store.css">
+<style>
+  :root {
+    --color-primary: <%= theme.color_primary %>;
+    --color-accent: <%= theme.color_accent %>;
+    --color-bg: <%= theme.color_background %>;
+    --color-surface: <%= theme.color_surface %>;
+    --color-text: <%= theme.color_text %>;
+    --font-heading: '<%= theme.font_heading %>', Georgia, serif;
+    --font-body: '<%= theme.font_body %>', system-ui, sans-serif;
+    --radius: <%= Number(theme.button_radius) || 0 %>px;
+  }
+</style>
+<%- include('../../partials/analytics') %>
+</head>

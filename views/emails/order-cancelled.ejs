@@ -1,0 +1,4 @@
+<%- include('_top') %>
+<h2 style="margin:0 0 8px">Order <%= order.name %> has been cancelled</h2>
+<p>Your order was cancelled<%= reason ? `: ${reason}` : '' %>. If you were charged, a refund will be issued to your original payment method.</p>
+<%- include('_bottom') %>

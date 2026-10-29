@@ -1,0 +1,25 @@
+<%- include('../partials/header') %>
+<div class="container section">
+  <h1 class="page-title">Addresses</h1>
+  <%- include('nav') %>
+  <div class="address-grid">
+    <% for (const a of addresses) { %>
+      <div class="card">
+        <% if (a.is_default) { %><span class="badge">Default</span><% } %>
+        <%- include('../../partials/address', { a }) %>
+        <details>
+          <summary class="link">Edit</summary>
+          <%- include('address-form', { a }) %>
+        </details>
+        <form action="/account/addresses/<%= a.id %>/delete" method="post" data-confirm="Delete this address?">
+          <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-btn danger">Delete</button>
+        </form>
+      </div>
+    <% } %>
+    <div class="card">
+      <h3>Add a new address</h3>
+      <%- include('address-form', { a: { country: 'US' } }) %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

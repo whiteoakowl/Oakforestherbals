@@ -1,0 +1,8 @@
+<div class="page-header">
+  <div class="page-title-row">
+    <% if (typeof backHref !== 'undefined' && backHref) { %><a href="<%= backHref %>" class="back-btn" aria-label="Back"><%- include('icon', { name: 'back' }) %></a><% } %>
+    <h1><%= heading %></h1>
+    <% if (typeof badges !== 'undefined') { %><% for (const b of badges) { %><span class="badge badge-<%= b[1] || 'default' %>"><%= b[0] %></span><% } %><% } %>
+  </div>
+  <% if (typeof actions !== 'undefined' && actions) { %><div class="page-actions"><%- actions %></div><% } %>
+</div>

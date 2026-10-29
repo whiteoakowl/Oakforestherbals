@@ -1,0 +1,59 @@
+<%- include('partials/header') %>
+<div class="page">
+  <div class="page-header">
+    <div class="page-title-row"><h1>Analytics</h1></div>
+    <div class="page-actions"><%- include('partials/range') %></div>
+  </div>
+  <div class="stat-row">
+    <div class="card stat"><div class="stat-label">Net sales</div><div class="stat-value"><%= money(m.totalSales) %></div></div>
+    <div class="card stat"><div class="stat-label">Orders</div><div class="stat-value"><%= m.totalOrders %></div></div>
+    <div class="card stat"><div class="stat-label">Average order value</div><div class="stat-value"><%= money(m.aov) %></div></div>
+    <div class="card stat"><div class="stat-label">Conversion rate</div><div class="stat-value"><%= m.conversion.toFixed(2) %>%</div><div class="stat-sub"><%= m.visitors %> visitors</div></div>
+    <div class="card stat"><div class="stat-label">Returning customers</div><div class="stat-value"><%= returning %></div><div class="stat-sub">all time</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Net sales over time</h2></div>
+    <%- include('partials/sales-chart', { series: m.series }) %>
+  </div>
+  <div class="layout-halves">
+    <div class="card">
+      <h2>Sales breakdown</h2>
+      <table class="table compact">
+        <tr><td>Gross sales</td><td class="num"><%= money(breakdown.gross) %></td></tr>
+        <tr><td>Discounts</td><td class="num">−<%= money(breakdown.discounts) %></td></tr>
+        <tr><td>Returns</td><td class="num">−<%= money(breakdown.refunds) %></td></tr>
+        <tr><td>Shipping charges</td><td class="num"><%= money(breakdown.shipping) %></td></tr>
+        <tr><td>Taxes</td><td class="num"><%= money(breakdown.taxes) %></td></tr>
+        <tr class="strong"><td>Total sales</td><td class="num"><%= money(breakdown.gross - breakdown.discounts - breakdown.refunds + breakdown.shipping + breakdown.taxes) %></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Top products by revenue</h2>
+      <% if (!topProducts.length) { %><p class="muted">No sales in this period.</p><% } else { %>
+      <table class="table compact">
+        <thead><tr><th>Product</th><th class="num">Units</th><th class="num">Revenue</th></tr></thead>
+        <tbody><% for (const p of topProducts) { %><tr><td><%= p.title %></td><td class="num"><%= p.units %></td><td class="num"><%= money(p.revenue) %></td></tr><% } %></tbody>
+      </table>
+      <% } %>
+    </div>
+    <div class="card">
+      <h2>Top customers</h2>
+      <% if (!topCustomers.length) { %><p class="muted">No customer orders in this period.</p><% } else { %>
+      <table class="table compact">
+        <thead><tr><th>Customer</th><th class="num">Orders</th><th class="num">Spent</th></tr></thead>
+        <tbody><% for (const c of topCustomers) { %><tr><td><a href="/admin/customers/<%= c.id %>"><%= [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email %></a></td><td class="num"><%= c.orders %></td><td class="num"><%= money(c.spent) %></td></tr><% } %></tbody>
+      </table>
+      <% } %>
+    </div>
+    <div class="card">
+      <h2>Discount usage</h2>
+      <% if (!discountUse.length) { %><p class="muted">No discount codes used in this period.</p><% } else { %>
+      <table class="table compact">
+        <thead><tr><th>Code</th><th class="num">Orders</th><th class="num">Discounted</th></tr></thead>
+        <tbody><% for (const d of discountUse) { %><tr><td><%= d.code %></td><td class="num"><%= d.orders %></td><td class="num"><%= money(d.amount) %></td></tr><% } %></tbody>
+      </table>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,90 @@
+<%- include('partials/header') %>
+<div class="container section">
+  <nav class="breadcrumbs"><a href="/">Home</a> / <a href="/collections/all">Shop</a> / <span><%= product.title %></span></nav>
+  <div class="product-layout" data-product>
+    <div class="product-media">
+      <div class="product-main-image">
+        <% if (product.images.length) { %>
+          <img src="<%= product.images[0].url %>" alt="<%= product.images[0].alt || product.title %>" data-main-image>
+        <% } else { %><div class="placeholder tall"></div><% } %>
+      </div>
+      <% if (product.images.length > 1) { %>
+        <div class="thumbs">
+          <% product.images.forEach((img, i) => { %>
+            <button type="button" class="thumb <%= i === 0 ? 'active' : '' %>" data-thumb="<%= img.url %>" aria-label="Show image <%= i + 1 %>">
+              <img src="<%= img.url %>" alt="<%= img.alt %>" loading="lazy">
+            </button>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+    <div class="product-info">
+      <% if (theme.show_vendor && product.vendor) { %><div class="vendor"><%= product.vendor %></div><% } %>
+      <h1><%= product.title %></h1>
+      <div class="price product-price">
+        <span data-price><%= money(selected.price) %></span>
+        <s class="compare" data-compare <%= selected.compare_at_price > selected.price ? '' : 'hidden' %>><%= money(selected.compare_at_price || 0) %></s>
+        <span class="badge badge-sale" data-sale-badge <%= selected.compare_at_price > selected.price ? '' : 'hidden' %>>Sale</span>
+      </div>
+      <p class="muted small"><% if (pricesIncludeTax) { %>Tax included. <a href="/policies/shipping">Shipping</a> calculated at checkout.<% } else { %>Taxes and <a href="/policies/shipping">shipping</a> calculated at checkout.<% } %></p>
+
+      <form action="/cart/add" method="post" class="add-form" data-add-form>
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <input type="hidden" name="variant_id" value="<%= selected.id %>" data-variant-id>
+        <% product.options.forEach((name, i) => { %>
+          <% const values = [...new Set(product.variants.map((v) => v['option' + (i + 1)]))]; %>
+          <fieldset class="option-group">
+            <legend><%= name %></legend>
+            <div class="option-pills">
+              <% for (const value of values) { %>
+                <label class="pill">
+                  <input type="radio" name="option<%= i %>" value="<%= value %>" data-option="<%= i %>" <%= selected['option' + (i + 1)] === value ? 'checked' : '' %>>
+                  <span><%= value %></span>
+                </label>
+              <% } %>
+            </div>
+          </fieldset>
+        <% }) %>
+        <div class="qty-row">
+          <label class="qty">
+            <span class="visually-hidden">Quantity</span>
+            <button type="button" data-qty-step="-1" aria-label="Decrease quantity">−</button>
+            <input type="number" name="quantity" value="1" min="1" inputmode="numeric">
+            <button type="button" data-qty-step="1" aria-label="Increase quantity">+</button>
+          </label>
+          <button class="btn btn-lg btn-block" data-add-button <%= selected && (!selected.track_inventory || selected.continue_selling || selected.inventory_qty > 0) ? '' : 'disabled' %>>
+            <%= selected && (!selected.track_inventory || selected.continue_selling || selected.inventory_qty > 0) ? 'Add to cart' : 'Sold out' %>
+          </button>
+        </div>
+        <p class="stock-note small" data-stock-note></p>
+      </form>
+
+      <div class="rte product-description"><%- product.description_html %></div>
+      <details class="accordion">
+        <summary>Shipping &amp; returns</summary>
+        <div class="rte">
+          <p>See our <a href="/policies/shipping">shipping policy</a> and <a href="/policies/refund">refund policy</a>.</p>
+        </div>
+      </details>
+      <% if (product.tag_list.length) { %>
+        <div class="tags"><% for (const t of product.tag_list) { %><a class="tag" href="/search?q=<%= encodeURIComponent(t) %>"><%= t %></a><% } %></div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<% if (related.length) { %>
+<section class="section container">
+  <div class="section-head"><h2>You may also like</h2></div>
+  <div class="product-grid"><% for (const p of related) { %><%- include('partials/product-card', { p }) %><% } %></div>
+</section>
+<% } %>
+
+<script type="application/json" data-variants><%- variantsJson %></script>
+<script type="application/ld+json"><%- JSON.stringify({
+  '@context': 'https://schema.org', '@type': 'Product', name: product.title, image: product.images.map((i) => i.url),
+  description: stripHtml(product.description_html), sku: selected.sku || undefined, brand: product.vendor || undefined,
+  offers: product.variants.map((v) => ({ '@type': 'Offer', price: (v.price / 100).toFixed(2), priceCurrency: store.currency,
+    availability: (!v.track_inventory || v.continue_selling || v.inventory_qty > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' })),
+}).replace(/</g, '\\u003c') %></script>
+<%- include('partials/footer') %>

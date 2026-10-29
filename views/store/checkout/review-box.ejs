@@ -1,0 +1,7 @@
+<div class="review-box">
+  <div class="review-row"><span class="muted">Contact</span><span><%= co.email %></span><a href="/checkout/information" class="link small">Change</a></div>
+  <div class="review-row"><span class="muted">Ship to</span><span><%= [address.address1, address.city, address.province, address.zip, address.country].filter(Boolean).join(', ') %></span><a href="/checkout/information" class="link small">Change</a></div>
+  <% if (step === 'payment' && shipping) { %>
+  <div class="review-row"><span class="muted">Method</span><span><%= shipping.name %> · <%= shipping.price ? money(shipping.price) : 'Free' %></span><a href="/checkout/shipping" class="link small">Change</a></div>
+  <% } %>
+</div>

@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Discounts', actions: '<a class="btn btn-primary" href="/admin/discounts/new">Create discount</a>' }) %>
+  <div class="card flush">
+    <% if (!discounts.length) { %>
+      <div class="empty-card"><h2>Manage discounts and promotions</h2><p class="muted">Create discount codes that customers enter at checkout.</p><a class="btn btn-primary" href="/admin/discounts/new">Create discount</a></div>
+    <% } else { %>
+    <table class="table">
+      <thead><tr><th>Title</th><th>Status</th><th>Method</th><th>Type</th><th class="num">Used</th></tr></thead>
+      <tbody>
+      <% for (const d of discounts) { %>
+        <tr class="row-link" data-href="/admin/discounts/<%= d.id %>">
+          <td><a href="/admin/discounts/<%= d.id %>"><strong><%= d.code %></strong></a>
+            <div class="muted small"><%= d.kind === 'percentage' ? `${d.value}% off` : d.kind === 'fixed_amount' ? `${money(d.value)} off` : 'Free shipping' %><%= d.min_subtotal ? ` · Minimum purchase of ${money(d.min_subtotal)}` : '' %></div></td>
+          <td><%- include('../partials/status', { value: d.state }) %></td>
+          <td>Code</td>
+          <td><%= KINDS.find(([k]) => k === d.kind)[1] %></td>
+          <td class="num"><%= d.used_count %><%= d.usage_limit !== null ? ` / ${d.usage_limit}` : '' %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

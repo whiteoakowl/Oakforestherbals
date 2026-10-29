@@ -1,0 +1,24 @@
+<form action="/account/addresses" method="post" class="stack-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (a.id) { %><input type="hidden" name="id" value="<%= a.id %>"><% } %>
+  <div class="grid-2">
+    <label class="field">First name <input name="first_name" value="<%= a.first_name || '' %>"></label>
+    <label class="field">Last name <input name="last_name" value="<%= a.last_name || '' %>"></label>
+  </div>
+  <label class="field">Company <input name="company" value="<%= a.company || '' %>"></label>
+  <label class="field">Address <input name="address1" value="<%= a.address1 || '' %>" required></label>
+  <label class="field">Apartment, suite, etc. <input name="address2" value="<%= a.address2 || '' %>"></label>
+  <div class="grid-3">
+    <label class="field">City <input name="city" value="<%= a.city || '' %>" required></label>
+    <label class="field">State / province <input name="province" value="<%= a.province || '' %>"></label>
+    <label class="field">ZIP / postal code <input name="zip" value="<%= a.zip || '' %>" required></label>
+  </div>
+  <div class="grid-2">
+    <label class="field">Country
+      <select name="country"><% for (const [code, name] of COUNTRIES) { %><option value="<%= code %>" <%= a.country === code ? 'selected' : '' %>><%= name %></option><% } %></select>
+    </label>
+    <label class="field">Phone <input name="phone" value="<%= a.phone || '' %>"></label>
+  </div>
+  <label class="check"><input type="checkbox" name="is_default" value="1" <%= a.is_default ? 'checked' : '' %>> Set as default address</label>
+  <button class="btn btn-secondary">Save address</button>
+</form>

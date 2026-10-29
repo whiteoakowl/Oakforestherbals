@@ -1,0 +1,55 @@
+<%- include('partials/header') %>
+<div class="container section">
+  <h1 class="page-title">Your cart</h1>
+  <% if (!cart.lines.length) { %>
+    <div class="empty-state">
+      <p>Your cart is empty.</p>
+      <a class="btn" href="/collections/all">Continue shopping</a>
+    </div>
+  <% } else { %>
+  <form action="/cart/update" method="post" class="cart-layout">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="cart-lines">
+      <table class="cart-table">
+        <thead><tr><th>Product</th><th>Quantity</th><th class="right">Total</th></tr></thead>
+        <tbody>
+        <% for (const l of cart.lines) { %>
+          <tr>
+            <td>
+              <div class="cart-product">
+                <% if (l.image) { %><img src="<%= l.image %>" alt=""><% } %>
+                <div>
+                  <a href="/products/<%= l.handle %>"><%= l.title %></a>
+                  <% if (l.variant_title) { %><div class="muted small"><%= l.variant_title %></div><% } %>
+                  <div class="small"><%= money(l.price) %></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="qty-inline">
+                <input type="number" name="quantities[<%= l.variant_id %>]" value="<%= l.quantity %>" min="0" max="<%= l.max %>" aria-label="Quantity for <%= l.title %>">
+                <button class="link-btn" name="remove" value="<%= l.variant_id %>">Remove</button>
+              </div>
+            </td>
+            <td class="right"><%= money(l.line_price) %></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+      <button class="btn btn-secondary" name="update" value="1">Update cart</button>
+    </div>
+    <aside class="cart-summary">
+      <% if (settingsOrderNotes) { %>
+      <label class="field">Order note
+        <textarea name="note" rows="3" placeholder="Gift message, delivery instructions…"><%= note %></textarea>
+      </label>
+      <% } %>
+      <div class="summary-row total"><span>Subtotal</span><strong><%= money(cart.subtotal) %></strong></div>
+      <p class="muted small">Taxes, discounts and shipping calculated at checkout.</p>
+      <button class="btn btn-lg btn-block" name="checkout" value="1">Check out</button>
+      <a class="link center-block" href="/collections/all">Continue shopping</a>
+    </aside>
+  </form>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

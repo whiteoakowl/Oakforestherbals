@@ -1,0 +1,8 @@
+<% if (pager.pages > 1) { %>
+  <% const link = (n) => '?' + new URLSearchParams({ ...query, page: n }).toString(); %>
+  <div class="pager">
+    <a class="btn btn-icon <%= pager.page <= 1 ? 'disabled' : '' %>" href="<%= pager.page > 1 ? link(pager.page - 1) : '#' %>" aria-label="Previous page">‹</a>
+    <span class="muted small"><%= pager.page %> / <%= pager.pages %></span>
+    <a class="btn btn-icon <%= pager.page >= pager.pages ? 'disabled' : '' %>" href="<%= pager.page < pager.pages ? link(pager.page + 1) : '#' %>" aria-label="Next page">›</a>
+  </div>
+<% } %>

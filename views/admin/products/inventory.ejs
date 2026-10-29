@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Inventory' }) %>
+  <div class="card flush">
+    <form class="filter-bar" method="get"><input name="q" value="<%= q %>" placeholder="Search by product or SKU" class="grow" aria-label="Search inventory"><button class="btn">Search</button></form>
+    <form action="/admin/products/inventory" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <table class="table">
+        <thead><tr><th></th><th>Product</th><th>SKU</th><th>Status</th><th class="num">Available</th></tr></thead>
+        <tbody>
+        <% for (const r of rows) { %>
+          <tr>
+            <td class="thumb-col"><% if (r.image) { %><img class="thumb" src="<%= r.image %>" alt=""><% } else { %><span class="thumb"></span><% } %></td>
+            <td><a href="/admin/products/<%= r.pid %>"><strong><%= r.product_title %></strong></a><% if (r.title !== 'Default Title') { %><div class="muted small"><%= r.title %></div><% } %></td>
+            <td class="muted"><%= r.sku || '—' %></td>
+            <td><%- include('../partials/status', { value: r.status }) %></td>
+            <td class="num">
+              <% if (r.track_inventory) { %><input type="number" name="qty[<%= r.id %>]" value="<%= r.inventory_qty %>" class="qty-input" aria-label="Quantity for <%= r.product_title %> <%= r.title %>"><% } else { %><span class="muted">Not tracked</span><% } %>
+            </td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table>
+      <div class="pad right"><button class="btn btn-primary">Save inventory</button></div>
+    </form>
+  </div>
+</div>
+<%- include('../partials/footer') %>

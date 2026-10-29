@@ -1,0 +1,42 @@
+<%- include('../partials/head') %>
+<body class="checkout-page">
+<div class="checkout-grid">
+  <div class="checkout-main">
+    <a href="/" class="logo checkout-logo"><% if (theme.logo) { %><img src="<%= theme.logo %>" alt="<%= store.name %>" style="width: <%= theme.logo_width %>px"><% } else { %><%= store.name %><% } %></a>
+    <div class="thanks-head">
+      <div class="check-circle" aria-hidden="true">✓</div>
+      <div>
+        <p class="muted small">Order <%= order.name %></p>
+        <h1>Thank you<%= order.shipping_address.first_name ? `, ${order.shipping_address.first_name}` : '' %>!</h1>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Your order is confirmed</h2>
+      <p>We've sent a confirmation to <strong><%= order.email %></strong>.</p>
+      <% if (checkoutSettings.thank_you_message) { %><p class="muted"><%= checkoutSettings.thank_you_message %></p><% } %>
+      <% if (order.financial_status === 'pending' && method) { %>
+        <div class="flash flash-info"><strong><%= method.name %>:</strong> <%= method.instructions %></div>
+      <% } %>
+      <% if (order.status === 'cancelled') { %><div class="flash flash-error">This order was cancelled.</div><% } %>
+    </div>
+    <div class="card grid-2">
+      <div>
+        <h3>Contact information</h3><p><%= order.email %></p>
+        <h3>Shipping address</h3><%- include('../../partials/address', { a: order.shipping_address }) %>
+      </div>
+      <div>
+        <h3>Payment</h3><p><%= order.payment_method %> · <span class="status status-<%= order.financial_status %>"><%= order.financial_status.replace('_', ' ') %></span></p>
+        <h3>Shipping method</h3><p><%= order.shipping_method %></p>
+      </div>
+    </div>
+    <div class="checkout-actions">
+      <span class="small muted">Need help? <a href="/pages/contact">Contact us</a></span>
+      <a class="btn btn-lg" href="/collections/all">Continue shopping</a>
+    </div>
+  </div>
+  <aside class="checkout-summary">
+    <%- include('../../partials/order-items', { order }) %>
+  </aside>
+</div>
+</body>
+</html>
