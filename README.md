@@ -4,6 +4,14 @@ A complete online store you own and run yourself: a customer-facing storefront p
 
 Built with Node.js, Express, EJS templates and SQLite (Node's built-in `node:sqlite`, so there is no database server to install).
 
+## Try it in your browser (no install)
+
+Open **https://codespaces.new/whiteoakowl/Oakforestherbals/tree/ccr-1b4f9340-qkold8** and click **Create codespace**.
+After a couple of minutes the store opens in a new tab with demo products and orders loaded.
+
+- Admin: add `/admin` to the end of that tab's address, then log in with `owner@example.com` / `password123`.
+- The address is private to your GitHub account. Stop the codespace when you're done (github.com/codespaces) to save your free hours.
+
 ## Quick start
 
 Requires **Node.js 22.13 or newer**.

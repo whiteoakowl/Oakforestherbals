@@ -1,0 +1,10 @@
+{
+  "name": "Oak Forest Herbals store",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm install && ADMIN_EMAIL=owner@example.com ADMIN_PASSWORD=password123 npm run seed -- --orders",
+  "postAttachCommand": "npm start",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "Store", "onAutoForward": "openBrowser" }
+  }
+}
