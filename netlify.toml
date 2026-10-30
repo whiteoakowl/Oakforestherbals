@@ -1,0 +1,22 @@
+# Netlify serves /public from its CDN and sends everything else to the store function.
+[build]
+  publish = "public"
+  command = "echo 'No build step needed'"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  # Templates are read from disk at runtime, so ship them with the function.
+  included_files = ["views/**"]
+
+# Stylesheets, scripts and images are referenced as /public/...; serve them as static files.
+[[redirects]]
+  from = "/public/*"
+  to = "/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200

@@ -2,27 +2,30 @@
 // Cart math: line items, discounts, shipping rates and taxes. All amounts in cents.
 const { get, all } = require('./db');
 const settings = require('./settings');
-const { isVariantAvailable } = require('./catalog');
+const { isVariantAvailable, intArray } = require('./catalog');
 
-function buildCart(items = []) {
+async function buildCart(items = []) {
+  const ids = items.map((i) => i.variant_id);
+  const rows = ids.length ? await all(`SELECT v.*, p.title AS product_title, p.handle,
+      (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position, id LIMIT 1) AS image
+    FROM variants v JOIN products p ON p.id = v.product_id
+    WHERE v.id = ANY(?::int[]) AND p.status = 'active'`, intArray(ids)) : [];
+  const byId = new Map(rows.map((r) => [r.id, r]));
   const lines = [];
   for (const item of items) {
-    const variant = get('SELECT * FROM variants WHERE id = ?', item.variant_id);
+    const variant = byId.get(Number(item.variant_id));
     if (!variant) continue;
-    const product = get("SELECT * FROM products WHERE id = ? AND status = 'active'", variant.product_id);
-    if (!product) continue;
-    const image = get('SELECT url FROM product_images WHERE product_id = ? ORDER BY position, id LIMIT 1', product.id);
     const max = variant.track_inventory && !variant.continue_selling ? Math.max(0, variant.inventory_qty) : 999;
     const quantity = Math.min(Math.max(1, item.quantity | 0), max);
     if (quantity < 1 || !isVariantAvailable(variant)) continue;
     lines.push({
       variant_id: variant.id,
-      product_id: product.id,
-      title: product.title,
-      handle: product.handle,
+      product_id: variant.product_id,
+      title: variant.product_title,
+      handle: variant.handle,
       variant_title: variant.title === 'Default Title' ? '' : variant.title,
       sku: variant.sku,
-      image: image ? image.url : '',
+      image: variant.image || '',
       price: variant.price,
       compare_at_price: variant.compare_at_price,
       quantity,
@@ -41,9 +44,9 @@ function buildCart(items = []) {
 }
 
 // Returns { discount } when usable, or { error } explaining why not.
-function validateDiscount(code, cart, email = '') {
+async function validateDiscount(code, cart, email = '') {
   if (!code) return { error: 'Enter a discount code.' };
-  const d = get('SELECT * FROM discounts WHERE code = ?', String(code).trim());
+  const d = await get('SELECT * FROM discounts WHERE code = ?', String(code).trim());
   const now = new Date().toISOString().slice(0, 16);
   if (!d || !d.active) return { error: 'This discount code is not valid.' };
   if (d.starts_at && d.starts_at > now) return { error: 'This discount code is not active yet.' };
@@ -53,7 +56,7 @@ function validateDiscount(code, cart, email = '') {
     return { error: `Spend ${settings.load('store').currency_symbol}${(d.min_subtotal / 100).toFixed(2)} or more to use this code.` };
   }
   if (d.once_per_customer && email) {
-    const used = get("SELECT 1 FROM orders WHERE discount_code = ? COLLATE NOCASE AND email = ? COLLATE NOCASE AND status != 'cancelled'", d.code, email);
+    const used = await get("SELECT 1 FROM orders WHERE lower(discount_code) = lower(?) AND lower(email) = lower(?) AND status != 'cancelled'", d.code, email);
     if (used) return { error: 'You have already used this discount code.' };
   }
   return { discount: d };
@@ -71,28 +74,28 @@ function matchesCountry(rate, country) {
   return list.includes('*') || list.includes(String(country || '').toUpperCase());
 }
 
-function shippingOptions(cart, country, discount) {
+async function shippingOptions(cart, country, discount) {
   if (!cart.requires_shipping) return [{ id: 0, name: 'No shipping required', price: 0, delivery_estimate: '' }];
   const base = cart.subtotal - discountAmount(discount, cart.subtotal);
   const freeShipping = discount && discount.kind === 'free_shipping';
-  return all('SELECT * FROM shipping_rates ORDER BY position, price, id')
+  return (await all('SELECT * FROM shipping_rates ORDER BY position, price, id'))
     .filter((r) => matchesCountry(r, country))
     .filter((r) => base >= r.min_subtotal && (r.max_subtotal === null || base <= r.max_subtotal))
     .map((r) => ({ ...r, price: freeShipping ? 0 : r.price }));
 }
 
-function taxRateFor(address = {}) {
+async function taxRateFor(address = {}) {
   const country = String(address.country || '').toUpperCase();
   const province = String(address.province || '').toUpperCase();
-  const row = (province && get('SELECT * FROM tax_rates WHERE upper(country) = ? AND upper(province) = ?', country, province))
-    || get("SELECT * FROM tax_rates WHERE upper(country) = ? AND province = ''", country);
+  const row = (province && await get('SELECT * FROM tax_rates WHERE upper(country) = ? AND upper(province) = ?', country, province))
+    || await get("SELECT * FROM tax_rates WHERE upper(country) = ? AND province = ''", country);
   if (row) return { name: row.name, rate: row.rate };
   const fallback = Number(settings.load('taxes').default_rate) || 0;
   return { name: 'Tax', rate: fallback };
 }
 
 // Full order totals. `shipping` is a shipping option (or null before one is chosen).
-function computeTotals(cart, { discount = null, shipping = null, address = null } = {}) {
+async function computeTotals(cart, { discount = null, shipping = null, address = null } = {}) {
   const taxes = settings.load('taxes');
   const subtotal = cart.subtotal;
   const discount_total = discountAmount(discount, subtotal);
@@ -103,7 +106,7 @@ function computeTotals(cart, { discount = null, shipping = null, address = null 
   let taxBase = Math.max(0, taxableSubtotal - discountShare);
   if (taxes.charge_tax_on_shipping) taxBase += shipping_total;
 
-  const { name: tax_name, rate } = address ? taxRateFor(address) : { name: 'Tax', rate: 0 };
+  const { name: tax_name, rate } = address ? await taxRateFor(address) : { name: 'Tax', rate: 0 };
   const pct = rate / 100;
   const tax_total = taxes.prices_include_tax
     ? Math.round(taxBase - taxBase / (1 + pct))

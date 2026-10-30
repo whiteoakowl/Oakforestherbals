@@ -21,13 +21,14 @@
       <div class="card flush">
         <div class="card-head pad"><h2>Recent orders</h2><a class="link small" href="/admin/orders">View all</a></div>
         <% if (!recent.length) { %><p class="muted pad">No orders yet. When customers buy from your store, orders will appear here.</p><% } else { %>
+        <div class="table-scroll">
         <table class="table">
           <tbody>
           <% for (const o of recent) { %>
             <tr class="row-link" data-href="/admin/orders/<%= o.id %>">
               <td><a href="/admin/orders/<%= o.id %>"><strong><%= o.name %></strong></a></td>
               <td class="muted nowrap"><%= formatDate(o.created_at, true) %></td>
-              <td><%= o.email %></td>
+              <td class="muted small"><%= o.email %></td>
               <td><%- include('partials/status', { value: o.financial_status }) %></td>
               <td><%- include('partials/status', { value: o.status === 'cancelled' ? 'cancelled' : o.fulfillment_status }) %></td>
               <td class="num"><%= money(o.total) %></td>
@@ -35,6 +36,7 @@
           <% } %>
           </tbody>
         </table>
+        </div>
         <% } %>
       </div>
     </div>

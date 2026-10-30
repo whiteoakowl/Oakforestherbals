@@ -1,17 +1,17 @@
 {
   "name": "oakforest-commerce",
   "version": "1.0.0",
-  "description": "Self-hosted storefront and Shopify-style admin for Oak Forest Herbals",
+  "description": "Oak Forest Herbals storefront and Shopify-style admin (Netlify + Supabase)",
   "main": "server.js",
   "private": true,
   "engines": {
-    "node": ">=22.13"
+    "node": ">=20"
   },
   "scripts": {
-    "start": "node --disable-warning=ExperimentalWarning server.js",
-    "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
-    "seed": "node --disable-warning=ExperimentalWarning src/seed.js",
-    "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 test/*.test.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "seed": "node src/seed.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -19,6 +19,11 @@
     "express": "^5.1.0",
     "express-session": "^1.18.1",
     "multer": "^2.0.2",
-    "nodemailer": "10.1.7"
+    "nodemailer": "10.1.7",
+    "postgres": "3.4.9",
+    "serverless-http": "4.0.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.10"
   }
 }

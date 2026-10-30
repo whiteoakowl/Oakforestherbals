@@ -1,5 +1,0 @@
-node_modules
-data/*.db*
-data/.session-secret
-uploads/*
-.git

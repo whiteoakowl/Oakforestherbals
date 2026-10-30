@@ -4,7 +4,7 @@
 const path = require('node:path');
 const ejs = require('ejs');
 const nodemailer = require('nodemailer');
-const { run } = require('./db');
+const { run, insert } = require('./db');
 const settings = require('./settings');
 const { formatMoney, formatDate } = require('./utils');
 const { themeColors } = require('./colors');
@@ -31,24 +31,25 @@ async function send(to, subject, template, data = {}) {
     ...data, store, theme, themeColors: themeColors(theme), baseUrl, subject,
     money: (c) => formatMoney(c, store.currency_symbol), formatDate,
   });
-  const { lastInsertRowid } = run('INSERT INTO email_outbox (to_address, subject, html) VALUES (?, ?, ?)', to, subject, html);
+  const id = await insert('INSERT INTO email_outbox (to_address, subject, html) VALUES (?, ?, ?)', to, subject, html);
   const t = transport(n);
   if (!t) {
-    run("UPDATE email_outbox SET status = 'logged' WHERE id = ?", lastInsertRowid);
+    await run("UPDATE email_outbox SET status = 'logged' WHERE id = ?", id);
     return;
   }
   try {
     await t.sendMail({ from: `"${n.sender_name}" <${n.sender_email}>`, to, subject, html });
-    run("UPDATE email_outbox SET status = 'sent' WHERE id = ?", lastInsertRowid);
+    await run("UPDATE email_outbox SET status = 'sent' WHERE id = ?", id);
   } catch (err) {
-    run("UPDATE email_outbox SET status = 'failed', error = ? WHERE id = ?", String(err.message || err), lastInsertRowid);
+    await run("UPDATE email_outbox SET status = 'failed', error = ? WHERE id = ?", String(err.message || err), id);
   }
 }
 
-// Fire-and-forget wrapper so a mail failure never breaks a request.
-function notify(enabledKey, to, subject, template, data) {
+// Sends if that notification is enabled. Awaited (serverless functions may freeze once the
+// response is sent) but never throws, so a mail failure can't break the request.
+async function notify(enabledKey, to, subject, template, data) {
   if (enabledKey && !settings.load('notifications')[enabledKey]) return;
-  send(to, subject, template, data).catch((err) => console.error('[mail]', err));
+  await send(to, subject, template, data).catch((err) => console.error('[mail]', err));
 }
 
 module.exports = { send, notify };

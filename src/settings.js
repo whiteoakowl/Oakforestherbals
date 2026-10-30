@@ -1,6 +1,6 @@
 'use strict';
 // Store-wide settings persisted as JSON in the settings table, merged over defaults.
-const { get, run } = require('./db');
+const { all, run } = require('./db');
 
 const DEFAULTS = {
   store: {
@@ -111,33 +111,25 @@ const DEFAULTS = {
   },
 };
 
-const cache = new Map();
+// Settings are read synchronously all over the app (views included), so they are cached in
+// memory and refreshed from the database at the start of every request (one small query).
+let cache = {};
 
-function load(group) {
-  if (cache.has(group)) return cache.get(group);
-  const row = get('SELECT value FROM settings WHERE key = ?', group);
-  const stored = row ? JSON.parse(row.value) : {};
-  const merged = { ...structuredClone(DEFAULTS[group] || {}), ...stored };
-  cache.set(group, merged);
-  return merged;
+async function refresh() {
+  const rows = await all('SELECT key, value FROM settings');
+  cache = Object.fromEntries(rows.map((r) => [r.key, JSON.parse(r.value)]));
 }
 
-function save(group, patch) {
+function load(group) {
+  return { ...structuredClone(DEFAULTS[group] || {}), ...(cache[group] || {}) };
+}
+
+async function save(group, patch) {
   const next = { ...load(group), ...patch };
-  run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+  await run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
     group, JSON.stringify(next));
-  cache.set(group, next);
+  cache[group] = next;
   return next;
 }
 
-function allSettings() {
-  const out = {};
-  for (const group of Object.keys(DEFAULTS)) out[group] = load(group);
-  return out;
-}
-
-function clearCache() {
-  cache.clear();
-}
-
-module.exports = { DEFAULTS, load, save, allSettings, clearCache };
+module.exports = { DEFAULTS, load, save, refresh };

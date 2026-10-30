@@ -26,7 +26,7 @@ test('POST without CSRF token is rejected', async () => {
 
 test('guest checkout with discount places an order and decrements inventory', async () => {
   const c = new Client(ctx.base);
-  const variant = get("SELECT v.* FROM variants v JOIN products p ON p.id = v.product_id WHERE p.handle = 'lemon-balm-tincture'");
+  const variant = await get("SELECT v.* FROM variants v JOIN products p ON p.id = v.product_id WHERE p.handle = 'lemon-balm-tincture'");
   await c.post('/cart/add', { variant_id: String(variant.id), quantity: '3' }, '/products/lemon-balm-tincture');
   const cart = await c.get('/cart');
   assert.match(cart.text, /Lemon Balm Tincture/);
@@ -42,7 +42,7 @@ test('guest checkout with discount places an order and decrements inventory', as
   // 3 x $22 = $66 subtotal, minus 10% = $59.40 -> under the $100 free shipping threshold
   const options = await c.get('/checkout/shipping');
   assert.doesNotMatch(options.text, /Free standard shipping/);
-  const rate = get("SELECT id FROM shipping_rates WHERE name = 'Standard'");
+  const rate = await get("SELECT id FROM shipping_rates WHERE name = 'Standard'");
   res = await c.post('/checkout/shipping', { shipping_rate_id: String(rate.id) }, '/checkout/shipping');
   assert.equal(res.location, '/checkout/payment');
 
@@ -52,21 +52,21 @@ test('guest checkout with discount places an order and decrements inventory', as
   assert.equal(thanks.status, 200);
   assert.match(thanks.text, /Your order is confirmed/);
 
-  const order = get("SELECT * FROM orders WHERE email = 'buyer@example.com'");
+  const order = await get("SELECT * FROM orders WHERE email = 'buyer@example.com'");
   assert.equal(order.subtotal, 6600);
   assert.equal(order.discount_total, 660);
   assert.equal(order.shipping_total, 600);
   assert.equal(order.tax_total, Math.round(5940 * 0.0725)); // CA rate
   assert.equal(order.total, 5940 + 600 + order.tax_total);
   assert.equal(order.financial_status, 'pending');
-  assert.equal(get('SELECT inventory_qty FROM variants WHERE id = ?', variant.id).inventory_qty, variant.inventory_qty - 3);
-  assert.equal(get("SELECT used_count FROM discounts WHERE code = 'WELCOME10'").used_count, 1);
-  assert.ok(get("SELECT 1 FROM email_outbox WHERE to_address = 'buyer@example.com'"), 'confirmation email recorded');
+  assert.equal((await get('SELECT inventory_qty FROM variants WHERE id = ?', variant.id)).inventory_qty, variant.inventory_qty - 3);
+  assert.equal((await get("SELECT used_count FROM discounts WHERE code = 'WELCOME10'")).used_count, 1);
+  assert.ok(await get("SELECT 1 FROM email_outbox WHERE to_address = 'buyer@example.com'"), 'confirmation email recorded');
 });
 
 test('sold-out products cannot be added to the cart', async () => {
   const c = new Client(ctx.base);
-  const v = get("SELECT v.id FROM variants v JOIN products p ON p.id = v.product_id WHERE p.handle = 'wild-rose-facial-oil'");
+  const v = await get("SELECT v.id FROM variants v JOIN products p ON p.id = v.product_id WHERE p.handle = 'wild-rose-facial-oil'");
   await c.post('/cart/add', { variant_id: String(v.id), quantity: '1' }, '/products/wild-rose-facial-oil');
   const cart = await c.get('/cart');
   assert.match(cart.text, /Your cart is empty/);
@@ -88,19 +88,19 @@ test('customer can register, log in and see order history', async () => {
 test('discount codes enforce minimum subtotal', async () => {
   const { validateDiscount } = require('../src/pricing');
   const small = { subtotal: 1000, lines: [] };
-  assert.match(validateDiscount('SPRING5', small).error, /Spend/);
-  assert.ok(validateDiscount('SPRING5', { subtotal: 4000, lines: [] }).discount);
-  assert.match(validateDiscount('NOPE', small).error, /not valid/);
+  assert.match((await validateDiscount('SPRING5', small)).error, /Spend/);
+  assert.ok((await validateDiscount('SPRING5', { subtotal: 4000, lines: [] })).discount);
+  assert.match((await validateDiscount('NOPE', small)).error, /not valid/);
 });
 
-test('smart collections match their rules', () => {
+test('smart collections match their rules', async () => {
   const catalog = require('../src/catalog');
-  const teas = catalog.collectionProducts(catalog.collectionByHandle('herbal-teas'));
+  const teas = await catalog.collectionProducts(await catalog.collectionByHandle('herbal-teas'));
   assert.ok(teas.length >= 4);
   assert.ok(teas.every((p) => p.product_type === 'Tea'));
-  const tinctures = catalog.collectionProducts(catalog.collectionByHandle('tinctures'));
+  const tinctures = await catalog.collectionProducts(await catalog.collectionByHandle('tinctures'));
   assert.deepEqual([...new Set(tinctures.map((p) => p.product_type))].sort(), ['Syrup', 'Tincture']);
-  assert.ok(all('SELECT * FROM collections').length >= 5);
+  assert.ok((await all('SELECT * FROM collections')).length >= 5);
 });
 
 test('theme text colors stay readable on light brand colors', () => {

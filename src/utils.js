@@ -38,10 +38,10 @@ function slugify(text) {
 }
 
 // Returns a handle unique within `table`, appending -2, -3... as needed.
-function uniqueHandle(table, desired, excludeId = 0) {
+async function uniqueHandle(table, desired, excludeId = 0) {
   const base = slugify(desired);
   let handle = base;
-  for (let i = 2; get(`SELECT 1 FROM ${table} WHERE handle = ? AND id != ?`, handle, excludeId); i++) {
+  for (let i = 2; await get(`SELECT 1 FROM ${table} WHERE handle = ? AND id != ?`, handle, excludeId); i++) {
     handle = `${base}-${i}`;
   }
   return handle;
@@ -65,7 +65,7 @@ function stripHtml(html) {
 
 function formatDate(value, withTime = false) {
   if (!value) return '';
-  const d = new Date(String(value).includes('T') ? value : String(value).replace(' ', 'T') + 'Z');
+  const d = value instanceof Date ? value : new Date(String(value).includes('T') ? value : `${String(value).replace(' ', 'T')}Z`);
   if (Number.isNaN(d.getTime())) return String(value);
   const opts = { year: 'numeric', month: 'short', day: 'numeric' };
   if (withTime) Object.assign(opts, { hour: 'numeric', minute: '2-digit' });
@@ -120,9 +120,12 @@ function asList(v) {
 // (purely numeric keys get compacted into arrays).
 const idFromKey = (key) => toInt(String(key).replace(/^id/, ''));
 
+// Value for an <input type="datetime-local"> (UTC).
+const toDateTimeInput = (value) => (value ? new Date(value).toISOString().slice(0, 16) : '');
+
 const asBool = (v) => v === true || v === 'on' || v === '1' || v === 'true' || v === 1;
 
 module.exports = {
   formatMoney, parseMoney, centsToInput, toInt, slugify, uniqueHandle, parseTags, token,
-  escapeHtml, stripHtml, formatDate, paginate, csvRow, parseCsv, asBool, asList, idFromKey,
+  escapeHtml, stripHtml, formatDate, paginate, csvRow, parseCsv, asBool, asList, idFromKey, toDateTimeInput,
 };

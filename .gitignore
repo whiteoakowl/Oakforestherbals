@@ -1,6 +1,5 @@
 node_modules/
-data/*.db
-data/*.db-*
+data/pglite/
 uploads/*
 !uploads/.gitkeep
 .env

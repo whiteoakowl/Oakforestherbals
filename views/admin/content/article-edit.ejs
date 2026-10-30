@@ -27,7 +27,7 @@
         <h2>Visibility</h2>
         <label class="check"><input type="radio" name="published" value="1" <%= a.published ? 'checked' : '' %>> Visible</label>
         <label class="check"><input type="radio" name="published" value="0" <%= a.published ? '' : 'checked' %>> Hidden</label>
-        <label class="field"><span>Publish date</span><input type="datetime-local" name="published_at" value="<%= String(a.published_at || '').replace(' ', 'T').slice(0, 16) %>"></label>
+        <label class="field"><span>Publish date (UTC)</span><input type="datetime-local" name="published_at" value="<%= toDateTimeInput(a.published_at) %>"></label>
       </div>
       <div class="card">
         <h2>Featured image</h2>

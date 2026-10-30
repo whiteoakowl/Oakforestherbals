@@ -3,6 +3,7 @@
   <p class="muted">Create the owner account for your store admin.</p>
   <form action="/admin/setup" method="post" class="form-stack">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% if (needsKey) { %><label class="field"><span>Setup key</span><input type="password" name="setup_key" required autocomplete="off"><small class="muted">The SETUP_KEY value from your hosting settings</small></label><% } %>
     <label class="field"><span>Store name</span><input name="store_name" value="<%= store.name %>" required></label>
     <label class="field"><span>Your name</span><input name="name" required autocomplete="name"></label>
     <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="username"></label>

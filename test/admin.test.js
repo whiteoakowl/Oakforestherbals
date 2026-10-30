@@ -2,7 +2,7 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { start, Client } = require('./helpers');
-const { get } = require('../src/db');
+const { get, all } = require('../src/db');
 
 let ctx;
 let admin;
@@ -22,14 +22,14 @@ test('admin requires login', async () => {
 });
 
 test('every admin screen renders', async () => {
-  const product = get('SELECT id FROM products LIMIT 1').id;
-  const order = get('SELECT id FROM orders LIMIT 1').id;
-  const customer = get('SELECT id FROM customers LIMIT 1').id;
-  const collection = get('SELECT id FROM collections LIMIT 1').id;
-  const discount = get('SELECT id FROM discounts LIMIT 1').id;
-  const page = get('SELECT id FROM pages LIMIT 1').id;
-  const article = get('SELECT id FROM articles LIMIT 1').id;
-  const menu = get('SELECT id FROM menus LIMIT 1').id;
+  const product = (await get('SELECT id FROM products LIMIT 1')).id;
+  const order = (await get('SELECT id FROM orders LIMIT 1')).id;
+  const customer = (await get('SELECT id FROM customers LIMIT 1')).id;
+  const collection = (await get('SELECT id FROM collections LIMIT 1')).id;
+  const discount = (await get('SELECT id FROM discounts LIMIT 1')).id;
+  const page = (await get('SELECT id FROM pages LIMIT 1')).id;
+  const article = (await get('SELECT id FROM articles LIMIT 1')).id;
+  const menu = (await get('SELECT id FROM menus LIMIT 1')).id;
   const urls = ['/admin', '/admin?range=7', '/admin?range=365', '/admin/analytics', '/admin/orders', '/admin/orders?tab=unfulfilled', '/admin/orders/new',
     `/admin/orders/${order}`, `/admin/orders/${order}/packing-slip`, '/admin/orders/export.csv',
     '/admin/products', '/admin/products/new', `/admin/products/${product}`, '/admin/products/inventory', '/admin/products/export.csv',
@@ -56,7 +56,7 @@ test('create a product with variants, then edit a variant price', async () => {
   }, '/admin/products/new');
   assert.match(res.location, /\/admin\/products\/\d+/);
   const id = Number(res.location.split('/').pop());
-  const variants = require('../src/db').all('SELECT * FROM variants WHERE product_id = ? ORDER BY position', id);
+  const variants = await all('SELECT * FROM variants WHERE product_id = ? ORDER BY position', id);
   assert.deepEqual(variants.map((v) => v.title), ['Small / Mint', 'Small / Rose', 'Large / Mint', 'Large / Rose']);
   assert.ok(variants.every((v) => v.price === 1000));
 
@@ -71,33 +71,33 @@ test('create a product with variants, then edit a variant price', async () => {
     body[`variants[id${v.id}][inventory_qty]`] = '5';
   }
   await admin.post(`/admin/products/${id}`, body, `/admin/products/${id}`);
-  assert.equal(get('SELECT price FROM variants WHERE id = ?', large.id).price, 1450);
-  assert.equal(get('SELECT inventory_qty FROM variants WHERE id = ?', large.id).inventory_qty, 5);
+  assert.equal((await get('SELECT price FROM variants WHERE id = ?', large.id)).price, 1450);
+  assert.equal((await get('SELECT inventory_qty FROM variants WHERE id = ?', large.id)).inventory_qty, 5);
   const page = await new Client(ctx.base).get('/products/test-tea');
   assert.equal(page.status, 200);
 });
 
 test('fulfill, refund and cancel an order', async () => {
-  const order = get("SELECT * FROM orders WHERE fulfillment_status = 'unfulfilled' AND status = 'open' LIMIT 1");
-  const items = require('../src/db').all('SELECT * FROM order_items WHERE order_id = ?', order.id);
+  const order = await get("SELECT * FROM orders WHERE fulfillment_status = 'unfulfilled' AND status = 'open' LIMIT 1");
+  const items = await all('SELECT * FROM order_items WHERE order_id = ?', order.id);
   const body = { tracking_company: 'USPS', tracking_number: '9400', notify: '1' };
   for (const i of items) body[`qty[id${i.id}]`] = String(i.quantity);
   await admin.post(`/admin/orders/${order.id}/fulfill`, body, `/admin/orders/${order.id}`);
-  assert.equal(get('SELECT fulfillment_status FROM orders WHERE id = ?', order.id).fulfillment_status, 'fulfilled');
+  assert.equal((await get('SELECT fulfillment_status FROM orders WHERE id = ?', order.id)).fulfillment_status, 'fulfilled');
 
   await admin.post(`/admin/orders/${order.id}/paid`, {}, `/admin/orders/${order.id}`);
-  assert.equal(get('SELECT financial_status FROM orders WHERE id = ?', order.id).financial_status, 'paid');
+  assert.equal((await get('SELECT financial_status FROM orders WHERE id = ?', order.id)).financial_status, 'paid');
 
   await admin.post(`/admin/orders/${order.id}/refund`, { amount: '1.00' }, `/admin/orders/${order.id}`);
-  const refunded = get('SELECT * FROM orders WHERE id = ?', order.id);
+  const refunded = await get('SELECT * FROM orders WHERE id = ?', order.id);
   assert.equal(refunded.refunded_total, 100);
   assert.equal(refunded.financial_status, 'partially_refunded');
 
   const v = items[0];
-  const before = get('SELECT inventory_qty FROM variants WHERE id = ?', v.variant_id).inventory_qty;
+  const before = (await get('SELECT inventory_qty FROM variants WHERE id = ?', v.variant_id)).inventory_qty;
   await admin.post(`/admin/orders/${order.id}/cancel`, { restock: '1', reason: 'Other' }, `/admin/orders/${order.id}`);
-  assert.equal(get('SELECT status FROM orders WHERE id = ?', order.id).status, 'cancelled');
-  assert.equal(get('SELECT inventory_qty FROM variants WHERE id = ?', v.variant_id).inventory_qty, before + v.quantity);
+  assert.equal((await get('SELECT status FROM orders WHERE id = ?', order.id)).status, 'cancelled');
+  assert.equal((await get('SELECT inventory_qty FROM variants WHERE id = ?', v.variant_id)).inventory_qty, before + v.quantity);
 });
 
 test('settings and theme save', async () => {
@@ -112,7 +112,7 @@ test('settings and theme save', async () => {
 test('discount and page CRUD', async () => {
   let res = await admin.post('/admin/discounts/new', { code: 'test20', kind: 'percentage', value: '20', active: '1' }, '/admin/discounts/new');
   assert.match(res.location, /\/admin\/discounts\/\d+/);
-  assert.equal(get("SELECT value FROM discounts WHERE code = 'TEST20'").value, 20);
+  assert.equal((await get("SELECT value FROM discounts WHERE code = 'TEST20'")).value, 20);
   res = await admin.post('/admin/content/pages/new', { title: 'Wholesale', body_html: '<p>Hi</p>', published: '1' }, '/admin/content/pages/new');
   assert.equal((await new Client(ctx.base).get('/pages/wholesale')).status, 200);
 });

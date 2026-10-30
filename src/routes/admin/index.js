@@ -4,7 +4,7 @@ const { requireStaff } = require('../../middleware');
 
 const router = express.Router();
 
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
   res.locals.adminPath = req.originalUrl.split('?')[0];
   next();
 });
@@ -22,6 +22,6 @@ router.use('/themes', require('./theme'));
 router.use('/settings', require('./settings'));
 router.use('/profile', require('./profile'));
 
-router.use((req, res) => res.status(404).render('admin/error', { title: 'Not found', message: 'This admin page does not exist.' }));
+router.use(async (req, res) => res.status(404).render('admin/error', { title: 'Not found', message: 'This admin page does not exist.' }));
 
 module.exports = router;

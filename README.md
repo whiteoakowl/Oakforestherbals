@@ -1,8 +1,8 @@
-# Oak Forest Herbals — self-hosted store
+# Oak Forest Herbals — online store
 
-A complete online store you own and run yourself: a customer-facing storefront plus a Shopify-style admin to manage products, orders, customers, discounts, content, theme and settings.
+A complete online store you own: a customer-facing storefront plus a Shopify-style admin to manage products, orders, customers, discounts, content, theme and settings.
 
-Built with Node.js, Express, EJS templates and SQLite (Node's built-in `node:sqlite`, so there is no database server to install).
+It runs on **Netlify** (the website and checkout) with **Supabase** (the database and product images), deployed from **GitHub**. Built with Node.js, Express and EJS templates on Postgres.
 
 ## Try it in your browser (no install)
 
@@ -12,26 +12,63 @@ After a couple of minutes the store opens in a new tab with demo products and or
 - Admin: add `/admin` to the end of that tab's address, then log in with `owner@example.com` / `password123`.
 - The address is private to your GitHub account. Stop the codespace when you're done (github.com/codespaces) to save your free hours.
 
-## Quick start
+## Put it online with Netlify + Supabase
 
-Requires **Node.js 22.13 or newer**.
+### 1. Get three values from Supabase
+
+In your Supabase project (create a new one for the store, or use an existing one):
+
+1. Click **Connect** at the top of the project. Under **Transaction pooler**, copy the connection string (it uses port **6543**) and replace `[YOUR-PASSWORD]` with your database password. This is your `DATABASE_URL`.
+2. Go to **Project Settings → Data API** and copy the **Project URL**. This is your `SUPABASE_URL`.
+3. Go to **Project Settings → API Keys** and copy the **service_role** secret key. This is your `SUPABASE_SERVICE_ROLE_KEY`. Keep it secret — the store only uses it on the server, never in the browser.
+
+You don't need to create any tables or storage buckets: the store creates its tables on first visit and a public `store-media` bucket on the first image upload.
+
+### 2. Add environment variables in Netlify
+
+In Netlify, open the site → **Site configuration → Environment variables** and add:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | the Transaction pooler connection string from step 1 |
+| `SUPABASE_URL` | your Supabase Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | your service_role key |
+| `SETUP_KEY` | any password you make up — you'll type it once to create your admin account |
+| `BASE_URL` | your store's address, e.g. `https://oakforestherbals.netlify.app` (used in email links) |
+
+### 3. Deploy
+
+Netlify builds from the branch set under **Site configuration → Build & deploy → Branches** (usually `main`). Merge this work into `main`, or point that setting at this branch, then trigger a deploy. No build command is needed; `netlify.toml` already tells Netlify what to do.
+
+### 4. Create your admin account
+
+Visit `https://your-site/admin`. The first visit shows a setup screen: enter the `SETUP_KEY` from step 2, your name, email and a password. That account is the store owner.
+
+### 5. Optional: load the demo catalog
+
+To start with the demo products, pages, shipping rates and discounts, run this once from a computer or Codespace with the project checked out:
+
+```bash
+DATABASE_URL='your-connection-string' npm run seed
+```
+
+### Good to know
+
+- **Supabase free plan:** projects pause after about a week without activity. A store with regular visitors stays awake; Supabase Pro never pauses and adds daily backups.
+- **Image uploads** are limited to 4 MB each on Netlify (Netlify Functions accept requests up to about 6 MB).
+- **Your domain** can stay on Netlify DNS exactly as with your other sites.
+
+## Run it on your own computer
+
+Requires Node.js 20 or newer.
 
 ```bash
 npm install
-npm run seed -- --orders   # optional: demo catalog, pages, shipping, taxes, discounts and sample orders
-npm start
+npm run seed -- --orders   # optional demo data
+npm start                  # http://localhost:3000, admin at /admin
 ```
 
-- Storefront: http://localhost:3000
-- Admin: http://localhost:3000/admin — the first visit opens a setup screen to create the owner account.
-
-To create the owner account from the command line instead:
-
-```bash
-ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='a-long-password' npm run seed
-```
-
-Run the tests with `npm test`.
+Without `DATABASE_URL`, the store uses a built-in copy of Postgres saved in `data/pglite/`, so nothing else needs installing. Run the tests with `npm test` (set `TEST_DATABASE_URL` to also test against a real Postgres server).
 
 ## What's included
 
@@ -74,33 +111,23 @@ Order confirmations, shipping updates, cancellations, welcome and password-reset
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `PORT` | `3000` | HTTP port |
-| `BASE_URL` | — | Public URL (e.g. `https://shop.example.com`), used for links in emails |
-| `NODE_ENV` | — | Set to `production` behind HTTPS so session cookies are marked secure |
-| `SESSION_SECRET` | generated | Cookie signing secret; if unset, one is generated and stored in `data/.session-secret` |
-| `DB_PATH` | `data/store.db` | SQLite database file |
-| `UPLOAD_DIR` | `uploads/` | Where uploaded images are saved |
-
-## Deploying
-
-Any host that runs Node.js 22 works (a VPS, Render, Railway, Fly.io…). The two things to keep on persistent storage are `data/` (database and session secret) and `uploads/` (images). Put the app behind HTTPS and set `NODE_ENV=production` and `BASE_URL`.
-
-With Docker:
-
-```bash
-docker build -t oakforest-store .
-docker run -d -p 3000:3000 -e BASE_URL=https://shop.example.com \
-  -v store-data:/app/data -v store-uploads:/app/uploads oakforest-store
-```
-
-Back up by copying `data/store.db` (and `uploads/`).
+| `DATABASE_URL` | — | Postgres connection string (Supabase transaction pooler). Without it, the embedded database in `data/pglite/` is used |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | — | Store uploaded images in Supabase Storage. Without them, images go to `uploads/` |
+| `SUPABASE_BUCKET` | `store-media` | Storage bucket name (created automatically, public) |
+| `SETUP_KEY` | — | Required to create the first admin account, when set |
+| `BASE_URL` | — | Public URL of the store, used for links in emails |
+| `SESSION_SECRET` | derived | Cookie signing secret; defaults to one derived from `DATABASE_URL` |
+| `PORT` | `3000` | HTTP port when running with `npm start` |
 
 ## Project layout
 
 ```
-server.js              entry point
+netlify.toml           Netlify config: static files from public/, everything else to the function
+netlify/functions/     the Netlify Function that runs the store
+server.js              entry point for running locally
 src/app.js             Express app, sessions, middleware, routes
-src/db.js              SQLite schema and helpers
+src/db.js              Postgres schema and helpers (Supabase in production, embedded for local/tests)
+src/storage.js         image uploads (Supabase Storage or local folder)
 src/catalog.js         products, collections, menus (read side)
 src/pricing.js         cart totals, discounts, shipping and tax
 src/orders.js          placing, paying, fulfilling, refunding and cancelling orders

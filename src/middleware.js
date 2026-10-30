@@ -34,7 +34,13 @@ function flash(req, type, message) {
   req.session.flash.push({ type, message });
 }
 
-function locals(req, res, next) {
+// Fresh settings for this request (another serverless instance may have changed them).
+async function loadSettings(req, res, next) {
+  await settings.refresh();
+  next();
+}
+
+async function locals(req, res, next) {
   const store = settings.load('store');
   res.locals.store = store;
   res.locals.theme = settings.load('theme');
@@ -47,19 +53,24 @@ function locals(req, res, next) {
   res.locals.money = (cents) => utils.formatMoney(cents, store.currency_symbol);
   res.locals.formatDate = utils.formatDate;
   res.locals.centsToInput = utils.centsToInput;
+  res.locals.toDateTimeInput = utils.toDateTimeInput;
   res.locals.stripHtml = utils.stripHtml;
   res.locals.path = req.path;
   res.locals.query = req.query;
-  res.locals.staff = req.session.staffId ? get('SELECT id, email, name, role FROM staff WHERE id = ?', req.session.staffId) : null;
-  res.locals.customer = req.session.customerId ? get('SELECT * FROM customers WHERE id = ?', req.session.customerId) : null;
   res.locals.cartCount = (req.session.cart || []).reduce((s, i) => s + i.quantity, 0);
-  res.locals.menu = catalog.menu;
+  const [staff, customer, menus] = await Promise.all([
+    req.session.staffId ? get('SELECT id, email, name, role FROM staff WHERE id = ?', req.session.staffId) : null,
+    req.session.customerId ? get('SELECT * FROM customers WHERE id = ?', req.session.customerId) : null,
+    catalog.menus(),
+  ]);
+  Object.assign(res.locals, { staff: staff || null, customer: customer || null });
+  res.locals.menu = (handle) => menus[handle] || [];
   next();
 }
 
-function requireStaff(req, res, next) {
+async function requireStaff(req, res, next) {
   if (!res.locals.staff) {
-    if (!get('SELECT 1 FROM staff LIMIT 1')) return res.redirect('/admin/setup');
+    if (!await get('SELECT 1 FROM staff LIMIT 1')) return res.redirect('/admin/setup');
     return res.redirect(`/admin/login?next=${encodeURIComponent(req.originalUrl)}`);
   }
   next();
@@ -86,11 +97,11 @@ function storefrontPassword(req, res, next) {
 }
 
 // Counts unique visitors per day for the analytics dashboard.
-function trackView(req, res, next) {
+async function trackView(req, res, next) {
   if (req.method === 'GET' && !res.locals.staff && req.accepts('html')) {
     if (!req.session.visitor) req.session.visitor = utils.token(8);
     const day = new Date().toISOString().slice(0, 10);
-    run('INSERT INTO page_views (day, visitor) VALUES (?, ?) ON CONFLICT(day, visitor) DO UPDATE SET views = views + 1', day, req.session.visitor);
+    await run('INSERT INTO page_views (day, visitor) VALUES (?, ?) ON CONFLICT (day, visitor) DO UPDATE SET views = page_views.views + 1', day, req.session.visitor);
   }
   next();
 }
@@ -119,6 +130,6 @@ function securityHeaders(req, res, next) {
 }
 
 module.exports = {
-  csrfGuard, verifyCsrf, flash, locals, requireStaff, requireOwner, requireCustomer,
+  csrfGuard, verifyCsrf, flash, loadSettings, locals, requireStaff, requireOwner, requireCustomer,
   storefrontPassword, trackView, throttle, securityHeaders,
 };

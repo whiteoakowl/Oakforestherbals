@@ -15,14 +15,14 @@ function verify(raw, header, secret) {
   return expected.length === parts.v1.length && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
 }
 
-router.post('/stripe', express.raw({ type: 'application/json' }), (req, res) => {
+router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   const secret = settings.load('payments').stripe_webhook_secret;
   const raw = req.body.toString('utf8');
   if (!secret || !verify(raw, req.get('stripe-signature'), secret)) return res.status(400).send('Invalid signature');
   const event = JSON.parse(raw);
   if (event.type === 'checkout.session.completed' && event.data.object.payment_status === 'paid') {
-    const order = orders.orderByToken(event.data.object.client_reference_id || '');
-    if (order) orders.markPaid(order.id, { ref: event.data.object.payment_intent || event.data.object.id, author: 'Stripe' });
+    const order = await orders.orderByToken(event.data.object.client_reference_id || '');
+    if (order) await orders.markPaid(order.id, { ref: event.data.object.payment_intent || event.data.object.id, author: 'Stripe' });
   }
   res.json({ received: true });
 });

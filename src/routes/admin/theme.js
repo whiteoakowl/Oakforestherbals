@@ -3,7 +3,7 @@
 const express = require('express');
 const { get, all } = require('../../db');
 const settings = require('../../settings');
-const { upload, fileUrl } = require('../../uploads');
+const { upload, saveFile } = require('../../storage');
 const { flash, verifyCsrf } = require('../../middleware');
 const { toInt, asBool } = require('../../utils');
 
@@ -14,13 +14,13 @@ const FONTS = ['Inter', 'Lato', 'Montserrat', 'Nunito', 'Open Sans', 'Poppins', 
 const IMAGE_FIELDS = ['logo', 'favicon', 'hero_image'];
 const NUMBER_FIELDS = ['logo_width', 'button_radius', 'featured_count', 'products_per_page'];
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   res.render('admin/theme/index', { title: 'Themes' });
 });
 
-router.get('/customize', (req, res) => {
-  const collections = all('SELECT handle, title FROM collections ORDER BY title');
-  const product = get("SELECT handle FROM products WHERE status = 'active' ORDER BY id LIMIT 1");
+router.get('/customize', async (req, res) => {
+  const collections = await all('SELECT handle, title FROM collections ORDER BY title');
+  const product = await get("SELECT handle FROM products WHERE status = 'active' ORDER BY id LIMIT 1");
   res.render('admin/theme/customize', {
     title: 'Customize theme', FONTS, collections, t: settings.load('theme'), previewProduct: product ? product.handle : '',
   });
@@ -28,7 +28,7 @@ router.get('/customize', (req, res) => {
 
 const fields = upload.fields(IMAGE_FIELDS.map((name) => ({ name: `${name}_file`, maxCount: 1 })));
 
-router.post('/customize', fields, verifyCsrf, (req, res) => {
+router.post('/customize', fields, verifyCsrf, async (req, res) => {
   const current = settings.load('theme');
   const defaults = settings.DEFAULTS.theme;
   const patch = {};
@@ -39,18 +39,18 @@ router.post('/customize', fields, verifyCsrf, (req, res) => {
   }
   for (const key of IMAGE_FIELDS) {
     const file = req.files && req.files[`${key}_file`] && req.files[`${key}_file`][0];
-    if (file) patch[key] = fileUrl(file);
+    if (file) patch[key] = await saveFile(file);
     else if (asBool(req.body[`remove_${key}`])) patch[key] = '';
   }
   for (const key of ['font_heading', 'font_body']) if (!FONTS.includes(patch[key])) patch[key] = current[key];
   for (const key of Object.keys(patch)) if (key.startsWith('color_') && !/^#[0-9a-f]{6}$/i.test(patch[key])) patch[key] = current[key];
-  settings.save('theme', patch);
+  await settings.save('theme', patch);
   flash(req, 'success', 'Theme saved.');
   res.redirect('/admin/themes/customize');
 });
 
-router.post('/reset', (req, res) => {
-  settings.save('theme', structuredClone(settings.DEFAULTS.theme));
+router.post('/reset', async (req, res) => {
+  await settings.save('theme', structuredClone(settings.DEFAULTS.theme));
   flash(req, 'success', 'Theme reset to defaults.');
   res.redirect('/admin/themes/customize');
 });
