@@ -30,7 +30,10 @@
   </div>
   <div class="container footer-bottom">
     <span>© <%= new Date().getFullYear() %> <%= store.name %></span>
-    <span class="payment-note">Secure checkout</span>
+    <span class="footer-meta">
+      <span class="payment-note">Secure checkout</span>
+      <a href="/admin" class="admin-link" rel="nofollow"><%= staff ? 'Store admin' : 'Admin login' %></a>
+    </span>
   </div>
 </footer>
 <script src="/public/js/store.js" defer></script>
