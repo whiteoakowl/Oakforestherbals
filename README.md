@@ -34,7 +34,7 @@ In Netlify, open the site → **Site configuration → Environment variables** a
 | `SUPABASE_URL` | your Supabase Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | your secret key (`sb_secret_...`) or legacy service_role key |
 | `SETUP_KEY` | any password you make up — you'll type it once to create your admin account |
-| `BASE_URL` | your store's address, e.g. `https://oakforestherbals.netlify.app` (used in email links) |
+| `BASE_URL` | optional — your store's address, e.g. `https://oakforestherbals.netlify.app`. Netlify fills this in automatically; set it if emails should link to a custom domain |
 
 ### 3. Deploy
 
@@ -115,7 +115,7 @@ Order confirmations, shipping updates, cancellations, welcome and password-reset
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | — | Store uploaded images in Supabase Storage. Without them, images go to `uploads/` |
 | `SUPABASE_BUCKET` | `store-media` | Storage bucket name (created automatically, public) |
 | `SETUP_KEY` | — | Required to create the first admin account, when set |
-| `BASE_URL` | — | Public URL of the store, used for links in emails |
+| `BASE_URL` | Netlify's `URL` | Public URL of the store, used for links in emails |
 | `SESSION_SECRET` | derived | Cookie signing secret; defaults to one derived from `DATABASE_URL` |
 | `PORT` | `3000` | HTTP port when running with `npm start` |
 

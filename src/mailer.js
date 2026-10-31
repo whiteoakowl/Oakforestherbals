@@ -26,7 +26,8 @@ async function send(to, subject, template, data = {}) {
   const n = settings.load('notifications');
   const store = settings.load('store');
   const theme = settings.load('theme');
-  const baseUrl = process.env.BASE_URL || '';
+  // URL is set automatically by Netlify to the site's main address.
+  const baseUrl = (process.env.BASE_URL || process.env.URL || '').replace(/\/$/, '');
   const html = await ejs.renderFile(path.join(VIEWS, `${template}.ejs`), {
     ...data, store, theme, themeColors: themeColors(theme), baseUrl, subject,
     money: (c) => formatMoney(c, store.currency_symbol), formatDate,
