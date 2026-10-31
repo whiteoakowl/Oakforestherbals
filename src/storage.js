@@ -24,7 +24,13 @@ const upload = multer({
 
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
 
-const supabaseHeaders = (extra = {}) => ({ Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY, ...extra });
+// New-style secret keys (sb_secret_...) go only in the apikey header; Supabase's gateway rejects
+// them as a Bearer token. Legacy service_role keys are JWTs and go in both.
+const supabaseHeaders = (extra = {}) => ({
+  apikey: SUPABASE_KEY,
+  ...(SUPABASE_KEY.startsWith('sb_') ? {} : { Authorization: `Bearer ${SUPABASE_KEY}` }),
+  ...extra,
+});
 
 async function supabase(method, urlPath, body, headers) {
   const res = await fetch(`${SUPABASE_URL}/storage/v1/${urlPath}`, { method, headers: supabaseHeaders(headers), body });

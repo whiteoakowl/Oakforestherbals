@@ -20,7 +20,7 @@ In your Supabase project (create a new one for the store, or use an existing one
 
 1. Click **Connect** at the top of the project. Under **Transaction pooler**, copy the connection string (it uses port **6543**) and replace `[YOUR-PASSWORD]` with your database password. This is your `DATABASE_URL`.
 2. Go to **Project Settings → Data API** and copy the **Project URL**. This is your `SUPABASE_URL`.
-3. Go to **Project Settings → API Keys** and copy the **service_role** secret key. This is your `SUPABASE_SERVICE_ROLE_KEY`. Keep it secret — the store only uses it on the server, never in the browser.
+3. Go to **Project Settings → API Keys** and copy a **secret key** (starts with `sb_secret_`; the older **service_role** key also works). Do not use the publishable key. This is your `SUPABASE_SERVICE_ROLE_KEY`. Keep it secret — the store only uses it on the server, never in the browser.
 
 You don't need to create any tables or storage buckets: the store creates its tables on first visit and a public `store-media` bucket on the first image upload.
 
@@ -32,7 +32,7 @@ In Netlify, open the site → **Site configuration → Environment variables** a
 |---|---|
 | `DATABASE_URL` | the Transaction pooler connection string from step 1 |
 | `SUPABASE_URL` | your Supabase Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | your service_role key |
+| `SUPABASE_SERVICE_ROLE_KEY` | your secret key (`sb_secret_...`) or legacy service_role key |
 | `SETUP_KEY` | any password you make up — you'll type it once to create your admin account |
 | `BASE_URL` | your store's address, e.g. `https://oakforestherbals.netlify.app` (used in email links) |
 
