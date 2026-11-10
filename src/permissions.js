@@ -19,6 +19,8 @@ const PERMISSIONS = [
   ['pos.use', 'Store', 'Take in-person sales at the point of sale', 0],
   ['content.manage', 'Online store', 'Manage pages, blog posts, files and navigation', 0],
   ['themes.manage', 'Online store', 'Edit the storefront theme', 0],
+  ['herbs.view', 'Herbalist', 'Search and read the herbal database', 0],
+  ['herbs.manage', 'Herbalist', 'Add and edit herbs, safety information, references and categories; import and export', 0],
   ['clinic.patients.view_assigned', 'Clinic', 'See the clinical records of patients assigned to them', 1],
   ['clinic.patients.view_all', 'Clinic', 'See every patient\'s clinical records', 1],
   ['clinic.records.manage', 'Clinic', 'Add and edit patients, health history, notes and documents (for patients they can see)', 1],
@@ -34,13 +36,13 @@ const STORE_ALL = ['analytics.view', 'orders.view', 'orders.manage', 'products.m
 // System roles and the permissions they start with. Permissions added in later releases are
 // granted to these roles once, when they first appear; after that the owner's edits stand.
 const ROLE_DEFAULTS = {
-  staff: STORE_ALL, // the pre-RBAC "staff" role: everything except settings
-  administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view'],
-  clinic_manager: ['clinic.patients.view_all', 'clinic.records.manage', 'clinic.assignments.manage'],
-  practitioner: ['clinic.patients.view_assigned', 'clinic.records.manage'],
-  apothecary_manager: ['costing.manage'],
-  inventory_manager: ['products.manage', 'costing.manage'],
-  store_manager: STORE_ALL,
+  staff: [...STORE_ALL, 'herbs.view'], // the pre-RBAC "staff" role: everything except settings
+  administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view', 'herbs.view', 'herbs.manage'],
+  clinic_manager: ['herbs.view', 'herbs.manage', 'clinic.patients.view_all', 'clinic.records.manage', 'clinic.assignments.manage'],
+  practitioner: ['herbs.view', 'clinic.patients.view_assigned', 'clinic.records.manage'],
+  apothecary_manager: ['costing.manage', 'herbs.view', 'herbs.manage'],
+  inventory_manager: ['products.manage', 'costing.manage', 'herbs.view'],
+  store_manager: [...STORE_ALL, 'herbs.view'],
   customer_service: ['orders.view', 'orders.manage', 'customers.view', 'customers.manage', 'pos.use'],
 };
 

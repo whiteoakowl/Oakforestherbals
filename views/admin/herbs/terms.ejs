@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Categories and vocabularies', backHref: '/admin/herbs' }) %>
+  <p class="muted">The standard lists used to classify and search herbs. Terms from a specific tradition stay separate from general terms. A term in use can be renamed but not deleted.</p>
+  <form method="post" action="/admin/herbs/terms" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Add a term</h2>
+    <div class="grid-3">
+      <label class="field"><span>List</span><select name="vocabulary"><% for (const [k, l] of VOCABULARIES) { %><option value="<%= k %>"><%= l %></option><% } %></select></label>
+      <label class="field"><span>Name</span><input name="name" required></label>
+      <label class="field"><span>Tradition</span><select name="tradition_id"><option value="">General</option><% for (const t of traditions) { %><option value="<%= t.id %>"><%= t.name %></option><% } %></select></label>
+    </div>
+    <div class="grid-2"><label class="field"><span>Group (optional)</span><input name="grp" placeholder="e.g. Temperature"></label><label class="field"><span>Description</span><input name="description"></label></div>
+    <div class="right"><button class="btn btn-primary">Add</button></div>
+  </form>
+  <% for (const [vocab, label] of VOCABULARIES) { %>
+    <div class="card flush">
+      <div class="card-head pad"><h2><%= label %></h2></div>
+      <table class="table small"><thead><tr><th>Term</th><th>Tradition / group</th><th class="num">Herbs</th><th></th></tr></thead><tbody>
+        <% for (const t of allTerms[vocab]) { %>
+          <tr><td><form method="post" action="/admin/herbs/terms/<%= t.id %>" class="inline-fields"><input type="hidden" name="_csrf" value="<%= csrf %>"><input name="name" value="<%= t.name %>" aria-label="Name"><input name="description" value="<%= t.description %>" placeholder="Description" aria-label="Description"><button class="btn btn-sm">Save</button></form></td>
+            <td class="muted"><%= [t.tradition_name, t.grp].filter(Boolean).join(' — ') || 'General' %></td><td class="num"><%= t.herb_count %></td>
+            <td><% if (!Number(t.herb_count)) { %><form method="post" action="/admin/herbs/terms/<%= t.id %>/delete" data-confirm="Delete <%= t.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Delete</button></form><% } %></td></tr>
+        <% } %>
+      </tbody></table>
+    </div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

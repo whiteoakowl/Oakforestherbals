@@ -1,0 +1,191 @@
+<%- include('../partials/header') %>
+<% const h = herb; const base = `/admin/herbs/${h.slug}`; const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`;
+   const ref = (id) => (id && h.refNo.has(id) ? `<sup class="ref"><a href="#ref-${h.refNo.get(id)}">[${h.refNo.get(id)}]</a></sup>` : '');
+   const evidenceOf = (k) => EVIDENCE.find(([x]) => x === k);
+   const vocabLabel = Object.fromEntries(VOCABULARIES);
+   const sourceSelect = (required) => `<select name="source_id" ${required ? 'required' : ''} aria-label="Reference"><option value="">${required ? 'Choose a reference…' : 'No reference'}</option>${sources.map((s) => `<option value="${s.id}">${(s.authors ? `${s.authors}${s.year ? ` (${s.year})` : ''}. ` : '').replace(/</g, '&lt;')}${s.title.replace(/</g, '&lt;')}</option>`).join('')}</select>`;
+   const del = (kind, id) => canManageHerbs ? `<form method="post" action="${base}/${kind}/${id}/delete" class="inline" data-confirm="Remove this entry?">${csrfField}<button class="link-plain small critical-text">Remove</button></form>` : ''; %>
+<div class="page herb-profile">
+  <%- include('../partials/page-header', { heading: h.common_name, backHref: '/admin/herbs', badges: h.status !== 'published' ? [['Draft', 'default']] : [],
+    actions: `<form method="post" action="${base}/favorite" class="inline">${csrfField}<button class="btn">${h.favorite ? '★ Favourite' : '☆ Add to favourites'}</button></form>${canManageHerbs ? ` <a class="btn btn-primary" href="${base}/edit">Edit</a>` : ''}` }) %>
+  <p class="herb-latin"><em><%= h.latin_name %></em><%= h.family ? ` · ${h.family}` : '' %></p>
+
+  <% if (h.missing.length) { %>
+    <div class="banner" role="note"><strong>Missing information:</strong> <%= h.missing.join(', ') %>.<% if (!h.safety.length) { %> <strong>No safety information has been entered — absence of a warning here does not mean the herb is safe.</strong><% } %></div>
+  <% } %>
+
+  <div class="layout-2">
+    <div>
+      <% if (h.summary) { %><div class="card"><p class="prewrap"><%= h.summary %></p></div><% } %>
+
+      <div class="card" id="classification">
+        <h2>Classification</h2>
+        <% for (const vocab of ['plant_part', 'action', 'energetic', 'taste', 'body_system', 'preparation']) { const items = h.byVocab[vocab]; %>
+          <div class="kv-row"><span class="muted"><%= vocabLabel[vocab] %></span>
+            <span><% if (!items.length) { %><span class="muted">—</span><% } %>
+              <% const groups = grouped(items.map((l) => ({ ...l, tradition_name: l.tradition }))); %>
+              <% for (const g of groups) { %><span class="term-group"><% if (g.label) { %><span class="muted small"><%= g.label %>: </span><% } %><% for (const t of g.terms) { %><a class="tag" href="/admin/herbs?<%= Object.entries(FILTER_PARAMS).find(([, v]) => v === vocab)[0] %>=<%= t.term_id %>"><%= t.name %></a><%- ref(t.source_id) %> <% } %></span><% } %>
+            </span></div>
+        <% } %>
+      </div>
+
+      <div class="card" id="traditions">
+        <h2>By tradition</h2>
+        <p class="muted small">Each tradition's description is kept in its own terms and context, with its source.</p>
+        <% if (!h.profiles.length) { %><p class="muted small">No tradition-specific descriptions yet.</p><% } %>
+        <% for (const p of h.profiles) { %>
+          <div class="sub-card"><div class="row-between"><strong><%= p.tradition %><%= p.local_name ? ` — ${p.local_name}` : '' %></strong><%- del('profiles', p.id) %></div>
+            <p class="prewrap small"><%= p.description %><%- ref(p.source_id) %></p></div>
+        <% } %>
+        <% if (canManageHerbs) { %>
+          <details><summary class="small">Add a tradition description</summary>
+            <form method="post" action="<%= base %>/profiles" class="form-stack mt-sm"><%- csrfField %>
+              <div class="grid-2"><label class="field"><span>Tradition</span><select name="tradition_id"><% for (const t of traditions) { %><option value="<%= t.id %>"><%= t.name %></option><% } %></select></label>
+                <label class="field"><span>Name in this tradition</span><input name="local_name" placeholder="e.g. Sanskrit or pinyin name"></label></div>
+              <label class="field"><span>Description (energetics, actions and uses as the tradition describes them)</span><textarea name="description" rows="4" required></textarea></label>
+              <label class="field"><span>Reference</span><%- sourceSelect(false) %></label>
+              <div class="right"><button class="btn btn-sm">Add</button></div>
+            </form></details>
+        <% } %>
+      </div>
+
+      <div class="card" id="uses">
+        <h2>Uses and research</h2>
+        <% for (const [k, label, help] of EVIDENCE) { const items = h.uses.filter((u) => u.evidence === k); %>
+          <h3 class="evidence-<%= k %>"><%= label %> <span class="muted small" title="<%= help %>">ⓘ</span></h3>
+          <% if (!items.length) { %><p class="muted small">None recorded.</p><% } %>
+          <% for (const u of items) { %>
+            <div class="small use-item"><% if (u.condition) { %><strong><%= u.condition %></strong><% } %><% if (u.body_system) { %> <span class="badge badge-default"><%= u.body_system %></span><% } %><% if (u.tradition) { %> <span class="muted">(<%= u.tradition %>)</span><% } %>
+              <p class="prewrap"><%= u.description %><%- ref(u.source_id) %></p><%- del('uses', u.id) %></div>
+          <% } %>
+        <% } %>
+        <% if (canManageHerbs) { %>
+          <details><summary class="small">Add a use or research finding</summary>
+            <form method="post" action="<%= base %>/uses" class="form-stack mt-sm"><%- csrfField %>
+              <div class="grid-3">
+                <label class="field"><span>Evidence level</span><select name="evidence"><% for (const [k, l] of EVIDENCE) { %><option value="<%= k %>"><%= l %></option><% } %></select></label>
+                <label class="field"><span>Condition or symptom</span><input name="condition"></label>
+                <label class="field"><span>Body system</span><select name="body_system_term_id"><option value="">—</option><% for (const t of allTerms.body_system) { %><option value="<%= t.id %>"><%= t.name %></option><% } %></select></label>
+              </div>
+              <label class="field"><span>Tradition</span><select name="tradition_id"><option value="">—</option><% for (const t of traditions) { %><option value="<%= t.id %>"><%= t.name %></option><% } %></select></label>
+              <label class="field"><span>Description</span><textarea name="description" rows="3" required></textarea></label>
+              <label class="field"><span>Reference (required for preliminary and clinical evidence)</span><%- sourceSelect(false) %></label>
+              <div class="right"><button class="btn btn-sm">Add</button></div>
+            </form></details>
+        <% } %>
+      </div>
+
+      <div class="card" id="safety">
+        <h2>Safety</h2>
+        <% if (!h.safety.length) { %><p class="small"><strong>No safety information entered.</strong> <span class="muted">Check authoritative references before recommending this herb.</span></p><% } %>
+        <% for (const [k, label] of SAFETY_KINDS) { const items = h.safety.filter((s) => s.kind === k); if (!items.length) continue; %>
+          <h3><%= label %></h3>
+          <% for (const s of items) { %><div class="small use-item"><p class="prewrap"><%= s.description %><%- ref(s.source_id) %></p>
+            <span class="muted"><%= evidenceOf(s.evidence)[1] %> · entered by <%= s.entered_by %></span> <%- del('safety', s.id) %></div><% } %>
+        <% } %>
+        <% if (canManageHerbs) { %>
+          <details><summary class="small">Add safety or dosage information</summary>
+            <form method="post" action="<%= base %>/safety" class="form-stack mt-sm"><%- csrfField %>
+              <div class="grid-2">
+                <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of SAFETY_KINDS) { %><option value="<%= k %>"><%= l %></option><% } %></select></label>
+                <label class="field"><span>Evidence level</span><select name="evidence"><% for (const [k, l] of EVIDENCE) { %><option value="<%= k %>"><%= l %></option><% } %></select></label>
+              </div>
+              <label class="field"><span>Details, as stated in the reference</span><textarea name="description" rows="3" required></textarea></label>
+              <label class="field"><span>Reference (required)</span><%- sourceSelect(true) %></label>
+              <p class="muted small">Missing a reference? <a href="/admin/herbs/sources/new?back=<%= encodeURIComponent(base) %>">Add it first</a>.</p>
+              <div class="right"><button class="btn btn-sm">Add</button></div>
+            </form></details>
+        <% } %>
+      </div>
+
+      <div class="card" id="preparations">
+        <h2>Preparations and extraction</h2>
+        <% if (!h.preparations.length) { %><p class="muted small">None recorded.</p><% } else { %>
+          <table class="table small"><thead><tr><th>Method</th><th>Part</th><th>Menstruum / solvent</th><th>Ratio</th><th>Notes</th><th></th></tr></thead><tbody>
+          <% for (const p of h.preparations) { %><tr><td><%= p.method %></td><td><%= p.plant_part %></td><td><%= p.menstruum %></td><td><%= p.ratio %></td><td><%= p.notes %><%- ref(p.source_id) %></td><td><%- del('preparations', p.id) %></td></tr><% } %>
+          </tbody></table>
+        <% } %>
+        <% if (canManageHerbs) { %>
+          <details><summary class="small">Add a preparation</summary>
+            <form method="post" action="<%= base %>/preparations" class="form-stack mt-sm"><%- csrfField %>
+              <div class="grid-3">
+                <label class="field"><span>Method</span><select name="method_term_id"><% for (const t of allTerms.preparation) { %><option value="<%= t.id %>"><%= t.name %></option><% } %></select></label>
+                <label class="field"><span>Plant part</span><input name="plant_part"></label>
+                <label class="field"><span>Menstruum / solvent</span><input name="menstruum" placeholder="e.g. 40% ethanol"></label>
+              </div>
+              <div class="grid-2"><label class="field"><span>Ratio</span><input name="ratio" placeholder="e.g. 1:5"></label><label class="field"><span>Notes (solubility, method)</span><input name="notes"></label></div>
+              <label class="field"><span>Reference</span><%- sourceSelect(false) %></label>
+              <div class="right"><button class="btn btn-sm">Add</button></div>
+            </form></details>
+        <% } %>
+      </div>
+
+      <% if (h.identification || h.native_region || h.distribution || h.habitat || h.cultivation || h.harvesting || h.traditional_use || h.history) { %>
+      <div class="card">
+        <h2>Botany and history</h2>
+        <dl class="kv">
+          <% for (const [k, l] of [['identification', 'Identification'], ['native_region', 'Native region'], ['distribution', 'Distribution'], ['habitat', 'Habitat'], ['cultivation', 'Growing conditions'], ['harvesting', 'Harvesting'], ['traditional_use', 'Traditional applications'], ['history', 'Historical notes']]) { if (!h[k]) continue; %><dt><%= l %></dt><dd><%= h[k] %></dd><% } %>
+        </dl>
+      </div>
+      <% } %>
+
+      <div class="card" id="references">
+        <h2>References</h2>
+        <% if (!h.sources.length) { %><p class="muted small">No references cited yet.</p><% } %>
+        <ol class="ref-list small">
+          <% for (const s of h.sources) { %><li id="ref-<%= h.refNo.get(s.id) %>"><%= s.authors ? `${s.authors.replace(/\.\s*$/, '')}. ` : '' %><%= s.year ? `(${s.year}). ` : '' %><em><%= s.title %></em><%= s.publisher ? `. ${s.publisher}` : '' %><%= s.doi ? `. doi:${s.doi}` : '' %><% if (s.url) { %>. <a href="<%= s.url %>" target="_blank" rel="noopener noreferrer">Link</a><% } %></li><% } %>
+        </ol>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" id="photos">
+        <% if (h.images.length) { %>
+          <div class="herb-photos"><% for (const im of h.images) { %><figure><img src="<%= im.url %>" alt="<%= im.alt %>" loading="lazy"><% if (im.credit) { %><figcaption class="muted small"><%= im.credit %></figcaption><% } %><%- del('images', im.id) %></figure><% } %></div>
+        <% } else { %><p class="muted small">No photographs.</p><% } %>
+        <% if (canManageHerbs) { %>
+          <form method="post" action="<%= base %>/images" enctype="multipart/form-data" class="form-stack mt-sm"><%- csrfField %>
+            <input type="file" name="image" accept="image/*" aria-label="Photo" required>
+            <input name="credit" placeholder="Photo credit / licence">
+            <button class="btn btn-sm">Upload photo</button>
+          </form>
+        <% } %>
+      </div>
+      <div class="card">
+        <h2>Names</h2>
+        <dl class="kv small">
+          <dt>Latin</dt><dd><em><%= h.latin_name %></em></dd>
+          <% if (h.genus || h.species) { %><dt>Genus / species</dt><dd><em><%= [h.genus, h.species].filter(Boolean).join(' ') %></em></dd><% } %>
+          <% if (h.family) { %><dt>Family</dt><dd><a href="/admin/herbs?family=<%= h.family_id %>"><%= h.family %></a></dd><% } %>
+          <% const common = h.names.filter((n) => n.kind === 'common'); const syn = h.names.filter((n) => n.kind === 'synonym'); const trad = h.names.filter((n) => n.kind === 'tradition'); %>
+          <% if (common.length) { %><dt>Also called</dt><dd><%= common.map((n) => n.name).join(', ') %></dd><% } %>
+          <% if (syn.length) { %><dt>Botanical synonyms</dt><dd><em><%= syn.map((n) => n.name).join(', ') %></em></dd><% } %>
+          <% for (const n of trad) { %><dt><%= n.tradition || 'Traditional name' %></dt><dd><%= n.name %></dd><% } %>
+        </dl>
+      </div>
+      <% if (h.constituents.length) { %>
+      <div class="card">
+        <h2>Constituents</h2>
+        <% const byClass = {}; for (const c of h.constituents) (byClass[c.class_name || 'Other'] = byClass[c.class_name || 'Other'] || []).push(c); %>
+        <% for (const [cls, list] of Object.entries(byClass)) { %><p class="small"><strong><%= cls %>:</strong> <% list.forEach((c, i) => { %><a href="/admin/herbs?constituent=<%= encodeURIComponent(c.name) %>"><%= c.name %></a><%- ref(c.source_id) %><%= i < list.length - 1 ? ', ' : '' %><% }) %></p><% } %>
+      </div>
+      <% } %>
+      <div class="card">
+        <h2>Related herbs</h2>
+        <% if (!related.length) { %><p class="muted small">Herbs sharing actions or body systems appear here.</p><% } %>
+        <% for (const r of related) { %><p class="small"><a href="/admin/herbs/<%= r.slug %>"><%= r.common_name %></a> <em class="muted"><%= r.latin_name %></em> <span class="muted">· <%= r.shared %> shared</span></p><% } %>
+      </div>
+      <form method="post" action="<%= base %>/note" class="card form-stack" id="my-notes"><%- csrfField %>
+        <h2>My materia medica notes</h2>
+        <p class="muted small">Private to you. No one else can see these notes.</p>
+        <textarea name="note" rows="5" aria-label="My private notes"><%= h.myNote ? h.myNote.note : '' %></textarea>
+        <% if (h.myNote) { %><p class="muted small">Last saved <%= formatDate(h.myNote.updated_at, true) %></p><% } %>
+        <button class="btn btn-sm">Save note</button>
+      </form>
+      <% if (canManageHerbs) { %>
+        <form method="post" action="<%= base %>/delete" data-confirm="Delete <%= h.common_name %> and everything recorded about it?" class="right"><%- csrfField %><button class="btn btn-critical btn-sm">Delete herb</button></form>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

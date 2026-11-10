@@ -266,3 +266,45 @@
   // Toasts fade out
   $$('.toast').forEach((t) => setTimeout(() => t.remove(), 5000));
 })();
+
+// Herb search autocomplete: names, synonyms, families and categories as you type.
+(() => {
+  const wrap = document.querySelector('[data-herb-suggest]');
+  if (!wrap) return;
+  const input = wrap.querySelector('input');
+  const listEl = wrap.querySelector('.suggest-list');
+  let timer;
+  let items = [];
+  let active = -1;
+  const render = () => {
+    listEl.innerHTML = '';
+    items.forEach((it, i) => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = it.url; a.textContent = it.label; a.setAttribute('role', 'option');
+      if (i === active) a.classList.add('active');
+      li.appendChild(a); listEl.appendChild(li);
+    });
+    listEl.hidden = !items.length;
+  };
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { items = []; render(); return; }
+    timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/admin/herbs/suggest.json?q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } });
+        items = res.ok ? await res.json() : [];
+      } catch { items = []; }
+      active = -1; render();
+    }, 150);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (listEl.hidden) return;
+    if (e.key === 'ArrowDown') { active = Math.min(items.length - 1, active + 1); render(); e.preventDefault(); }
+    if (e.key === 'ArrowUp') { active = Math.max(-1, active - 1); render(); e.preventDefault(); }
+    if (e.key === 'Enter' && active >= 0) { window.location = items[active].url; e.preventDefault(); }
+    if (e.key === 'Escape') { items = []; render(); }
+  });
+  document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) { items = []; render(); } });
+})();

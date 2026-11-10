@@ -57,3 +57,28 @@ All `_enc` columns hold AES-256-GCM ciphertext (`v1:<base64>`) from `src/vault.j
 | `practitioner_assignments` | Which staff are assigned to which patient (one can be primary). Drives what practitioners can see. |
 | `clinical_notes` | Consultation, SOAP, follow-up, progress, assessment and internal notes; encrypted body; `amends_note_id` links corrections. A trigger blocks any change or deletion once `signed_at` is set (cascading deletes from an owner's permanent record deletion are allowed). |
 | `patient_documents` | Metadata for encrypted files in the private bucket: kind, encrypted title, storage key, type, size, uploader. |
+
+## 0004_herbal_database
+Seeds only controlled vocabularies (names of categories). **No herb entries, safety data or
+citations are shipped** — herbs come from the editor or CSV import.
+
+| Table | Purpose |
+|---|---|
+| `herbal_traditions` | Western herbalism, Ayurveda, Traditional Chinese Medicine (more can be added). |
+| `herb_terms` | Controlled vocabularies: actions (26), energetics, tastes, body systems (14), plant parts, preparation methods, phytochemical classes. `tradition_id` marks terms that belong to one tradition (e.g. TCM nature *Warm (wen)*, Ayurvedic rasa *Tikta*), so traditions are never merged with general terms. |
+| `plant_families` | Botanical families, created as herbs are added. |
+| `herbs` | Identification (common/Latin name, genus, species, family), botany, history, status (draft/published), and `search_text` + `search_vector` (GIN-indexed) maintained by the app for fast search. |
+| `herb_names` | Other common names, botanical synonyms and names within a tradition — all searchable and used for exact-match lookup and duplicate detection. |
+| `herb_term_links` | Herb ↔ term, optionally with a source and note. |
+| `herb_tradition_profiles` | A tradition's own description of the herb, in its own terms, with its source. |
+| `herb_constituents` | Constituents with phytochemical class, part and source. |
+| `herb_preparations` | Method, part, menstruum/solvent, ratio, notes, source. |
+| `herb_uses` | Traditional applications and research, with evidence level (`traditional`, `preliminary`, `clinical`). A database CHECK requires a source for anything but traditional use. |
+| `herb_safety` | Contraindications, cautions, interactions, pregnancy, lactation, children, dosage. `source_id` is NOT NULL: nothing safety-related can be stored without a reference. |
+| `herb_sources` | References (books, monographs, articles, reviews, websites). A cited source can't be deleted. |
+| `herb_images` | Plant photos (public storage) with credit/licence. |
+| `herb_favorites`, `herb_saved_searches`, `herb_search_history`, `herb_staff_notes` | Per-person favourites, saved searches, last 15 searches, and private materia medica notes. |
+
+Search: all selected categories must match (AND); free text matches names, synonyms, family,
+categories, constituents, conditions and tradition names via the full-text index plus substring
+matching. An exact common, Latin, synonym or tradition name opens the profile directly.

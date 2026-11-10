@@ -36,18 +36,16 @@ Status key: ✅ done · 🔜 next · ⏸ waiting on a decision from you
   digital downloads, subscriptions (Stripe Billing) and card payments at the point of sale
   through Stripe Terminal. Each is its own piece of work; they're scheduled alongside Phase 8.
 
-## Phase 4 — Herbal database and materia medica 🔜 (next)
-- Normalised schema: herbs, botanical names and synonyms, plant families, actions, energetics,
-  tastes, body systems, constituents, preparations, parts used, traditions (Western, Ayurvedic,
-  TCM… kept separate, never merged), safety information, references.
-- Every claim tied to a source and an evidence level (traditional / preliminary / clinical).
-  **No herb data or citations will be invented.** The database ships with the controlled
-  vocabularies only (action, energetic, taste and body-system lists); herb entries come from you,
-  your references or a licensed dataset, via the admin editor or CSV import.
-- Combined-filter search (e.g. warming + bitter + digestive + carminative), autocomplete,
-  synonym matching, saved searches and favourites, using Postgres full-text and trigram indexes.
+## Phase 4 — Herbal database and materia medica ✅
+Done: normalised herb schema with traditions kept separate, standard vocabularies, combined-filter
+search engine with full-text index, synonyms, autocomplete, exact-name lookup, history, saved
+searches, favourites, related herbs, A–Z and category browsing, profiles with evidence levels and
+numbered references, sourced-only safety and research, private practitioner notes, references and
+category management, CSV import/export with duplicate detection, bulk editing and photos.
+No herb content is shipped: entries come from your sources via the editor or CSV import.
+Next, with Phase 5: the formula builder reads herbs and their safety entries from here.
 
-## Phase 5 — Apothecary, formulas and manufacturing
+## Phase 5 — Apothecary, formulas and manufacturing 🔜
 - Raw herbs and supplies as inventory items with **lots** (supplier, lot number, cost, harvest and
   expiry dates, location, certificates), suppliers and purchase orders, receiving, adjustments,
   waste, expiry and reorder alerts.

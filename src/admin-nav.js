@@ -47,6 +47,21 @@ const SECTIONS = [
     ],
   },
   {
+    label: 'Herbalist',
+    items: [
+      {
+        href: '/admin/herbs', label: 'Herbal database', icon: 'herb', anyPerm: ['herbs.view', 'herbs.manage'],
+        children: [
+          { href: '/admin/herbs', label: 'Search', exact: true, match: /^\/admin\/herbs\/(?!browse|sources|terms|import|new)[\w-]+(\/edit)?$/ },
+          { href: '/admin/herbs/browse', label: 'Browse' },
+          { href: '/admin/herbs/sources', label: 'References' },
+          { href: '/admin/herbs/terms', label: 'Categories', perm: 'herbs.manage' },
+          { href: '/admin/herbs/import', label: 'Import / export', perm: 'herbs.manage' },
+        ],
+      },
+    ],
+  },
+  {
     label: 'Clinic',
     items: [
       { href: '/admin/clinic/patients', label: 'Patients', icon: 'patients', anyPerm: ['clinic.patients.view_assigned', 'clinic.patients.view_all'] },

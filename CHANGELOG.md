@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased — Phase 4: herbal database and materia medica
+
+### Added
+- **Herbalist → Herbal database**: a searchable professional reference. Combine any filters —
+  actions, energetics, tastes, body systems, plant parts, preparations, family, tradition,
+  constituent or phytochemical class — and every one must match (e.g. Warm + Bitter + Digestive +
+  Carminative). Free-text search covers names, synonyms, families, categories, constituents and
+  conditions; an exact Latin name, common name or synonym opens the herb. Autocomplete, A–Z and
+  category browsing, favourites, saved searches and recent searches.
+- **Herb profiles**: identification, names and synonyms, classification grouped by tradition,
+  each tradition's own description, uses and research labelled by evidence level (traditional,
+  preliminary, clinical), safety (contraindications, cautions, interactions, pregnancy, lactation,
+  children, dosage), preparations and extraction, constituents, photos, numbered references,
+  related herbs, a "missing information" banner, and private notes for each practitioner.
+- **Administration**: add/edit herbs with duplicate detection, manage categories and references,
+  CSV import (skip or merge duplicates; unknown categories are reported, never invented), CSV
+  export and template, bulk publish and bulk categorise.
+- Standard vocabularies for Western herbalism, Ayurveda (rasa, virya) and TCM (nature, flavour),
+  kept separate. No herb entries are included.
+- Permissions: *herbal database (view)* for every built-in role except customer service; *manage*
+  for administrators, clinic managers and apothecary managers.
+
+### Safety rules (enforced by the database)
+- Safety and dosage entries must cite a reference.
+- Preliminary and clinical research must cite a reference.
+
+
 ## Unreleased — Clinic core
 
 ### Added

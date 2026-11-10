@@ -419,3 +419,44 @@ address { font-style: normal; line-height: 1.6; margin-bottom: 8px; }
 .timeline-list li { display: grid; grid-template-columns: 170px 1fr; gap: 12px; }
 @media (max-width: 640px) { .timeline-list li { grid-template-columns: 1fr; gap: 2px; } .kv { grid-template-columns: 1fr; } }
 details > summary h2.inline { display: inline; }
+
+/* Herbal database */
+.herb-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+.herb-filters { position: sticky; top: 72px; max-height: calc(100vh - 90px); overflow: auto; display: grid; gap: 10px; }
+.herb-filters details summary { cursor: pointer; padding: 4px 0; }
+.herb-main { display: grid; gap: 12px; min-width: 0; }
+.herb-searchbar { display: flex; gap: 8px; padding: 8px; align-items: center; }
+.herb-searchbar select { width: auto; }
+.filter-group { margin: 8px 0 4px; }
+.chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; cursor: pointer; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-strong); font-size: 13px; background: var(--surface); }
+.chip input:checked + span { background: var(--text-strong); color: var(--surface); border-color: var(--text-strong); }
+.chip input:focus-visible + span { outline: 2px solid #005bd3; outline-offset: 2px; }
+.tag { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--surface-2, #f1f1f1); font-size: 13px; text-decoration: none !important; color: var(--text-strong); margin: 0 2px 4px 0; }
+.letters { display: flex; flex-wrap: wrap; gap: 2px; }
+.letters a { padding: 2px 7px; border-radius: 6px; font-weight: 600; font-size: 13px; text-decoration: none !important; }
+.letters a.active { background: var(--text-strong); color: var(--surface); }
+.suggest-wrap { position: relative; flex: 1; }
+.suggest-wrap input { width: 100%; }
+.suggest-list { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.suggest-list a { display: block; padding: 6px 10px; border-radius: 6px; text-decoration: none !important; color: var(--text-strong); font-size: 14px; }
+.suggest-list a:hover, .suggest-list a:focus, .suggest-list a.active { background: var(--surface-hover); }
+.bulk-herbs { position: sticky; bottom: 8px; margin-top: 12px; }
+.herb-latin { margin: -8px 0 12px; font-size: 16px; }
+.kv-row { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
+.kv-row:first-of-type { border-top: 0; }
+.term-group { margin-right: 8px; }
+.prewrap { white-space: pre-wrap; }
+.use-item { padding: 6px 0; border-top: 1px solid var(--border); }
+.use-item p { margin: 2px 0; }
+h3 { font-size: 14px; margin: 14px 0 4px; }
+.evidence-traditional { color: #6b4e16; } .evidence-preliminary { color: #1f5199; } .evidence-clinical { color: #0c5132; }
+sup.ref a { text-decoration: none; font-size: 11px; }
+.ref-list { padding-left: 20px; margin: 0; display: grid; gap: 6px; }
+.herb-photos { display: grid; gap: 8px; }
+.herb-photos img { width: 100%; border-radius: 8px; display: block; }
+.herb-photos figure { margin: 0; }
+.term-picker { border: 0; }
+@media (max-width: 900px) { .herb-layout { grid-template-columns: 1fr; } .herb-filters { position: static; max-height: none; } .kv-row { grid-template-columns: 1fr; gap: 2px; } }

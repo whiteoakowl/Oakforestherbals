@@ -45,7 +45,8 @@ test('every admin screen renders', async () => {
     '/admin/settings/taxes', '/admin/settings/notifications', '/admin/settings/policies', '/admin/settings/preferences', '/admin/settings/staff',
     '/admin/settings/roles', `/admin/settings/roles/${role}`, '/admin/settings/audit',
     '/admin/costing', '/admin/costing/materials/new', `/admin/costing/products/${product}`, '/admin/analytics/profitability', '/admin/pos',
-    '/admin/clinic/patients', '/admin/clinic/patients/new'];
+    '/admin/clinic/patients', '/admin/clinic/patients/new',
+    '/admin/herbs', '/admin/herbs/browse', '/admin/herbs/sources', '/admin/herbs/sources/new', '/admin/herbs/terms', '/admin/herbs/import', '/admin/herbs/new'];
   for (const url of urls) {
     const res = await admin.get(url);
     assert.equal(res.status, 200, `${url} -> ${res.status} ${res.text.slice(0, 200)}`);
