@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%= title %></title>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; color: #111; background: #fff; max-width: 380px; margin: 24px auto; padding: 0 16px; font-size: 14px; }
+  h1 { font-size: 18px; margin: 0 0 4px; text-align: center; }
+  .center { text-align: center; } .muted { color: #555; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  td { padding: 4px 0; vertical-align: top; } td.num { text-align: right; white-space: nowrap; }
+  tr.total td { border-top: 1px solid #111; font-weight: 700; padding-top: 8px; }
+  .actions { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+  .actions a, .actions button { font: inherit; padding: 8px 14px; border: 1px solid #111; border-radius: 6px; background: #fff; color: #111; text-decoration: none; cursor: pointer; }
+  @media print { .actions { display: none; } body { margin: 0; } }
+</style></head>
+<body>
+  <div class="actions"><button onclick="window.print()">Print receipt</button><a href="/admin/pos">New sale</a><a href="/admin/orders/<%= order.id %>">View order</a></div>
+  <h1><%= store.name %></h1>
+  <% if (store.address) { %><p class="center muted"><%= store.address %></p><% } %>
+  <p class="center muted">Receipt <%= order.name %> · <%= formatDate(order.created_at, true) %></p>
+  <table>
+    <% for (const i of order.items) { %>
+      <tr><td><%= i.quantity %> × <%= i.title %><%= i.variant_title ? ` (${i.variant_title})` : '' %></td><td class="num"><%= money(i.price * i.quantity) %></td></tr>
+    <% } %>
+    <tr><td>Subtotal</td><td class="num"><%= money(order.subtotal) %></td></tr>
+    <% if (order.discount_total) { %><tr><td>Discount<%= order.discount_code ? ` (${order.discount_code})` : '' %></td><td class="num">−<%= money(order.discount_total) %></td></tr><% } %>
+    <% if (order.tax_total) { %><tr><td>Tax</td><td class="num"><%= money(order.tax_total) %></td></tr><% } %>
+    <tr class="total"><td>Total</td><td class="num"><%= money(order.total) %></td></tr>
+    <tr><td>Paid by</td><td class="num"><%= order.payment_method %></td></tr>
+    <% if (cash && cash.tendered !== null) { %>
+      <tr><td>Cash received</td><td class="num"><%= money(cash.tendered) %></td></tr>
+      <tr><td><strong>Change</strong></td><td class="num"><strong><%= money(cash.change) %></strong></td></tr>
+    <% } %>
+  </table>
+  <p class="center muted">Thank you!</p>
+</body></html>

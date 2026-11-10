@@ -18,9 +18,9 @@ Status key: ✅ done · 🔜 next · ⏸ waiting on a decision from you
 - Append-only audit log (sign-ins, failed sign-ins, access denials, staff/role/settings changes),
   with secrets redacted.
 - Sectioned, data-driven admin navigation that later modules plug into.
-- Remaining follow-up: move the login throttle into the database.
+- Login throttle moved into the database (done in Phase 3).
 
-## Phase 3 — Store management and product costing 🔜
+## Phase 3 — Store management and product costing ✅ (core)
 - **Materials and costing:** cost per unit for ingredients and packaging (bottle, cap, label…),
   labour rate, overhead and waste %; a bill of materials per variant. This builds a calculated cost
   that feeds the existing `variants.cost` field, so the current margin display keeps working.
@@ -30,10 +30,13 @@ Status key: ✅ done · 🔜 next · ⏸ waiting on a decision from you
 - Customer groups (retail/wholesale/practitioner) and wholesale pricing.
 - Point of sale screen (in-person orders, cash/card, stock deduction, receipt) built on the
   existing manual-order flow.
-- Later in the phase: reviews, gift cards, abandoned-checkout emails, subscriptions (each needs
-  its own design; subscriptions need Stripe Billing).
+- Done: materials, recipes, cost roll-up, price-change impact, profitability report, wholesale
+  groups and prices, product details, scheduled publishing, point of sale.
+- Still to do in this area: product reviews, gift cards, abandoned-checkout emails, bundles/kits,
+  digital downloads, subscriptions (Stripe Billing) and card payments at the point of sale
+  through Stripe Terminal. Each is its own piece of work; they're scheduled alongside Phase 8.
 
-## Phase 4 — Herbal database and materia medica
+## Phase 4 — Herbal database and materia medica 🔜
 - Normalised schema: herbs, botanical names and synonyms, plant families, actions, energetics,
   tastes, body systems, constituents, preparations, parts used, traditions (Western, Ayurvedic,
   TCM… kept separate, never merged), safety information, references.
@@ -56,7 +59,12 @@ Status key: ✅ done · 🔜 next · ⏸ waiting on a decision from you
 - Full traceability: lot → batches → finished goods → orders and patients, and the reverse
   (recall lookup). Printable batch records, weighing sheets and labels.
 
-## Phase 6 — Clinic management ⏸ (privacy/HIPAA decision first)
+## Phase 6 — Clinic management ⏸ (built privacy-first; no real patient data until cleared)
+Decision so far: Supabase **free plan**, which has no Business Associate Agreement. So the clinic
+module will be built and tested with test data only, behind its own permission, and real patient
+records must not be entered on the live site until you're on a plan with a signed BAA (if HIPAA
+applies) or have confirmed it doesn't. Patient-facing wording uses "recommendation" and "care plan",
+never "prescription" or "diagnosis".
 Patients (linked to customers), private practitioner assignments, intake form builder, clinical
 notes and templates, care plans with versions, recommendations linked to formulas, progress
 tracking, private document storage with signed URLs, access-logged record views.

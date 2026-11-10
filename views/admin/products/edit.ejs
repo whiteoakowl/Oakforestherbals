@@ -24,6 +24,14 @@
         <div class="field"><span>Description</span><%- include('../partials/rte', { name: 'description_html', value: p.description_html }) %></div>
       </div>
 
+      <div class="card form-stack">
+        <h2>Product details</h2>
+        <p class="muted small">Shown on the product page in their own sections. Leave blank to hide.</p>
+        <label class="field"><span>Ingredients</span><textarea name="ingredients" rows="3" placeholder="Organic chamomile flower (Matricaria chamomilla), organic lemon balm leaf (Melissa officinalis)"><%= p.ingredients || '' %></textarea></label>
+        <label class="field"><span>Directions for use</span><textarea name="directions" rows="3"><%= p.directions || '' %></textarea></label>
+        <label class="field"><span>Warnings and cautions</span><textarea name="warnings" rows="3"><%= p.warnings || '' %></textarea></label>
+      </div>
+
       <div class="card">
         <h2>Media</h2>
         <div class="media-grid">
@@ -144,7 +152,15 @@
           <% for (const s of STATUSES) { %><option value="<%= s %>" <%= p.status === s ? 'selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option><% } %>
         </select>
         <p class="muted small mt-sm">Active products are visible on your online store. Drafts are hidden.</p>
+        <label class="field mt-sm"><span>Publish automatically on</span><input type="datetime-local" name="publish_at" value="<%= toDateTimeInput(p.publish_at) %>"><small class="muted">Times are UTC. A draft becomes active at this time.</small></label>
       </div>
+      <% if (product && can('costing.manage')) { %>
+      <div class="card">
+        <h2>Costing</h2>
+        <p class="small"><%= product.variants.filter((v) => v.cost !== null).length %> of <%= product.variants.length %> variant(s) have a cost.</p>
+        <a class="btn" href="/admin/costing/products/<%= product.id %>">Recipe and costs</a>
+      </div>
+      <% } %>
       <% if (product) { %>
       <div class="card">
         <h2>Insights</h2>

@@ -104,6 +104,15 @@ const DEFAULTS = {
     show_sale_badge: true,
     show_sold_out_badge: true,
   },
+  costing: {
+    labour_rate: 0, // cents per hour
+    default_waste_percent: 0,
+    default_overhead_percent: 0,
+  },
+  pos: {
+    tax_country: 'US',
+    tax_province: '',
+  },
   seo: {
     home_title: '',
     home_description: 'Small-batch organic herbal teas, tinctures and botanicals.',

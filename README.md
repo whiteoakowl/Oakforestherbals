@@ -90,6 +90,8 @@ Without `DATABASE_URL`, the store uses a built-in copy of Postgres saved in `dat
 - **Products** — list with status tabs, filters and bulk actions; editor with rich-text description, media, pricing with profit margin, inventory, shipping weight, options/variants, SEO; duplicate; CSV import and export; inventory screen for bulk stock updates
 - **Collections** — manual (pick and order products) or automated (rules on tag, type, vendor, title, price or stock)
 - **Customers** — segments (subscribers, repeat customers, prospects, account holders), detail with order history and lifetime spend, notes and tags, CSV export
+- **Costing** — materials (herbs, ingredients, packaging) priced per pack, per-product recipes with labour, waste and overhead, automatic cost roll-up and price-change impact, profitability by product and category
+- **Point of sale** — in-person sales with barcode search, cash/card/other, receipts and stock deduction
 - **Discounts** — percentage, fixed amount or free shipping; minimum subtotal, usage limits, one per customer, start/end dates
 - **Content** — pages, blog posts, file uploads, header/footer navigation menus with dropdowns
 - **Analytics** — sales breakdown, top products, top customers, discount usage
@@ -146,4 +148,4 @@ The store is growing into a full herbal business system — see `docs/ROADMAP.md
 
 ## Not yet included
 
-Compared with Shopify, these are not built: gift cards, product reviews, abandoned-checkout recovery emails, multiple currencies/languages, multi-location inventory, shipping label purchase, automatic (code-less) discounts and an app marketplace. Refunds are recorded in the store; money goes back through your payment provider's dashboard.
+Compared with Shopify, these are not built yet: gift cards, product reviews, abandoned-checkout recovery emails, multiple currencies/languages, multi-location inventory, shipping label purchase, automatic (code-less) discounts and an app marketplace. Refunds are recorded in the store; money goes back through your payment provider's dashboard.

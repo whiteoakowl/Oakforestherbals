@@ -2,7 +2,7 @@
 const express = require('express');
 const { get, all, run } = require('../db');
 const catalog = require('../catalog');
-const { buildCart } = require('../pricing');
+const { buildCart, priceListFor } = require('../pricing');
 const settings = require('../settings');
 const mailer = require('../mailer');
 const { flash } = require('../middleware');
@@ -127,7 +127,7 @@ router.get('/search/suggest.json', async (req, res) => {
 /* ---------- Cart ---------- */
 
 async function cartPayload(req, res) {
-  const cart = await buildCart(req.session.cart);
+  const cart = await buildCart(req.session.cart, { priceList: priceListFor(res.locals.customer) });
   return {
     item_count: cart.item_count,
     subtotal: cart.subtotal,
@@ -137,7 +137,7 @@ async function cartPayload(req, res) {
 }
 
 router.get('/cart', async (req, res) => {
-  const cart = await buildCart(req.session.cart);
+  const cart = await buildCart(req.session.cart, { priceList: priceListFor(res.locals.customer) });
   // Drop lines that are no longer purchasable so the session matches what we show.
   req.session.cart = cart.lines.map((l) => ({ variant_id: l.variant_id, quantity: l.quantity }));
   res.render('store/cart', { title: 'Your cart', cart, note: req.session.cartNote || '', settingsOrderNotes: settings.load('checkout').order_notes });
@@ -159,7 +159,7 @@ router.post('/cart/add', async (req, res) => {
   const cart = req.session.cart || [];
   const line = cart.find((l) => l.variant_id === variantId);
   if (line) line.quantity += quantity; else cart.push({ variant_id: variantId, quantity });
-  req.session.cart = (await buildCart(cart)).lines.map((l) => ({ variant_id: l.variant_id, quantity: l.quantity }));
+  req.session.cart = (await buildCart(cart, { priceList: priceListFor(res.locals.customer) })).lines.map((l) => ({ variant_id: l.variant_id, quantity: l.quantity }));
   if (wantsJson) return res.json(await cartPayload(req, res));
   flash(req, 'success', 'Added to your cart.');
   res.redirect('/cart');

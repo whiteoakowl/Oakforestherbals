@@ -4,7 +4,12 @@ const { get, all } = require('./db');
 const settings = require('./settings');
 const { isVariantAvailable, intArray } = require('./catalog');
 
-async function buildCart(items = []) {
+// Customer groups and the price list they buy from. Wholesale customers pay a variant's
+// wholesale price where one is set, and the retail price otherwise.
+const CUSTOMER_GROUPS = [['retail', 'Retail'], ['wholesale', 'Wholesale'], ['practitioner', 'Practitioner']];
+const priceListFor = (customer) => (customer && customer.customer_group === 'wholesale' ? 'wholesale' : 'retail');
+
+async function buildCart(items = [], { priceList = 'retail' } = {}) {
   const ids = items.map((i) => i.variant_id);
   const rows = ids.length ? await all(`SELECT v.*, p.title AS product_title, p.handle,
       (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position, id LIMIT 1) AS image
@@ -18,6 +23,8 @@ async function buildCart(items = []) {
     const max = variant.track_inventory && !variant.continue_selling ? Math.max(0, variant.inventory_qty) : 999;
     const quantity = Math.min(Math.max(1, item.quantity | 0), max);
     if (quantity < 1 || !isVariantAvailable(variant)) continue;
+    const wholesale = priceList === 'wholesale' && variant.wholesale_price !== null && variant.wholesale_price !== undefined;
+    const price = wholesale ? variant.wholesale_price : variant.price;
     lines.push({
       variant_id: variant.id,
       product_id: variant.product_id,
@@ -26,16 +33,18 @@ async function buildCart(items = []) {
       variant_title: variant.title === 'Default Title' ? '' : variant.title,
       sku: variant.sku,
       image: variant.image || '',
-      price: variant.price,
-      compare_at_price: variant.compare_at_price,
+      price,
+      compare_at_price: wholesale ? variant.price : variant.compare_at_price,
+      wholesale,
       quantity,
       max,
       taxable: !!variant.taxable,
       requires_shipping: !!variant.requires_shipping,
-      line_price: variant.price * quantity,
+      line_price: price * quantity,
     });
   }
   return {
+    price_list: priceList,
     lines,
     item_count: lines.reduce((s, l) => s + l.quantity, 0),
     subtotal: lines.reduce((s, l) => s + l.line_price, 0),
@@ -116,4 +125,4 @@ async function computeTotals(cart, { discount = null, shipping = null, address =
   return { subtotal, discount_total, shipping_total, tax_total, tax_name, tax_rate: rate, tax_included: !!taxes.prices_include_tax, total };
 }
 
-module.exports = { buildCart, validateDiscount, discountAmount, shippingOptions, taxRateFor, computeTotals };
+module.exports = { CUSTOMER_GROUPS, priceListFor, buildCart, validateDiscount, discountAmount, shippingOptions, taxRateFor, computeTotals };

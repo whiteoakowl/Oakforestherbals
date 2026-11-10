@@ -20,6 +20,7 @@ router.use((req, res, next) => {
 
 // Every staff member gets a home page; the sales dashboard needs analytics access.
 router.get('/', (req, res, next) => (res.locals.can('analytics.view') ? next() : res.render('admin/home-basic', { title: 'Home' })));
+router.use('/analytics/profitability', allow('costing.manage'), require('./profitability'));
 router.use('/analytics', allow('analytics.view'));
 router.use(require('./dashboard'));
 
@@ -28,6 +29,8 @@ router.use('/collections', allow('products.manage'), require('./collections'));
 router.use('/orders', allow('orders.view', 'orders.manage'), require('./orders'));
 router.use('/customers', allow('customers.view', 'customers.manage'), require('./customers'));
 router.use('/discounts', allow('discounts.manage'), require('./discounts'));
+router.use('/costing', allow('costing.manage'), require('./costing'));
+router.use('/pos', allow('pos.use'), require('./pos'));
 router.use('/content', allow('content.manage'), require('./content'));
 router.use('/themes', allow('themes.manage'), require('./theme'));
 router.use('/settings', require('./access'));

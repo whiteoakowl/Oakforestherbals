@@ -1,0 +1,112 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Point of sale' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card flush">
+        <form class="filter-bar" method="get" action="/admin/pos" role="search">
+          <input name="q" value="<%= q %>" placeholder="Search products, SKU, or scan a barcode" aria-label="Search products or scan a barcode" class="grow" autofocus>
+          <button class="btn">Search</button>
+        </form>
+        <% if (q && !results.length) { %><p class="pad muted">No active products match “<%= q %>”.</p><% } %>
+        <% if (!q) { %><p class="pad muted small">Search for a product, or scan its barcode — a single exact barcode match is added to the sale straight away.</p><% } %>
+        <% if (results.length) { %>
+        <div class="table-scroll"><table class="table">
+          <tbody>
+          <% for (const r of results) { const out = r.track_inventory && !r.continue_selling && r.inventory_qty <= 0; %>
+            <tr>
+              <td class="thumb-col"><% if (r.image) { %><img class="thumb" src="<%= r.image %>" alt=""><% } %></td>
+              <td><strong><%= r.product_title %></strong><% if (r.title !== 'Default Title') { %><div class="muted small"><%= r.title %></div><% } %>
+                <div class="muted small"><%= r.sku %><%= r.track_inventory ? ` · ${r.inventory_qty} in stock` : '' %></div></td>
+              <td class="num"><%= money(r.price) %></td>
+              <td class="num">
+                <% if (out) { %><span class="badge badge-critical">Sold out</span><% } else { %>
+                <form method="post" action="/admin/pos/add" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="variant_id" value="<%= r.id %>"><input type="hidden" name="q" value="<%= q %>"><button class="btn btn-sm">Add</button></form>
+                <% } %>
+              </td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table></div>
+        <% } %>
+      </div>
+
+      <div class="card form-stack">
+        <h2>Customer</h2>
+        <% if (customer) { %>
+          <p><strong><%= `${customer.first_name} ${customer.last_name}`.trim() || customer.email %></strong> <span class="muted small"><%= customer.email %></span>
+            <% if (customer.customer_group !== 'retail') { %><span class="badge badge-info"><%= customer.customer_group %></span><% } %></p>
+          <form method="post" action="/admin/pos/customer"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="customer_id" value=""><button class="btn btn-sm">Remove customer</button></form>
+        <% } else { %>
+          <form method="get" action="/admin/pos" class="row-gap inline-fields">
+            <% if (q) { %><input type="hidden" name="q" value="<%= q %>"><% } %>
+            <input name="customer_q" value="<%= cq %>" placeholder="Find by name, email or phone" aria-label="Find customer" class="grow"><button class="btn">Find</button>
+          </form>
+          <% if (cq && !customerResults.length) { %><p class="muted small">No customer found. You can still complete the sale as a walk-in.</p><% } %>
+          <% for (const c of customerResults) { %>
+            <form method="post" action="/admin/pos/customer" class="row-between">
+              <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="customer_id" value="<%= c.id %>">
+              <span><%= `${c.first_name} ${c.last_name}`.trim() || c.email %> <span class="muted small"><%= c.email %></span></span><button class="btn btn-sm">Select</button>
+            </form>
+          <% } %>
+          <p class="muted small">Optional. Choosing a customer adds the sale to their history; wholesale customers get wholesale prices.</p>
+        <% } %>
+      </div>
+    </div>
+
+    <div>
+      <div class="card form-stack">
+        <div class="row-between"><h2>Sale</h2>
+          <% if (cart.lines.length) { %><form method="post" action="/admin/pos/clear" data-confirm="Clear this sale?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Clear</button></form><% } %></div>
+        <% if (!cart.lines.length) { %><p class="muted">No items yet.</p><% } else { %>
+        <form method="post" action="/admin/pos/update" class="form-stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <table class="summary-table">
+            <% for (const l of cart.lines) { %>
+              <tr><td><%= l.title %><% if (l.variant_title) { %> <span class="muted small"><%= l.variant_title %></span><% } %><% if (l.wholesale) { %> <span class="badge badge-info">Wholesale</span><% } %>
+                <div class="muted small"><%= money(l.price) %> each</div></td>
+                <td><input class="qty-input pos-qty" name="qty[id<%= l.variant_id %>]" value="<%= l.quantity %>" inputmode="numeric" aria-label="Quantity of <%= l.title %>"></td>
+                <td class="num"><%= money(l.line_price) %></td>
+                <td><button class="link-plain small" name="remove" value="id<%= l.variant_id %>" aria-label="Remove <%= l.title %>">✕</button></td></tr>
+            <% } %>
+          </table>
+          <div class="right"><button class="btn btn-sm">Update quantities</button></div>
+        </form>
+        <form method="post" action="/admin/pos/discount" class="inline-fields">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input name="discount_code" value="<%= s.discount_code %>" placeholder="Discount code" aria-label="Discount code" class="grow"><button class="btn btn-sm"><%= s.discount_code ? 'Update' : 'Apply' %></button>
+        </form>
+        <% if (discountError) { %><p class="small critical-text"><%= discountError %></p><% } %>
+        <table class="summary-table">
+          <tr><td>Subtotal</td><td class="num"><%= money(totals.subtotal) %></td></tr>
+          <% if (totals.discount_total) { %><tr><td>Discount</td><td class="num">−<%= money(totals.discount_total) %></td></tr><% } %>
+          <tr><td><%= totals.tax_name %> (<%= totals.tax_rate %>%<%= totals.tax_included ? ', included' : '' %>)</td><td class="num"><%= money(totals.tax_total) %></td></tr>
+          <tr><td><strong>Total</strong></td><td class="num"><strong><%= money(totals.total) %></strong></td></tr>
+        </table>
+        <form method="post" action="/admin/pos/complete" class="form-stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <div class="field"><span>Payment</span>
+            <div class="radio-cards"><% for (const [k, label] of Object.entries(METHODS)) { %><label class="radio-card"><input type="radio" name="method" value="<%= k %>" <%= k === 'cash' ? 'checked' : '' %>> <%= label %></label><% } %></div>
+            <small class="muted">Card payments are taken on your own card terminal; this records the sale.</small>
+          </div>
+          <label class="field"><span>Cash received</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="tendered" inputmode="decimal" placeholder="<%= centsToInput(totals.total) %>"></div><small class="muted">Cash only. Change is shown on the receipt.</small></label>
+          <% if (!customer) { %><label class="field"><span>Email a receipt (optional)</span><input type="email" name="email" placeholder="customer@example.com"></label><% } %>
+          <label class="field"><span>Note</span><input name="note"></label>
+          <button class="btn btn-primary btn-block">Complete sale · <%= money(totals.total) %></button>
+        </form>
+        <% } %>
+      </div>
+      <form method="post" action="/admin/pos/settings" class="card form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h2>Sales tax location</h2>
+        <p class="muted small">In-person sales are taxed using your tax rates for this location.</p>
+        <div class="grid-2">
+          <label class="field"><span>Country</span><select name="tax_country" <%= can('settings.manage') ? '' : 'disabled' %>><% for (const [code, name] of COUNTRIES) { %><option value="<%= code %>" <%= code === posSettings.tax_country ? 'selected' : '' %>><%= name %></option><% } %></select></label>
+          <label class="field"><span>State / province code</span><input name="tax_province" value="<%= posSettings.tax_province %>" placeholder="e.g. OR" <%= can('settings.manage') ? '' : 'disabled' %>></label>
+        </div>
+        <% if (can('settings.manage')) { %><div class="right"><button class="btn btn-sm">Save</button></div><% } %>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

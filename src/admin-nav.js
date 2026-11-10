@@ -16,6 +16,7 @@ const SECTIONS = [
     label: 'Store',
     items: [
       { href: '/admin/orders', label: 'Orders', icon: 'orders', perm: 'orders.view' },
+      { href: '/admin/pos', label: 'Point of sale', icon: 'pos', perm: 'pos.use' },
       {
         href: '/admin/products', label: 'Products', icon: 'products', perm: 'products.manage',
         children: [
@@ -34,7 +35,14 @@ const SECTIONS = [
           { href: '/admin/content/navigation', label: 'Navigation' },
         ],
       },
-      { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', perm: 'analytics.view' },
+      {
+        href: '/admin/costing', label: 'Costing', icon: 'cost', perm: 'costing.manage',
+        children: [
+          { href: '/admin/costing', label: 'Materials', exact: true, match: /^\/admin\/costing\/(materials|products)\// },
+          { href: '/admin/analytics/profitability', label: 'Profitability' },
+        ],
+      },
+      { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', perm: 'analytics.view', exact: true },
       { href: '/admin/discounts', label: 'Discounts', icon: 'discounts', perm: 'discounts.manage' },
     ],
   },

@@ -1,0 +1,46 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Profitability', actions: `<a class="btn" href="/admin/analytics/profitability/export.csv?range=${range}">Export CSV</a>` }) %>
+  <form class="range-form" method="get">
+    <label class="visually-hidden" for="range">Period</label>
+    <select id="range" name="range" onchange="this.form.submit()"><% for (const [k, label] of Object.entries(RANGES)) { %><option value="<%= k %>" <%= k === range ? 'selected' : '' %>><%= label %></option><% } %></select>
+    <input type="hidden" name="sort" value="<%= sort %>"><noscript><button class="btn">Show</button></noscript>
+  </form>
+  <div class="grid-3 stat-row">
+    <div class="card"><div class="stat-label">Sales (before discounts)</div><div class="stat-value"><%= money(totals.revenue) %></div><div class="stat-sub muted small"><%= totals.units %> units</div></div>
+    <div class="card"><div class="stat-label">Cost of goods</div><div class="stat-value"><%= money(totals.cogs) %></div></div>
+    <div class="card"><div class="stat-label">Gross profit</div><div class="stat-value"><%= money(totals.profit) %></div><div class="stat-sub muted small"><%= totals.percent === null ? '' : totals.percent + '% margin' %></div></div>
+  </div>
+  <div class="card flush">
+    <div class="card-head pad"><h2>By category</h2></div>
+    <div class="table-scroll"><table class="table">
+      <thead><tr><th>Category</th><th class="num">Units</th><th class="num">Sales</th><th class="num">Cost of goods</th><th class="num">Gross profit</th><th class="num">Margin</th></tr></thead>
+      <tbody><% for (const c of cats) { %>
+        <tr><td><%= c.category %><% if (c.uncosted) { %><div class="muted small"><%= c.uncosted %> variant(s) without a cost</div><% } %></td>
+          <td class="num"><%= c.units %></td><td class="num"><%= money(c.revenue) %></td><td class="num"><%= money(c.cogs) %></td><td class="num"><%= money(c.profit) %></td><td class="num"><%= c.percent === null ? '—' : c.percent + '%' %></td></tr>
+      <% } %></tbody>
+    </table></div>
+  </div>
+  <div class="card flush">
+    <div class="card-head pad row-between"><h2>By product</h2>
+      <div class="tabs"><% for (const [k, label] of [['name', 'A–Z'], ['margin', 'Lowest margin'], ['profit', 'Most profit']]) { %><a class="tab <%= sort === k ? 'active' : '' %>" href="?range=<%= range %>&sort=<%= k %>"><%= label %></a><% } %></div></div>
+    <div class="table-scroll"><table class="table">
+      <thead><tr><th>Product</th><th class="num">Price</th><th class="num">Cost</th><th class="num">Retail margin</th><th class="num">Wholesale margin</th><th class="num">Units</th><th class="num">Gross profit</th></tr></thead>
+      <tbody><% for (const r of rows) { %>
+        <tr>
+          <td><a href="/admin/costing/products/<%= r.product_id %>#variant-<%= r.id %>"><%= r.product_title %></a><% if (r.title !== 'Default Title') { %> <span class="muted small"><%= r.title %></span><% } %>
+            <% if (r.estimated_units) { %><div class="muted small"><%= r.estimated_units %> unit(s) sold before costing — estimated at today's cost</div><% } %>
+            <% if (r.uncosted_units) { %><div class="muted small critical-text"><%= r.uncosted_units %> unit(s) sold with no cost recorded</div><% } %></td>
+          <td class="num"><%= money(r.price) %></td>
+          <td class="num"><% if (r.cost === null) { %><span class="muted">Not set</span><% } else { %><%= money(r.cost) %><% } %></td>
+          <td class="num <%= r.retail && r.retail.percent < 0 ? 'critical-text' : '' %>"><%= r.retail ? r.retail.percent + '%' : '—' %></td>
+          <td class="num"><%= r.wholesale ? r.wholesale.percent + '%' : '—' %></td>
+          <td class="num"><%= r.units %></td>
+          <td class="num"><%= money(r.profit) %></td>
+        </tr>
+      <% } %></tbody>
+    </table></div>
+  </div>
+  <p class="muted small">Sales here are list prices × units, before order-level discounts, shipping and tax. Cost of goods uses the cost recorded when each unit was sold.</p>
+</div>
+<%- include('../partials/footer') %>

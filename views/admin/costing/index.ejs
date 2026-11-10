@@ -1,0 +1,62 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Costing', actions: '<a class="btn btn-primary" href="/admin/costing/materials/new">Add material</a>' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card flush">
+        <div class="tabs pad-x">
+          <a class="tab <%= !showArchived ? 'active' : '' %>" href="/admin/costing">Materials</a>
+          <a class="tab <%= showArchived ? 'active' : '' %>" href="/admin/costing?archived=1">Archived</a>
+        </div>
+        <form class="filter-bar" method="get" role="search">
+          <% if (showArchived) { %><input type="hidden" name="archived" value="1"><% } %>
+          <input name="q" value="<%= q %>" placeholder="Search name, botanical name or supplier" aria-label="Search materials" class="grow">
+          <select name="kind" aria-label="Type"><option value="">All types</option>
+            <% for (const [k, label] of KINDS) { %><option value="<%= k %>" <%= k === kind ? 'selected' : '' %>><%= label %></option><% } %></select>
+          <button class="btn">Filter</button>
+        </form>
+        <% if (!materials.length) { %>
+          <div class="pad">
+            <p><strong><%= q || kind ? 'No materials match.' : 'No materials yet.' %></strong></p>
+            <p class="muted">Add the herbs, ingredients, bottles, caps, labels and packaging you buy, with what you pay per pack. Then open any product and choose <em>Costing</em> to build its recipe and get a calculated cost per unit.</p>
+            <a class="btn btn-primary" href="/admin/costing/materials/new">Add material</a>
+          </div>
+        <% } else { %>
+        <div class="table-scroll"><table class="table">
+          <thead><tr><th>Material</th><th>Type</th><th>Pack</th><th class="num">Pack cost</th><th class="num">Unit cost</th><th class="num">Used in</th></tr></thead>
+          <tbody>
+          <% for (const m of materials) { const per = costPerBase(m); const u = UNITS[m.pack_unit]; %>
+            <tr>
+              <td><a href="/admin/costing/materials/<%= m.id %>"><strong><%= m.name %></strong></a><% if (m.botanical_name) { %><div class="muted small"><em><%= m.botanical_name %></em></div><% } %></td>
+              <td class="small"><%= (KINDS.find(([k]) => k === m.kind) || [, m.kind])[1] %></td>
+              <td class="small nowrap"><%= Number(m.pack_size) %> <%= u.label %></td>
+              <td class="num"><%= money(m.pack_cost) %></td>
+              <td class="num small nowrap"><%= u.type === 'count' ? money(Math.round(per)) + ' each' : u.type === 'mass' ? money(Math.round(per * 100)) + ' / 100 g' : money(Math.round(per * 100)) + ' / 100 ml' %></td>
+              <td class="num"><%= m.used_in %></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table></div>
+        <% } %>
+      </div>
+      <%- include('../partials/pagination', { pager }) %>
+    </div>
+    <div>
+      <form class="card form-stack" method="post" action="/admin/costing/settings">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h2>Cost settings</h2>
+        <p class="muted small">Store-wide defaults. Each product variant can override waste and overhead.</p>
+        <label class="field"><span>Labour rate per hour</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="labour_rate" inputmode="decimal" value="<%= centsToInput(s.labour_rate) %>" placeholder="0.00"></div></label>
+        <label class="field"><span>Default waste %</span><input name="default_waste_percent" inputmode="decimal" value="<%= s.default_waste_percent %>"><small class="muted">Extra material lost in production, added on top of material cost.</small></label>
+        <label class="field"><span>Default overhead %</span><input name="default_overhead_percent" inputmode="decimal" value="<%= s.default_overhead_percent %>"><small class="muted">Rent, utilities, equipment — added on top of materials, waste, labour and other costs.</small></label>
+        <button class="btn btn-primary">Save and recalculate</button>
+      </form>
+      <div class="card">
+        <h2>Costed products</h2>
+        <p class="small"><strong><%= costed %></strong> variant(s) have a recipe.</p>
+        <p class="small"><a href="/admin/analytics/profitability">See profitability →</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased — Phase 3: store management and product costing
+
+### Added
+- **Costing** (Store → Costing): a materials list for herbs, ingredients, bottles, caps, labels and
+  packaging, priced per pack in g, kg, oz, lb, ml, L, fl oz or each, with price history.
+- **Product recipes**: from any product, choose *Recipe and costs* to list what one unit uses, plus
+  labour minutes, waste %, overhead % and other costs. The calculated cost per unit feeds the
+  product's existing "cost per item" and margin.
+- **Price change impact**: when a material's price changes, every product using it is
+  recalculated and the page shows old cost, new cost and new margin for each.
+- **Store cost settings**: labour rate per hour, default waste % and default overhead %.
+- **Profitability report** (Costing → Profitability): margin, units sold, cost of goods and gross
+  profit by product and by category, for 30/90/365 days or all time, with CSV export. Orders now
+  record each item's cost at the time of sale.
+- **Wholesale pricing**: set a wholesale price per variant and put customers in the Wholesale,
+  Practitioner or Retail group. Wholesale customers pay wholesale prices in the cart, at checkout
+  and on manual orders. New customer segments for wholesale and practitioners.
+- **Product details**: ingredients, directions for use and cautions, shown on the product page.
+- **Scheduled publishing**: a draft can be set to go live at a chosen time.
+- **Point of sale** (Store → Point of sale): search or scan barcodes, attach a customer or sell to a
+  walk-in, discount codes, sales tax for your shop's location, cash (with change), card terminal or
+  other payment, and a printable receipt. Sales are paid, fulfilled orders that deduct stock.
+- New permissions: *Costing* and *Point of sale*, granted to the store roles (and costing to the
+  inventory and apothecary roles; point of sale to customer service).
+
+### Security
+- The sign-in and registration throttle now works across all Netlify instances (it used to be
+  per instance).
+
+
 ## Unreleased — Phase 2: core infrastructure
 
 ### Security

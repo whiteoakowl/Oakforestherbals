@@ -46,46 +46,51 @@ async function upsertCustomer({ email, first_name, last_name, phone, accepts_mar
  * Places an order from a priced cart. Decrements inventory, increments discount usage
  * and records the customer. Throws (status 409) if stock ran out since the cart was built.
  */
-async function createOrder({ cart, totals, contact, shippingAddress, billingAddress, shipping, discount, payment, note, customerId }) {
+async function createOrder({ cart, totals, contact, shippingAddress, billingAddress, shipping, discount, payment, note, customerId, source = 'web' }) {
   const orderId = await tx(async () => {
     await get('SELECT pg_advisory_xact_lock(72001)'); // serializes order-number assignment
+    const costs = new Map();
     for (const line of cart.lines) {
       // FOR UPDATE holds the row so two checkouts can't both take the last unit.
       const v = await get('SELECT * FROM variants WHERE id = ? FOR UPDATE', line.variant_id);
+      costs.set(line.variant_id, v.cost);
       if (v.track_inventory && !v.continue_selling && v.inventory_qty < line.quantity) {
         throw Object.assign(new Error(`Only ${Math.max(0, v.inventory_qty)} of ${line.title} left in stock.`), { status: 409 });
       }
     }
-    const cid = customerId || await upsertCustomer({
+    // Walk-in point-of-sale customers may give no email; their order has no customer record.
+    const cid = customerId || (!contact.email ? null : await upsertCustomer({
       email: contact.email,
       first_name: shippingAddress.first_name,
       last_name: shippingAddress.last_name,
       phone: contact.phone || shippingAddress.phone,
       accepts_marketing: contact.accepts_marketing,
-    });
+    }));
     const last = await get('SELECT MAX(number) AS n FROM orders');
     const number = Math.max(1000, last.n || 1000) + 1;
     const id = await insert(`INSERT INTO orders (number, token, customer_id, email, phone, financial_status, currency, subtotal,
         discount_total, shipping_total, tax_total, total, discount_code, shipping_method, shipping_address,
-        billing_address, payment_method, note) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        billing_address, payment_method, note, source) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     number, token(16), cid, contact.email, contact.phone || '', settings.load('store').currency,
     totals.subtotal, totals.discount_total, totals.shipping_total, totals.tax_total, totals.total,
     discount ? discount.code : '', shipping ? shipping.name : '', JSON.stringify(shippingAddress || {}),
-    JSON.stringify(billingAddress || shippingAddress || {}), payment.name, note || '');
+    JSON.stringify(billingAddress || shippingAddress || {}), payment.name, note || '', source);
     for (const line of cart.lines) {
-      await run(`INSERT INTO order_items (order_id, product_id, variant_id, title, variant_title, sku, image, price, quantity, requires_shipping)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, line.product_id, line.variant_id, line.title, line.variant_title,
-      line.sku, line.image, line.price, line.quantity, line.requires_shipping ? 1 : 0);
+      await run(`INSERT INTO order_items (order_id, product_id, variant_id, title, variant_title, sku, image, price, quantity, requires_shipping, unit_cost)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, line.product_id, line.variant_id, line.title, line.variant_title,
+      line.sku, line.image, line.price, line.quantity, line.requires_shipping ? 1 : 0, costs.get(line.variant_id) ?? null);
       await run('UPDATE variants SET inventory_qty = inventory_qty - ? WHERE id = ? AND track_inventory = 1', line.quantity, line.variant_id);
     }
     if (discount) await run('UPDATE discounts SET used_count = used_count + 1 WHERE id = ?', discount.id);
     if (!cart.requires_shipping) await run("UPDATE orders SET fulfillment_status = 'fulfilled' WHERE id = ?", id);
-    await addEvent(id, `Order placed by ${contact.email} using ${payment.name}.`);
+    await addEvent(id, source === 'pos'
+      ? `In-person sale${contact.email ? ` to ${contact.email}` : ''} paid by ${payment.name}.`
+      : `Order placed by ${contact.email} using ${payment.name}.`);
     return id;
   });
 
   const order = await orderById(orderId);
-  await mailer.notify('order_confirmation', order.email, `Order ${order.name} confirmed`, 'order-confirmation', { order });
+  if (order.email) await mailer.notify('order_confirmation', order.email, `Order ${order.name} confirmed`, 'order-confirmation', { order });
   const staffEmail = settings.load('notifications').staff_order_email;
   if (staffEmail) await mailer.notify(null, staffEmail, `[${settings.load('store').name}] New order ${order.name}`, 'staff-order', { order });
   return order;

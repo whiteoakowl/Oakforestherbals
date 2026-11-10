@@ -172,6 +172,14 @@ function variantFields(src = {}, fallback = {}) {
 // A stored variant expressed the way the form posts it, used when a row was not submitted.
 const asInput = (v) => ({ ...v, price: centsToInput(v.price), compare_at_price: centsToInput(v.compare_at_price), cost: centsToInput(v.cost) });
 
+// datetime-local input (UTC) -> ISO timestamp, or null.
+function publishAt(input) {
+  const s = String(input || '').trim();
+  if (!s) return null;
+  const d = new Date(/Z|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 async function saveProduct(id, body, files) {
   const uploaded = await saveFiles(files); // upload before the transaction so it isn't held open
   const title = String(body.title || '').trim() || 'Untitled product';
@@ -191,13 +199,14 @@ async function saveProduct(id, body, files) {
     const handle = await uniqueHandle('products', body.handle || title, id || 0);
     const values = [title, handle, String(body.description_html || ''), String(body.vendor || '').trim(),
       String(body.product_type || '').trim(), parseTags(body.tags).join(', '), status,
-      JSON.stringify(options.map((o) => o.name)), String(body.seo_title || ''), String(body.seo_description || '')];
+      JSON.stringify(options.map((o) => o.name)), String(body.seo_title || ''), String(body.seo_description || ''),
+      String(body.ingredients || ''), String(body.directions || ''), String(body.warnings || ''), publishAt(body.publish_at)];
     if (id) {
       await run(`UPDATE products SET title = ?, handle = ?, description_html = ?, vendor = ?, product_type = ?, tags = ?, status = ?,
-        options = ?, seo_title = ?, seo_description = ?, updated_at = now() WHERE id = ?`, ...values, id);
+        options = ?, seo_title = ?, seo_description = ?, ingredients = ?, directions = ?, warnings = ?, publish_at = ?, updated_at = now() WHERE id = ?`, ...values, id);
     } else {
-      id = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...values);
+      id = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description,
+        ingredients, directions, warnings, publish_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...values);
     }
 
     // Variants: one per option combination, keeping existing rows whose values still match.
@@ -272,9 +281,9 @@ router.post('/:id/duplicate', async (req, res, next) => {
   const p = await catalog.productById(toInt(req.params.id));
   if (!p) return next();
   const id = await tx(async () => {
-    const newId = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description)
-      VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)`, `Copy of ${p.title}`, await uniqueHandle('products', `${p.handle}-copy`),
-    p.description_html, p.vendor, p.product_type, p.tags, JSON.stringify(p.options), p.seo_title, p.seo_description);
+    const newId = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description,
+      ingredients, directions, warnings) VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`, `Copy of ${p.title}`, await uniqueHandle('products', `${p.handle}-copy`),
+    p.description_html, p.vendor, p.product_type, p.tags, JSON.stringify(p.options), p.seo_title, p.seo_description, p.ingredients || '', p.directions || '', p.warnings || '');
     for (const v of p.variants) {
       await run(`INSERT INTO variants (product_id, title, option1, option2, option3, sku, barcode, price, compare_at_price, cost, inventory_qty,
         track_inventory, continue_selling, weight_grams, requires_shipping, taxable, position) VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,

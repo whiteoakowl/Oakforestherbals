@@ -1,6 +1,6 @@
 'use strict';
 // Read-side catalog helpers shared by the storefront and admin.
-const { get, all } = require('./db');
+const { get, all, run } = require('./db');
 
 // Postgres array literal for `= ANY(?::int[])`, which both database drivers accept as text.
 const intArray = (ids) => `{${ids.map((id) => Number(id) | 0).join(',')}}`;
@@ -135,7 +135,13 @@ async function menus() {
   return Object.fromEntries(rows.map((r) => [r.handle, JSON.parse(r.items || '[]')]));
 }
 
+// Drafts whose scheduled publish time has passed become active. Returns how many went live.
+async function publishScheduled() {
+  return (await run("UPDATE products SET status = 'active', publish_at = NULL, updated_at = now() WHERE status = 'draft' AND publish_at IS NOT NULL AND publish_at <= now()")).changes;
+}
+
 module.exports = {
+  publishScheduled,
   hydrate, hydrateMany, intArray, isVariantAvailable, productByHandle, productById, activeProducts,
   collectionProducts, collectionByHandle, sortProducts, ruleMatches, menus, SORTS,
 };

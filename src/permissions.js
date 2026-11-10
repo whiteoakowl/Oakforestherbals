@@ -15,6 +15,8 @@ const PERMISSIONS = [
   ['customers.view', 'Store', 'View customers', 0],
   ['customers.manage', 'Store', 'Create, edit and delete customers', 0],
   ['discounts.manage', 'Store', 'Manage discount codes', 0],
+  ['costing.manage', 'Store', 'Manage materials, product costs, wholesale prices and see profitability', 0],
+  ['pos.use', 'Store', 'Take in-person sales at the point of sale', 0],
   ['content.manage', 'Online store', 'Manage pages, blog posts, files and navigation', 0],
   ['themes.manage', 'Online store', 'Edit the storefront theme', 0],
   ['settings.manage', 'Administration', 'Store settings: payments, checkout, shipping, taxes, notifications, policies, preferences', 0],
@@ -23,7 +25,7 @@ const PERMISSIONS = [
 ];
 
 const STORE_ALL = ['analytics.view', 'orders.view', 'orders.manage', 'products.manage', 'customers.view', 'customers.manage',
-  'discounts.manage', 'content.manage', 'themes.manage'];
+  'discounts.manage', 'content.manage', 'themes.manage', 'costing.manage', 'pos.use'];
 
 // System roles and the permissions they start with. Permissions added in later releases are
 // granted to these roles once, when they first appear; after that the owner's edits stand.
@@ -32,10 +34,10 @@ const ROLE_DEFAULTS = {
   administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view'],
   clinic_manager: [],
   practitioner: [],
-  apothecary_manager: [],
-  inventory_manager: ['products.manage'],
+  apothecary_manager: ['costing.manage'],
+  inventory_manager: ['products.manage', 'costing.manage'],
   store_manager: STORE_ALL,
-  customer_service: ['orders.view', 'orders.manage', 'customers.view', 'customers.manage'],
+  customer_service: ['orders.view', 'orders.manage', 'customers.view', 'customers.manage', 'pos.use'],
 };
 
 const SYSTEM_ROLES = [

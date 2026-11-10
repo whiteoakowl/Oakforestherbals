@@ -84,7 +84,8 @@ router.post('/new', async (req, res) => {
     flash(req, 'error', 'Add at least one product and a customer email.');
     return res.redirect('/admin/orders/new');
   }
-  const cart = await pricing.buildCart(lines.map((l) => ({ variant_id: toInt(l.variant_id), quantity: toInt(l.quantity) })));
+  const existingCustomer = await get('SELECT customer_group FROM customers WHERE email = ?', email);
+  const cart = await pricing.buildCart(lines.map((l) => ({ variant_id: toInt(l.variant_id), quantity: toInt(l.quantity) })), { priceList: pricing.priceListFor(existingCustomer) });
   const fields = ['first_name', 'last_name', 'company', 'address1', 'address2', 'city', 'province', 'zip', 'country', 'phone'];
   const address = Object.fromEntries(fields.map((f) => [f, String(req.body[f] || '').trim()]));
   const shipping = { name: String(req.body.shipping_name || 'Custom shipping'), price: parseMoney(req.body.shipping_price) || 0 };
@@ -98,6 +99,7 @@ router.post('/new', async (req, res) => {
       shippingAddress: address, billingAddress: address,
       payment: { name: req.body.mark_paid ? 'Manual (paid)' : 'Manual (invoice)' },
       note: String(req.body.note || ''),
+      source: 'admin',
     });
   } catch (err) {
     if (err.status !== 409) throw err;

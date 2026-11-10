@@ -1,0 +1,68 @@
+<%- include('../partials/header') %>
+<% const m = material || { name: '', botanical_name: '', kind: 'herb', pack_size: 1, pack_unit: 'lb', pack_cost: null, supplier: '', supplier_sku: '', notes: '', archived: 0 }; %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: material ? material.name : 'Add material', backHref: '/admin/costing', badges: material && material.archived ? [['Archived', 'default']] : [] }) %>
+  <% if (impact && impact.length) { %>
+    <div class="card flush">
+      <div class="card-head pad"><h2>Cost change impact</h2></div>
+      <div class="table-scroll"><table class="table">
+        <thead><tr><th>Product</th><th class="num">Old cost</th><th class="num">New cost</th><th class="num">Change</th><th class="num">Margin now</th></tr></thead>
+        <tbody>
+        <% for (const r of impact) { const mg = margin(r.price, r.after); %>
+          <tr>
+            <td><a href="/admin/costing/products/<%= r.product_id %>#variant-<%= r.id %>"><%= r.product_title %></a><% if (r.title !== 'Default Title') { %> <span class="muted small"><%= r.title %></span><% } %>
+              <% if (!r.applied) { %><div class="muted small">Calculated <%= money(r.calculated || 0) %>; manual cost kept</div><% } %></td>
+            <td class="num"><%= r.before === null ? '—' : money(r.before) %></td>
+            <td class="num"><%= r.after === null ? '—' : money(r.after) %></td>
+            <td class="num <%= r.after > r.before ? 'critical-text' : '' %>"><%= r.before === null || r.after === null ? '—' : (r.after >= r.before ? '+' : '−') + money(Math.abs(r.after - r.before)) %></td>
+            <td class="num"><%= mg ? mg.percent + '%' : '—' %></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table></div>
+    </div>
+  <% } %>
+  <form method="post" action="<%= material ? `/admin/costing/materials/${material.id}` : '/admin/costing/materials/new' %>" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="grid-2">
+      <label class="field"><span>Name</span><input name="name" value="<%= m.name %>" required placeholder="Chamomile flower"></label>
+      <label class="field"><span>Botanical name</span><input name="botanical_name" value="<%= m.botanical_name %>" placeholder="Matricaria chamomilla"></label>
+    </div>
+    <label class="field"><span>Type</span><select name="kind"><% for (const [k, label] of KINDS) { %><option value="<%= k %>" <%= k === m.kind ? 'selected' : '' %>><%= label %></option><% } %></select></label>
+    <div class="grid-3">
+      <label class="field"><span>Pack size</span><input name="pack_size" inputmode="decimal" value="<%= m.pack_size %>" required></label>
+      <label class="field"><span>Unit</span><select name="pack_unit"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= k === m.pack_unit ? 'selected' : '' %>><%= u.label %> (<%= u.type %>)</option><% } %></select></label>
+      <label class="field"><span>Pack cost</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="pack_cost" inputmode="decimal" value="<%= centsToInput(m.pack_cost) %>" required placeholder="0.00"></div></label>
+    </div>
+    <p class="muted small">What you pay for one pack, e.g. 1 lb for <%= store.currency_symbol %>24.00, or 100 each for <%= store.currency_symbol %>45.00. Include shipping or duties you pay on it if you want them in product costs.</p>
+    <div class="grid-2">
+      <label class="field"><span>Supplier</span><input name="supplier" value="<%= m.supplier %>"></label>
+      <label class="field"><span>Supplier product code</span><input name="supplier_sku" value="<%= m.supplier_sku %>"></label>
+    </div>
+    <label class="field"><span>Notes</span><textarea name="notes" rows="2"><%= m.notes %></textarea></label>
+    <div class="right"><button class="btn btn-primary"><%= material ? 'Save' : 'Add material' %></button></div>
+  </form>
+  <% if (material) { %>
+    <div class="card flush">
+      <div class="card-head pad"><h2>Used in (<%= usedIn.length %>)</h2></div>
+      <% if (!usedIn.length) { %><p class="pad muted small">Not in any product recipe yet.</p><% } else { %>
+      <table class="table"><thead><tr><th>Product</th><th class="num">Cost</th><th class="num">Price</th><th class="num">Margin</th></tr></thead><tbody>
+        <% for (const v of usedIn) { const mg = margin(v.price, v.cost); %>
+          <tr><td><a href="/admin/costing/products/<%= v.product_id %>#variant-<%= v.id %>"><%= v.product_title %></a><% if (v.title !== 'Default Title') { %> <span class="muted small"><%= v.title %></span><% } %></td>
+            <td class="num"><%= v.cost === null ? '—' : money(v.cost) %></td><td class="num"><%= money(v.price) %></td><td class="num"><%= mg ? mg.percent + '%' : '—' %></td></tr>
+        <% } %>
+      </tbody></table><% } %>
+    </div>
+    <div class="card flush">
+      <div class="card-head pad"><h2>Price history</h2></div>
+      <table class="table"><thead><tr><th>When</th><th>Pack</th><th class="num">Cost</th><th>By</th></tr></thead><tbody>
+        <% for (const h of history) { %><tr><td class="small"><%= formatDate(h.created_at, true) %></td><td class="small"><%= h.pack_size %> <%= UNITS[h.pack_unit] ? UNITS[h.pack_unit].label : h.pack_unit %></td><td class="num"><%= money(h.pack_cost) %></td><td class="small"><%= h.changed_by %></td></tr><% } %>
+      </tbody></table>
+    </div>
+    <div class="row-between">
+      <form method="post" action="/admin/costing/materials/<%= material.id %>/archive"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn"><%= material.archived ? 'Restore' : 'Archive' %></button></form>
+      <% if (!usedIn.length) { %><form method="post" action="/admin/costing/materials/<%= material.id %>/delete" data-confirm="Delete <%= material.name %>? This can't be undone."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-critical">Delete</button></form><% } %>
+    </div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

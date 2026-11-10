@@ -37,6 +37,21 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Scheduled publishing: drafts whose publish time has passed go live. There is no long-running
+// process on Netlify, so this runs on incoming requests, at most once a minute per instance.
+let lastPublishSweep = 0;
+app.use(async (req, res, next) => {
+  if (Date.now() - lastPublishSweep > 60 * 1000) {
+    lastPublishSweep = Date.now();
+    try {
+      await require('./catalog').publishScheduled();
+    } catch (err) {
+      console.error('scheduled publishing failed', err.message);
+    }
+  }
+  next();
+});
+
 app.use('/webhooks', require('./routes/webhooks'));
 
 // SESSION_SECRET if set; otherwise derived from DATABASE_URL (already a secret), or a local file.

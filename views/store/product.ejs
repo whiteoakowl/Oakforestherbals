@@ -60,6 +60,13 @@
       </form>
 
       <div class="rte product-description"><%- product.description_html %></div>
+      <% for (const [field, label] of [['ingredients', 'Ingredients'], ['directions', 'Directions for use'], ['warnings', 'Cautions']]) { if (!product[field]) continue; %>
+        <details class="accordion" <%= field === 'warnings' ? 'open' : '' %>>
+          <summary><%= label %></summary>
+          <div class="rte product-<%= field %>"><% for (const para of product[field].split(/\n\s*\n/)) { %><p><%= para %></p><% } %></div>
+        </details>
+      <% } %>
+      <% if (customer && customer.customer_group === 'wholesale') { %><p class="small muted">Your wholesale prices are applied in your cart.</p><% } %>
       <details class="accordion">
         <summary>Shipping &amp; returns</summary>
         <div class="rte">

@@ -124,18 +124,31 @@ async function trackView(req, res, next) {
   next();
 }
 
-// Naive in-memory login throttle: 10 attempts per 15 minutes per IP + scope.
-const attempts = new Map();
+// Login/registration throttle: 10 attempts per 15 minutes per IP and scope. Stored in Postgres so
+// every serverless instance sees the same count. Fails open (with a log line) if the table is
+// unreachable, so a database hiccup can't lock everyone out.
+const THROTTLE_WINDOW = 15 * 60 * 1000;
+const THROTTLE_LIMIT = 10;
+async function hitThrottle(key, now = Date.now()) {
+  const row = await get(`INSERT INTO login_attempts (key, window_start, count) VALUES (?, ?, 1)
+    ON CONFLICT (key) DO UPDATE SET
+      count = CASE WHEN login_attempts.window_start < ? THEN 1 ELSE login_attempts.count + 1 END,
+      window_start = CASE WHEN login_attempts.window_start < ? THEN EXCLUDED.window_start ELSE login_attempts.window_start END
+    RETURNING count`, key, now, now - THROTTLE_WINDOW, now - THROTTLE_WINDOW);
+  if (Math.random() < 0.02) await run('DELETE FROM login_attempts WHERE window_start < ?', now - THROTTLE_WINDOW);
+  return row.count;
+}
+
 function throttle(scope) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (req.method !== 'POST') return next();
-    const key = `${scope}:${req.ip}`;
-    const now = Date.now();
-    const entry = attempts.get(key) || { count: 0, reset: now + 15 * 60 * 1000 };
-    if (now > entry.reset) { entry.count = 0; entry.reset = now + 15 * 60 * 1000; }
-    entry.count++;
-    attempts.set(key, entry);
-    if (entry.count > 10) return res.status(429).send('Too many attempts. Please wait a few minutes and try again.');
+    let count = 0;
+    try {
+      count = await hitThrottle(`${scope}:${req.ip}`);
+    } catch (err) {
+      console.error('throttle unavailable', err.message);
+    }
+    if (count > THROTTLE_LIMIT) return res.status(429).send('Too many attempts. Please wait a few minutes and try again.');
     next();
   };
 }

@@ -23,7 +23,7 @@ function state(req) {
 // Everything a checkout step needs to render its order summary.
 async function context(req) {
   const co = state(req);
-  const cart = await pricing.buildCart(req.session.cart);
+  const cart = await pricing.buildCart(req.session.cart, { priceList: pricing.priceListFor(req.res.locals.customer) });
   let discount = null;
   let discountError = '';
   if (co.discount_code) {
@@ -190,7 +190,7 @@ router.post('/discount', async (req, res) => {
   if (req.body.remove) {
     co.discount_code = '';
   } else {
-    const cart = await pricing.buildCart(req.session.cart);
+    const cart = await pricing.buildCart(req.session.cart, { priceList: pricing.priceListFor(res.locals.customer) });
     const result = await pricing.validateDiscount(req.body.code, cart, co.email);
     if (result.discount) {
       co.discount_code = result.discount.code;

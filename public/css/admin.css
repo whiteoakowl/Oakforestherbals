@@ -399,3 +399,6 @@ address { font-style: normal; line-height: 1.6; margin-bottom: 8px; }
 .role-form { display: inline-flex; gap: 6px; align-items: center; }
 .role-form select { width: auto; max-width: 180px; }
 .topbar-search-spacer { flex: 1; }
+
+/* Point of sale */
+.pos-qty { width: 56px; text-align: center; }

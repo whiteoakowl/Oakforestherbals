@@ -3,7 +3,7 @@
   <%- include('../partials/page-header', { heading: 'Customers', actions: '<a class="btn" href="/admin/customers/export.csv">Export</a> <a class="btn btn-primary" href="/admin/customers/new">Add customer</a>' }) %>
   <div class="card flush">
     <div class="tabs">
-      <% for (const [k, l] of [['', 'All customers'], ['subscribers', 'Email subscribers'], ['repeat', 'Repeat customers'], ['prospects', 'Prospects'], ['accounts', 'With accounts']]) { %>
+      <% for (const [k, l] of [['', 'All customers'], ['subscribers', 'Email subscribers'], ['repeat', 'Repeat customers'], ['prospects', 'Prospects'], ['accounts', 'With accounts'], ['wholesale', 'Wholesale'], ['practitioner', 'Practitioners']]) { %>
         <a href="?segment=<%= k %>" class="tab <%= segment === k ? 'active' : '' %>"><%= l %></a>
       <% } %>
     </div>
