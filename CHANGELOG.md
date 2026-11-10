@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased — Phases 6–7: clinic, patient portal and education
+
+### Added
+- **Form builder** (Clinic → Forms): intake, health history, lifestyle, digestive, stress, sleep,
+  follow-up, consent and custom forms with required and conditional questions, file uploads and
+  typed signatures; starter templates; versions. Send a form to a patient; their answers arrive
+  encrypted in their record for review.
+- **Care plans**: goals, overview and items — herbal recommendations, approved formulas only,
+  products the patient can buy, supplements, nutrition, diet, lifestyle, routines, lessons,
+  resources, recipes, checklists, follow-ups and assessments — with dose, frequency, timing,
+  duration, preparation and cautions. Shared when ready; previous versions kept; printable.
+- **Progress tracking**: patient journal, symptom and wellness scores with trend lines, task
+  completion, and practitioner progress reviews.
+- **Secure messages** between patients and their practitioners; emails only say a message is waiting.
+- **Clinic inbox**: unread messages, forms to review, plan reviews due, and your unsigned notes.
+- **Note templates**, and **document sharing** with the patient.
+- **Education** (Clinic → Education): lessons, information sheets, guides (PDF/Word uploads),
+  recipes, preparation instructions, YouTube/Vimeo videos, quizzes and courses; assign to patients
+  directly or through a care plan; track reading, completion and quiz scores.
+- **My clinic** in the customer account: forms to fill in, shared care plans with daily tasks,
+  products from the plan straight to the cart, learning centre, wellness journal, secure messages,
+  and documents (shared with them, or uploaded by them). Patients see only their own, shared
+  information; clinical notes are never shown. Every portal view and change is audited.
+- Stripe and SMTP secrets can now come from Netlify environment variables (`STRIPE_SECRET_KEY`,
+  `STRIPE_WEBHOOK_SECRET`, `SMTP_PASS`), overriding values stored in the database.
+
+
 ## Unreleased — Phase 5: apothecary, formulas and manufacturing
 
 ### Added

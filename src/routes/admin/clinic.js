@@ -5,6 +5,7 @@
 const express = require('express');
 const { get, all, run, insert, tx } = require('../../db');
 const clinic = require('../../clinic');
+const clinic2 = require('../../clinic2');
 const vault = require('../../vault');
 const audit = require('../../audit');
 const storage = require('../../storage');
@@ -21,7 +22,7 @@ router.use((req, res, next) => {
   if (!vault.configured()) return res.status(503).render('admin/clinic/locked', { title: 'Clinic records locked' });
   Object.assign(res.locals, {
     HEALTH_CATEGORIES: clinic.HEALTH_CATEGORIES, NOTE_KINDS: clinic.NOTE_KINDS, SOAP_FIELDS: clinic.SOAP_FIELDS,
-    DOCUMENT_KINDS: clinic.DOCUMENT_KINDS, age: clinic.age, ymd: clinic.ymd,
+    DOCUMENT_KINDS: clinic.DOCUMENT_KINDS, age: clinic.age, ymd: clinic.ymd, ITEM_KINDS: clinic2.ITEM_KINDS, FIELD_TYPES: clinic2.FIELD_TYPES, visibleField: clinic2.visible,
   });
   next();
 });
@@ -114,7 +115,7 @@ router.post('/patients/new', requireManage, async (req, res) => {
 
 /* ---------- Record ---------- */
 
-const TABS = ['overview', 'health', 'notes', 'documents', 'timeline'];
+const TABS = ['overview', 'health', 'notes', 'forms', 'plans', 'progress', 'learning', 'messages', 'documents', 'timeline'];
 
 router.get('/patients/:id', patientParam, async (req, res) => {
   const tab = TABS.includes(req.query.tab) ? req.query.tab : 'overview';
@@ -124,6 +125,39 @@ router.get('/patients/:id', patientParam, async (req, res) => {
   ]);
   const extra = {};
   if (tab === 'timeline') extra.events = await clinic.timeline(p);
+  if (tab === 'forms') {
+    extra.assignments = await all(`SELECT a.*, f.name FROM form_assignments a JOIN intake_forms f ON f.id = a.form_id WHERE a.patient_id = ? ORDER BY a.id DESC`, p.id);
+    extra.submissionsList = await clinic2.submissions(p.id);
+    extra.publishedForms = await all("SELECT id, name FROM intake_forms WHERE status = 'published' ORDER BY name");
+  }
+  if (tab === 'plans') {
+    extra.plansList = await clinic2.plans(p.id);
+    const planId = toInt(req.query.plan) || (extra.plansList[0] && extra.plansList[0].id);
+    extra.activePlan = planId ? await clinic2.plan(planId, p.id) : null;
+    if (extra.activePlan) extra.planProgress = clinic2.progress(extra.activePlan);
+    extra.planOptions = {
+      formulas: await all("SELECT id, name FROM formulas WHERE status = 'approved' ORDER BY lower(name)"),
+      variants: await all("SELECT v.id, v.title, p.title AS product_title FROM variants v JOIN products p ON p.id = v.product_id WHERE p.status = 'active' ORDER BY lower(p.title), v.position"),
+      herbs: await all("SELECT id, common_name, latin_name FROM herbs WHERE status = 'published' ORDER BY lower(common_name)"),
+      lessons: await all("SELECT id, title FROM lessons WHERE status = 'published' ORDER BY lower(title)"),
+    };
+  }
+  if (tab === 'progress') {
+    extra.logList = await clinic2.logs(p.id);
+    extra.logSeries = clinic2.series(extra.logList);
+  }
+  if (tab === 'learning') {
+    extra.lessonsAssigned = await clinic2.assignedLessons(p.id);
+    extra.lessonOptions = await all("SELECT id, title, kind FROM lessons WHERE status = 'published' ORDER BY lower(title)");
+    extra.courseOptions = await all("SELECT id, title FROM courses WHERE status = 'published' ORDER BY lower(title)");
+  }
+  if (tab === 'messages') {
+    extra.threadList = await clinic2.threads(p.id);
+    const tid = toInt(req.query.thread) || (extra.threadList[0] && extra.threadList[0].id);
+    extra.activeThread = tid ? await clinic2.thread(tid, p.id) : null;
+    if (extra.activeThread) await run("UPDATE messages SET read_by_staff_at = now() WHERE thread_id = ? AND sender_type = 'patient' AND read_by_staff_at IS NULL", extra.activeThread.id);
+  }
+  if (tab === 'notes') extra.templates = await all('SELECT * FROM note_templates WHERE owner_id IS NULL OR owner_id = ? ORDER BY name', res.locals.staff.id);
   if (tab === 'overview' && res.locals.can('clinic.assignments.manage')) extra.assignable = await clinic.assignableStaff();
   await audit.record(req, 'patient.viewed', { entityType: 'patient', entityId: p.id, details: { tab } });
   res.render('admin/clinic/patient', {
@@ -298,6 +332,14 @@ router.get('/patients/:id/documents/:docId', patientParam, async (req, res) => {
   }).send(body);
 });
 
+router.post('/patients/:id/documents/:docId/share', requireManage, patientParam, async (req, res) => {
+  const doc = await documentRow(req);
+  if (!doc) return notFound(res);
+  await run('UPDATE patient_documents SET shared_with_patient = ? WHERE id = ?', doc.shared_with_patient ? 0 : 1, doc.id);
+  await audit.record(req, doc.shared_with_patient ? 'patient.document_unshared' : 'patient.document_shared', { entityType: 'patient', entityId: req.patient.id, details: { document: doc.id } });
+  res.redirect(back(req, 'documents'));
+});
+
 router.post('/patients/:id/documents/:docId/delete', requireManage, patientParam, async (req, res) => {
   const doc = await documentRow(req);
   if (!doc) return notFound(res);
@@ -351,6 +393,172 @@ router.post('/patients/:id/delete', patientParam, async (req, res) => {
   await audit.record(req, 'patient.deleted', { entityType: 'patient', entityId: req.patient.id, details: { documents: keys.length } });
   flash(req, 'success', 'The clinic record and its documents were permanently deleted. The customer account and orders were kept.');
   res.redirect('/admin/clinic/patients');
+});
+
+/* ---------- Forms: assign, fill in for the patient, review ---------- */
+
+router.post('/patients/:id/forms', requireManage, patientParam, async (req, res) => {
+  const form = await get("SELECT * FROM intake_forms WHERE id = ? AND status = 'published'", toInt(req.body.form_id));
+  if (!form) { flash(req, 'error', 'Choose a published form.'); return res.redirect(back(req, 'forms')); }
+  await insert('INSERT INTO form_assignments (form_id, patient_id, assigned_by, due_at) VALUES (?, ?, ?, ?)', form.id, req.patient.id, res.locals.staff.name,
+    /^\d{4}-\d{2}-\d{2}$/.test(req.body.due_at || '') ? req.body.due_at : null);
+  await audit.record(req, 'patient.form_assigned', { entityType: 'patient', entityId: req.patient.id, details: { form: form.id } });
+  await require('../../mailer').sendRaw(req.patient.email, `A form from ${res.locals.store.name}`,
+    `<p>Please complete a form before your next visit. <a href="${process.env.BASE_URL || process.env.URL || ''}/account/clinic">Sign in to your account</a> to fill it in.</p>`);
+  flash(req, 'success', 'Form assigned. The patient was emailed a link (without any health details).');
+  res.redirect(back(req, 'forms'));
+});
+
+router.post('/patients/:id/forms/:submissionId/review', requireManage, patientParam, async (req, res) => {
+  const sId = toInt(req.params.submissionId);
+  await run('UPDATE form_submissions SET reviewed_by = ?, reviewed_at = now() WHERE id = ? AND patient_id = ?', res.locals.staff.name, sId, req.patient.id);
+  await run("UPDATE form_assignments SET status = 'reviewed' WHERE submission_id = ?", sId);
+  await audit.record(req, 'patient.form_reviewed', { entityType: 'patient', entityId: req.patient.id, details: { submission: sId } });
+  res.redirect(back(req, 'forms'));
+});
+
+router.post('/patients/:id/forms/:assignmentId/cancel', requireManage, patientParam, async (req, res) => {
+  await run("UPDATE form_assignments SET status = 'cancelled' WHERE id = ? AND patient_id = ? AND status = 'assigned'", toInt(req.params.assignmentId), req.patient.id);
+  res.redirect(back(req, 'forms'));
+});
+
+/* ---------- Care plans ---------- */
+
+const dateOrNull = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);
+function readPlan(body) {
+  return { title: text(body.title, 200) || 'Care plan', goals: text(body.goals, 10000), summary: text(body.summary, 20000) };
+}
+
+router.post('/patients/:id/plans', requireManage, patientParam, async (req, res) => {
+  const c = readPlan(req.body);
+  const id = await insert(`INSERT INTO care_plans (patient_id, content_enc, start_date, end_date, review_date, created_by, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    req.patient.id, vault.seal(c), dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), dateOrNull(req.body.review_date), res.locals.staff.id, res.locals.staff.name);
+  await audit.record(req, 'patient.plan_created', { entityType: 'patient', entityId: req.patient.id, details: { plan: id } });
+  res.redirect(`/admin/clinic/patients/${req.patient.id}?tab=plans&plan=${id}`);
+});
+
+async function planParam(req, res, next) {
+  const p = await get('SELECT * FROM care_plans WHERE id = ? AND patient_id = ?', toInt(req.params.planId), req.patient.id);
+  if (!p) return notFound(res);
+  req.plan = p;
+  next();
+}
+const planBack = (req) => `/admin/clinic/patients/${req.patient.id}?tab=plans&plan=${req.plan.id}`;
+
+// Any change to an active, shared plan keeps the previous version.
+async function beforePlanChange(req) {
+  if (req.plan.status === 'active') {
+    await clinic2.snapshotPlan(req.plan.id, res0(req));
+    await run('UPDATE care_plans SET version = version + 1, updated_at = now() WHERE id = ?', req.plan.id);
+  } else await run('UPDATE care_plans SET updated_at = now() WHERE id = ?', req.plan.id);
+}
+const res0 = (req) => (req.res.locals.staff ? req.res.locals.staff.name : '');
+
+router.post('/patients/:id/plans/:planId', requireManage, patientParam, planParam, async (req, res) => {
+  await beforePlanChange(req);
+  const status = ['draft', 'active', 'completed', 'archived'].includes(req.body.status) ? req.body.status : req.plan.status;
+  await run('UPDATE care_plans SET content_enc = ?, start_date = ?, end_date = ?, review_date = ?, status = ?, shared_with_patient = ? WHERE id = ?',
+    vault.seal(readPlan(req.body)), dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), dateOrNull(req.body.review_date), status, req.body.shared === '1' ? 1 : 0, req.plan.id);
+  if (req.body.shared === '1' && !req.plan.shared_with_patient) {
+    await require('../../mailer').sendRaw(req.patient.email, `Your care plan from ${res.locals.store.name}`,
+      `<p>Your practitioner has shared a care plan with you. <a href="${process.env.BASE_URL || process.env.URL || ''}/account/clinic">Sign in to view it</a>.</p>`);
+  }
+  await audit.record(req, 'patient.plan_updated', { entityType: 'patient', entityId: req.patient.id, details: { plan: req.plan.id, status, shared: req.body.shared === '1' } });
+  flash(req, 'success', 'Care plan saved.');
+  res.redirect(planBack(req));
+});
+
+router.post('/patients/:id/plans/:planId/items', requireManage, patientParam, planParam, async (req, res) => {
+  const kind = clinic2.ITEM_KEYS.includes(req.body.kind) ? req.body.kind : null;
+  const content = {
+    title: text(req.body.title, 300), details: text(req.body.details, 10000), dose: text(req.body.dose, 200), frequency: ['daily', 'weekly', 'once', 'as_needed', ''].includes(req.body.frequency) ? req.body.frequency : '',
+    timing: text(req.body.timing, 200), duration: text(req.body.duration, 200), preparation: text(req.body.preparation, 5000), cautions: text(req.body.cautions, 5000),
+  };
+  if (!kind || !content.title) { flash(req, 'error', 'Choose the type and give the item a title.'); return res.redirect(planBack(req)); }
+  // Formulas recommended to a patient must be approved first.
+  const formulaId = toInt(req.body.formula_id) || null;
+  if (formulaId && !(await get("SELECT 1 FROM formulas WHERE id = ? AND status = 'approved'", formulaId))) { flash(req, 'error', 'Only approved formulas can be added to a care plan.'); return res.redirect(planBack(req)); }
+  await beforePlanChange(req);
+  const pos = ((await get('SELECT MAX(position) AS m FROM care_plan_items WHERE plan_id = ?', req.plan.id)).m ?? -1) + 1;
+  const lessonId = toInt(req.body.lesson_id) || null;
+  await insert(`INSERT INTO care_plan_items (plan_id, kind, content_enc, formula_id, variant_id, herb_id, lesson_id, is_task, start_date, end_date, position)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.plan.id, kind, vault.seal(content), formulaId, toInt(req.body.variant_id) || null, toInt(req.body.herb_id) || null,
+  lessonId, req.body.is_task === '1' || ['task', 'routine'].includes(kind) ? 1 : 0, dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), pos);
+  if (lessonId) await insert('INSERT INTO lesson_assignments (patient_id, lesson_id, care_plan_id, assigned_by) VALUES (?, ?, ?, ?)', req.patient.id, lessonId, req.plan.id, res.locals.staff.name);
+  await audit.record(req, 'patient.plan_item_added', { entityType: 'patient', entityId: req.patient.id, details: { plan: req.plan.id, kind } });
+  res.redirect(planBack(req));
+});
+
+router.post('/patients/:id/plans/:planId/items/:itemId/delete', requireManage, patientParam, planParam, async (req, res) => {
+  await beforePlanChange(req);
+  await run('DELETE FROM care_plan_items WHERE id = ? AND plan_id = ?', toInt(req.params.itemId), req.plan.id);
+  res.redirect(planBack(req));
+});
+
+router.get('/patients/:id/plans/:planId/versions/:version', patientParam, planParam, async (req, res) => {
+  const v = await get('SELECT * FROM care_plan_versions WHERE plan_id = ? AND version = ?', req.plan.id, toInt(req.params.version));
+  if (!v) return notFound(res);
+  await audit.record(req, 'patient.plan_version_viewed', { entityType: 'patient', entityId: req.patient.id, details: { plan: req.plan.id, version: v.version } });
+  res.render('admin/clinic/plan-version', { title: `Care plan version ${v.version}`, patient: req.patient, plan: req.plan, v, snap: vault.open(v.snapshot_enc) });
+});
+
+router.get('/patients/:id/plans/:planId/print', patientParam, planParam, async (req, res) => {
+  await audit.record(req, 'patient.plan_printed', { entityType: 'patient', entityId: req.patient.id, details: { plan: req.plan.id } });
+  res.render('admin/clinic/plan-print', { title: 'Care plan', patient: req.patient, plan: await clinic2.plan(req.plan.id, req.patient.id) });
+});
+
+/* ---------- Progress, learning, messages, note templates ---------- */
+
+router.post('/patients/:id/logs', requireManage, patientParam, async (req, res) => {
+  const l = clinic2.readLog({ ...req.body, kind: req.body.kind === 'review' ? 'review' : req.body.kind });
+  if (l.empty) { flash(req, 'error', 'Nothing to record.'); return res.redirect(back(req, 'progress')); }
+  await insert('INSERT INTO patient_logs (patient_id, kind, log_date, data_enc, by_patient) VALUES (?, ?, ?, ?, 0)', req.patient.id, l.kind, l.date, vault.seal({ ...l.data, by: res.locals.staff.name }));
+  await audit.record(req, 'patient.progress_recorded', { entityType: 'patient', entityId: req.patient.id, details: { kind: l.kind } });
+  res.redirect(back(req, 'progress'));
+});
+
+router.post('/patients/:id/learning', requireManage, patientParam, async (req, res) => {
+  const lessonId = toInt(req.body.lesson_id) || null;
+  const courseId = toInt(req.body.course_id) || null;
+  if (!lessonId && !courseId) { flash(req, 'error', 'Choose a lesson or a course.'); return res.redirect(back(req, 'learning')); }
+  await insert('INSERT INTO lesson_assignments (patient_id, lesson_id, course_id, assigned_by, due_at) VALUES (?, ?, ?, ?, ?)', req.patient.id, lessonId, courseId, res.locals.staff.name, dateOrNull(req.body.due_at));
+  await audit.record(req, 'patient.lesson_assigned', { entityType: 'patient', entityId: req.patient.id, details: { lesson: lessonId, course: courseId } });
+  flash(req, 'success', 'Assigned. It now appears in the patient\'s learning centre.');
+  res.redirect(back(req, 'learning'));
+});
+
+router.post('/patients/:id/messages', requireManage, patientParam, async (req, res) => {
+  const body = text(req.body.body, 20000);
+  if (!body) { flash(req, 'error', 'Write a message.'); return res.redirect(back(req, 'messages')); }
+  const tid = toInt(req.body.thread_id) && await get('SELECT 1 FROM message_threads WHERE id = ? AND patient_id = ?', toInt(req.body.thread_id), req.patient.id) ? toInt(req.body.thread_id) : null;
+  const threadId = await clinic2.postMessage({ patientId: req.patient.id, threadId: tid, subject: text(req.body.subject, 200), body, sender: 'staff', staff: res.locals.staff });
+  await audit.record(req, 'patient.message_sent', { entityType: 'patient', entityId: req.patient.id, details: { thread: threadId } });
+  res.redirect(`/admin/clinic/patients/${req.patient.id}?tab=messages&thread=${threadId}`);
+});
+
+router.post('/note-templates', requireManage, async (req, res) => {
+  const name = text(req.body.name, 100);
+  if (name) await insert('INSERT INTO note_templates (name, kind, body, owner_id) VALUES (?, ?, ?, ?)', name, clinic.NOTE_KEYS.includes(req.body.kind) ? req.body.kind : 'consultation', text(req.body.body), req.body.shared === '1' ? null : res.locals.staff.id);
+  flash(req, 'success', 'Template saved.');
+  res.redirect(String(req.body.back || '').startsWith('/admin/clinic/') ? req.body.back : '/admin/clinic/patients');
+});
+
+/* ---------- Staff inbox: messages and forms waiting, for patients this person can see ---------- */
+
+router.get('/inbox', async (req, res) => {
+  const s = clinic.scope(res.locals.staff);
+  const unread = await all(`SELECT t.id, t.patient_id, t.last_message_at, c.first_name, c.last_name, c.email,
+      (SELECT COUNT(*) FROM messages m WHERE m.thread_id = t.id AND m.sender_type = 'patient' AND m.read_by_staff_at IS NULL) AS unread
+    FROM message_threads t JOIN patients p ON p.id = t.patient_id JOIN customers c ON c.id = p.customer_id
+    WHERE ${s.sql} AND EXISTS (SELECT 1 FROM messages m WHERE m.thread_id = t.id AND m.sender_type = 'patient' AND m.read_by_staff_at IS NULL) ORDER BY t.last_message_at DESC`, ...s.params);
+  const forms = await all(`SELECT a.id, a.patient_id, f.name, c.first_name, c.last_name, sub.submitted_at FROM form_assignments a JOIN intake_forms f ON f.id = a.form_id
+    JOIN patients p ON p.id = a.patient_id JOIN customers c ON c.id = p.customer_id JOIN form_submissions sub ON sub.id = a.submission_id
+    WHERE ${s.sql} AND a.status = 'submitted' ORDER BY sub.submitted_at DESC`, ...s.params);
+  const reviews = await all(`SELECT cp.id, cp.patient_id, cp.review_date, c.first_name, c.last_name FROM care_plans cp JOIN patients p ON p.id = cp.patient_id JOIN customers c ON c.id = p.customer_id
+    WHERE ${s.sql} AND cp.status = 'active' AND cp.review_date IS NOT NULL AND cp.review_date <= CURRENT_DATE + 7 ORDER BY cp.review_date`, ...s.params);
+  const drafts = await all(`SELECT n.id, n.patient_id, n.visit_date, n.kind, c.first_name, c.last_name FROM clinical_notes n JOIN patients p ON p.id = n.patient_id JOIN customers c ON c.id = p.customer_id
+    WHERE n.author_id = ? AND n.signed_at IS NULL ORDER BY n.visit_date`, res.locals.staff.id);
+  res.render('admin/clinic/inbox', { title: 'Clinic inbox', unread, forms, reviews, drafts });
 });
 
 module.exports = router;

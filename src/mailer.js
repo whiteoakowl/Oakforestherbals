@@ -17,7 +17,7 @@ function transport(n) {
     host: n.smtp_host,
     port: Number(n.smtp_port) || 587,
     secure: !!n.smtp_secure,
-    auth: n.smtp_user ? { user: n.smtp_user, pass: n.smtp_pass } : undefined,
+    auth: n.smtp_user ? { user: n.smtp_user, pass: process.env.SMTP_PASS || n.smtp_pass } : undefined,
   });
 }
 
@@ -53,4 +53,9 @@ async function notify(enabledKey, to, subject, template, data) {
   await send(to, subject, template, data).catch((err) => console.error('[mail]', err));
 }
 
-module.exports = { send, notify };
+// A short message with trusted HTML (callers escape anything user-provided). Never throws.
+async function sendRaw(to, subject, html) {
+  await send(to, subject, 'generic', { body: html }).catch((err) => console.error('[mail]', err));
+}
+
+module.exports = { send, notify, sendRaw };

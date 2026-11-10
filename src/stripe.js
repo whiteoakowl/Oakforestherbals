@@ -15,7 +15,7 @@ function encode(obj, prefix = '', out = new URLSearchParams()) {
 }
 
 async function call(method, path, body) {
-  const { stripe_secret_key: key } = settings.load('payments');
+  const key = process.env.STRIPE_SECRET_KEY || settings.load('payments').stripe_secret_key;
   if (!key) throw new Error('Stripe is not configured.');
   const res = await fetch(API + path, {
     method,

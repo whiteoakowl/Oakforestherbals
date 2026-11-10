@@ -31,6 +31,7 @@ const PERMISSIONS = [
   ['clinic.patients.view_all', 'Clinic', 'See every patient\'s clinical records', 1],
   ['clinic.records.manage', 'Clinic', 'Add and edit patients, health history, notes and documents (for patients they can see)', 1],
   ['clinic.assignments.manage', 'Clinic', 'Assign practitioners to patients', 1],
+  ['education.manage', 'Clinic', 'Create lessons, courses and patient education materials', 0],
   ['settings.manage', 'Administration', 'Store settings: payments, checkout, shipping, taxes, notifications, policies, preferences', 0],
   ['staff.manage', 'Administration', 'Manage staff accounts and roles', 0],
   ['audit.view', 'Administration', 'View the audit log', 0],
@@ -43,9 +44,9 @@ const STORE_ALL = ['analytics.view', 'orders.view', 'orders.manage', 'products.m
 // granted to these roles once, when they first appear; after that the owner's edits stand.
 const ROLE_DEFAULTS = {
   staff: [...STORE_ALL, 'herbs.view', 'inventory.manage', 'formulas.view', 'production.manage'], // the pre-RBAC "staff" role: everything except settings
-  administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view', 'herbs.view', 'herbs.manage', 'inventory.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'production.manage', 'production.approve'],
-  clinic_manager: ['herbs.view', 'herbs.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'clinic.patients.view_all', 'clinic.records.manage', 'clinic.assignments.manage'],
-  practitioner: ['herbs.view', 'formulas.view', 'formulas.manage', 'clinic.patients.view_assigned', 'clinic.records.manage'],
+  administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view', 'herbs.view', 'herbs.manage', 'inventory.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'production.manage', 'production.approve', 'education.manage'],
+  clinic_manager: ['education.manage', 'herbs.view', 'herbs.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'clinic.patients.view_all', 'clinic.records.manage', 'clinic.assignments.manage'],
+  practitioner: ['education.manage', 'herbs.view', 'formulas.view', 'formulas.manage', 'clinic.patients.view_assigned', 'clinic.records.manage'],
   apothecary_manager: ['costing.manage', 'herbs.view', 'herbs.manage', 'inventory.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'production.manage', 'production.approve'],
   inventory_manager: ['products.manage', 'costing.manage', 'herbs.view', 'inventory.manage', 'formulas.view', 'production.manage'],
   store_manager: [...STORE_ALL, 'herbs.view', 'inventory.manage'],

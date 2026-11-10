@@ -1,0 +1,11 @@
+<%- include('_top') %>
+<div class="card">
+  <h2>My learning</h2>
+  <% if (!lessons.length) { %><p class="muted">Nothing assigned yet.</p><% } %>
+  <% for (const l of lessons) { %>
+    <div class="lesson-row"><a href="/account/clinic/learning/<%= l.id %>"><strong><%= l.title %></strong></a><% if (l.course_title) { %> <span class="muted small">· <%= l.course_title %></span><% } %>
+      <div class="small muted"><%= l.summary %></div>
+      <div class="small"><%= l.completed_at ? `✓ Completed${l.quiz_total ? ` · quiz ${l.quiz_score}/${l.quiz_total}` : ''}` : l.acknowledged_at ? 'Started' : 'New' %><%= l.due_at ? ` · due ${ymd(l.due_at)}` : '' %></div></div>
+  <% } %>
+</div>
+<%- include('_bottom') %>

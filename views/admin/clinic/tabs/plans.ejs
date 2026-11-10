@@ -1,0 +1,69 @@
+<% const p = activePlan; const kindLabel = Object.fromEntries(ITEM_KINDS); %>
+<div class="layout-2">
+  <div>
+    <% if (!p) { %><div class="card"><p class="muted">No care plans yet.</p></div><% } else { const pb = `${base}/plans/${p.id}`; %>
+      <form method="post" action="<%= pb %>" class="card form-stack"><%- csrfField %>
+        <div class="row-between"><h2><%= p.content.title || 'Care plan' %></h2><span class="small muted">v<%= p.version %> · <%= p.created_by_name %></span></div>
+        <% if (canManage) { %>
+          <label class="field"><span>Title</span><input name="title" value="<%= p.content.title || '' %>"></label>
+          <label class="field"><span>Goals</span><textarea name="goals" rows="3"><%= p.content.goals || '' %></textarea></label>
+          <label class="field"><span>Overview for the patient</span><textarea name="summary" rows="3"><%= p.content.summary || '' %></textarea></label>
+          <div class="grid-3"><label class="field"><span>Start</span><input type="date" name="start_date" value="<%= p.start_date ? ymd(p.start_date) : '' %>"></label>
+            <label class="field"><span>End</span><input type="date" name="end_date" value="<%= p.end_date ? ymd(p.end_date) : '' %>"></label>
+            <label class="field"><span>Review / follow-up</span><input type="date" name="review_date" value="<%= p.review_date ? ymd(p.review_date) : '' %>"></label></div>
+          <div class="row-gap"><select name="status" aria-label="Status"><% for (const s of ['draft', 'active', 'completed', 'archived']) { %><option value="<%= s %>" <%= s === p.status ? 'selected' : '' %>><%= s %></option><% } %></select>
+            <label class="check small"><input type="checkbox" name="shared" value="1" <%= p.shared_with_patient ? 'checked' : '' %>> Share with patient (visible in their account)</label>
+            <button class="btn btn-sm btn-primary">Save</button></div>
+          <% if (p.status === 'active') { %><p class="muted small">Changes to an active plan keep the previous version.</p><% } %>
+        <% } else { %><p class="prewrap small"><%= p.content.goals %></p><p class="prewrap small"><%= p.content.summary %></p><% } %>
+      </form>
+      <div class="card flush">
+        <div class="card-head pad row-between"><h2>Plan items</h2><a class="btn btn-sm" href="<%= pb %>/print" target="_blank" rel="noopener">Print</a></div>
+        <% if (!p.items.length) { %><p class="pad muted small">Add recommendations, routines, lessons and follow-ups below.</p><% } %>
+        <% for (const i of p.items) { %>
+          <div class="pad use-item">
+            <div class="row-between"><strong><%= i.content.title %></strong><span class="badge badge-default"><%= kindLabel[i.kind] %></span></div>
+            <p class="small muted"><%= ['dose', 'frequency', 'timing', 'duration'].map((k) => i.content[k]).filter(Boolean).join(' · ') %><%= i.start_date ? ` · from ${ymd(i.start_date)}` : '' %></p>
+            <% if (i.content.details) { %><p class="prewrap small"><%= i.content.details %></p><% } %>
+            <% if (i.content.preparation) { %><p class="small"><em>Preparation:</em> <%= i.content.preparation %></p><% } %>
+            <% if (i.content.cautions) { %><p class="small"><em>Cautions:</em> <%= i.content.cautions %></p><% } %>
+            <p class="small"><% if (i.formula_name) { %>Formula: <a href="/admin/formulas/<%= i.formula_id %>"><%= i.formula_name %></a> <% } %><% if (i.product_title) { %>Product: <%= i.product_title %> <% } %><% if (i.herb_name) { %>Herb: <a href="/admin/herbs/<%= i.herb_slug %>"><%= i.herb_name %></a> <% } %><% if (i.lesson_title) { %>Lesson: <%= i.lesson_title %> <% } %>
+              <% if (i.is_task) { %><span class="muted">· done <%= i.doneDates.length %> time(s)<%= i.doneToday ? ', including today' : '' %></span><% } %></p>
+            <% if (canManage) { %><form method="post" action="<%= pb %>/items/<%= i.id %>/delete" data-confirm="Remove this item?"><%- csrfField %><button class="link-plain small critical-text">Remove</button></form><% } %>
+          </div>
+        <% } %>
+      </div>
+      <% if (canManage) { %>
+      <form method="post" action="<%= pb %>/items" class="card form-stack"><%- csrfField %>
+        <h2>Add to plan</h2>
+        <div class="grid-2"><label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of ITEM_KINDS) { %><option value="<%= k %>"><%= l %></option><% } %></select></label>
+          <label class="field"><span>Title</span><input name="title" required placeholder="e.g. Evening wind-down routine"></label></div>
+        <label class="field"><span>Details</span><textarea name="details" rows="3"></textarea></label>
+        <div class="grid-3"><label class="field"><span>Amount / dose</span><input name="dose"></label>
+          <label class="field"><span>How often</span><select name="frequency"><option value="">—</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="once">Once</option><option value="as_needed">As needed</option></select></label>
+          <label class="field"><span>When</span><input name="timing" placeholder="e.g. after dinner"></label></div>
+        <div class="grid-3"><label class="field"><span>For how long</span><input name="duration" placeholder="e.g. 4 weeks"></label>
+          <label class="field"><span>Start</span><input type="date" name="start_date"></label><label class="field"><span>End</span><input type="date" name="end_date"></label></div>
+        <label class="field"><span>Preparation instructions</span><textarea name="preparation" rows="2"></textarea></label>
+        <label class="field"><span>Cautions</span><textarea name="cautions" rows="2"></textarea></label>
+        <div class="grid-2">
+          <label class="field"><span>Approved formula</span><select name="formula_id"><option value="">—</option><% for (const f of planOptions.formulas) { %><option value="<%= f.id %>"><%= f.name %></option><% } %></select></label>
+          <label class="field"><span>Product they can buy</span><select name="variant_id"><option value="">—</option><% for (const v of planOptions.variants) { %><option value="<%= v.id %>"><%= v.product_title %><%= v.title !== 'Default Title' ? ` — ${v.title}` : '' %></option><% } %></select></label>
+          <label class="field"><span>Herb</span><select name="herb_id"><option value="">—</option><% for (const h of planOptions.herbs) { %><option value="<%= h.id %>"><%= h.common_name %></option><% } %></select></label>
+          <label class="field"><span>Lesson (also assigns it)</span><select name="lesson_id"><option value="">—</option><% for (const l of planOptions.lessons) { %><option value="<%= l.id %>"><%= l.title %></option><% } %></select></label>
+        </div>
+        <label class="check small"><input type="checkbox" name="is_task" value="1"> The patient ticks this off (daily task or checklist)</label>
+        <p class="muted small">Recommendations are written and approved by you; nothing is added automatically. Patient-facing wording: “recommendation”, not “prescription”.</p>
+        <div class="right"><button class="btn btn-primary btn-sm">Add</button></div>
+      </form>
+      <% } %>
+    <% } %>
+  </div>
+  <div>
+    <% if (p && planProgress) { %><div class="card"><h2>Task completion</h2><p class="stat-value"><%= planProgress.percent %>%</p><p class="muted small"><%= planProgress.done %> of <%= planProgress.possible %> over the last 14 days</p></div><% } %>
+    <div class="card"><h2>Plans</h2><% for (const pl of plansList) { %><p class="small"><a href="?tab=plans&plan=<%= pl.id %>"><%= pl.content.title || 'Care plan' %></a> <span class="badge badge-default"><%= pl.status %></span><%= pl.shared_with_patient ? ' · shared' : '' %></p><% } %>
+      <% if (canManage) { %><form method="post" action="<%= base %>/plans" class="form-stack mt-sm"><%- csrfField %><input name="title" placeholder="New plan title" aria-label="New plan title" required>
+        <div class="grid-2"><input type="date" name="start_date" aria-label="Start date"><input type="date" name="review_date" aria-label="Review date"></div><button class="btn btn-sm">Create plan</button></form><% } %></div>
+    <% if (p && p.versions.length) { %><div class="card"><h2>Previous versions</h2><% for (const v of p.versions) { %><p class="small"><a href="<%= base %>/plans/<%= p.id %>/versions/<%= v.version %>">v<%= v.version %></a> <span class="muted"><%= v.saved_by %> · <%= formatDate(v.created_at, true) %></span></p><% } %></div><% } %>
+  </div>
+</div>

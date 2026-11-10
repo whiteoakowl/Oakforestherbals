@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<% const l = lesson || { title: '', kind: 'lesson', category: '', summary: '', body_html: '', video_url: '', file_url: '', herb_id: null, status: 'draft' }; const qs = [...questions, {}, {}]; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: lesson ? lesson.title : 'New lesson', backHref: '/admin/education' }) %>
+  <form method="post" action="<%= lesson ? `/admin/education/lessons/${lesson.id}` : '/admin/education/lessons/new' %>" enctype="multipart/form-data" class="layout-2">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="form-stack">
+      <div class="card form-stack">
+        <label class="field"><span>Title</span><input name="title" value="<%= l.title %>" required></label>
+        <label class="field"><span>Summary</span><textarea name="summary" rows="2"><%= l.summary %></textarea></label>
+        <div class="field"><span>Content</span><%- include('../partials/rte', { name: 'body_html', value: l.body_html }) %></div>
+      </div>
+      <div class="card form-stack">
+        <h2>Media</h2>
+        <label class="field"><span>Video link (YouTube or Vimeo)</span><input name="video_url" value="<%= l.video_url ? l.video_url.replace('https://www.youtube-nocookie.com/embed/', 'https://youtu.be/').replace('https://player.vimeo.com/video/', 'https://vimeo.com/') : '' %>"></label>
+        <label class="field"><span>Downloadable file (PDF, Word or image)</span><input type="file" name="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"></label>
+        <% if (l.file_url) { %><p class="small">Current: <a href="<%= l.file_url %>" target="_blank" rel="noopener"><%= l.file_name || 'file' %></a> <label class="check small"><input type="checkbox" name="remove_file" value="1"> Remove</label></p><% } %>
+        <p class="muted small">Lesson files are general handouts and are stored with your other site files. Don't upload anything about a specific patient here.</p>
+      </div>
+      <div class="card form-stack">
+        <h2>Quiz (optional)</h2>
+        <% qs.forEach((q, i) => { %><div class="sub-card form-stack">
+          <label class="field"><span>Question <%= i + 1 %></span><input name="questions[<%= i %>][question]" value="<%= q.question || '' %>"></label>
+          <div class="grid-2"><label class="field"><span>Answers (one per line)</span><textarea name="questions[<%= i %>][options]" rows="3"><%= (q.options || []).join('\n') %></textarea></label>
+            <label class="field"><span>Correct answer number</span><input type="number" min="1" max="8" name="questions[<%= i %>][correct]" value="<%= q.question ? q.correct_index + 1 : '' %>"></label></div></div><% }) %>
+      </div>
+    </div>
+    <div><div class="card form-stack">
+      <label class="field"><span>Type</span><select name="kind"><% for (const [k, lb] of LESSON_KINDS) { %><option value="<%= k %>" <%= k === l.kind ? 'selected' : '' %>><%= lb %></option><% } %></select></label>
+      <label class="field"><span>Category / topic</span><input name="category" value="<%= l.category %>"></label>
+      <label class="field"><span>Related herb</span><select name="herb_id"><option value="">—</option><% for (const h of herbs) { %><option value="<%= h.id %>" <%= h.id === l.herb_id ? 'selected' : '' %>><%= h.common_name %></option><% } %></select></label>
+      <label class="field"><span>Status</span><select name="status"><% for (const s of ['draft', 'published', 'archived']) { %><option value="<%= s %>" <%= s === l.status ? 'selected' : '' %>><%= s %></option><% } %></select></label>
+      <button class="btn btn-primary">Save</button>
+    </div></div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

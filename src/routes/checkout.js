@@ -111,7 +111,7 @@ router.post('/shipping', async (req, res) => {
 function paymentMethods() {
   const p = settings.load('payments');
   const methods = p.manual.filter((m) => m.enabled).map((m) => ({ ...m, kind: 'manual' }));
-  if (p.stripe_enabled && p.stripe_secret_key) {
+  if (p.stripe_enabled && (process.env.STRIPE_SECRET_KEY || p.stripe_secret_key)) {
     methods.unshift({ id: 'stripe', name: 'Credit / debit card', instructions: 'You will be redirected to our secure payment page.', kind: 'stripe' });
   }
   return methods;

@@ -1,0 +1,31 @@
+<% const spark = (points) => { if (points.length < 2) return ''; const w = 220, h = 40; const xs = points.map((_, i) => (i / (points.length - 1)) * w); return `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Trend"><polyline fill="none" stroke="currentColor" stroke-width="2" points="${points.map((pt, i) => `${xs[i].toFixed(1)},${(h - (pt.value / 10) * (h - 4) - 2).toFixed(1)}`).join(' ')}"/></svg>`; }; %>
+<div class="layout-2">
+  <div>
+    <div class="card"><h2>Trends (0–10)</h2>
+      <% const names = [...Object.keys(logSeries.symptoms).map((k) => ['Symptom', k, logSeries.symptoms[k]]), ...Object.keys(logSeries.wellness).map((k) => ['Wellness', k, logSeries.wellness[k]])]; %>
+      <% if (!names.length) { %><p class="muted small">Symptom and wellness scores logged by the patient or staff show here.</p><% } %>
+      <% for (const [group, name, pts] of names) { const last = pts[pts.length - 1]; %>
+        <div class="trend-row"><span class="small"><strong><%= name %></strong> <span class="muted"><%= group %></span></span><span class="trend-line"><%- spark(pts) %></span><span class="small">latest <strong><%= last.value %></strong> (<%= last.day %>)</span></div>
+      <% } %>
+    </div>
+    <div class="card"><h2>Journal and logs</h2><% if (!logList.length) { %><p class="muted small">Nothing logged yet.</p><% } %>
+      <% for (const l of logList) { %><div class="use-item small"><strong><%= l.day %></strong> · <%= l.kind %><%= l.by_patient ? ' · by patient' : ` · by ${l.data.by || 'staff'}` %>
+        <% if (l.kind === 'symptom') { %><div><%= l.data.symptom %>: <%= l.data.severity %>/10</div><% } %>
+        <% if (l.kind === 'wellness') { %><div><%= ['energy', 'sleep', 'mood', 'stress', 'digestion'].filter((k) => l.data[k] !== null && l.data[k] !== undefined).map((k) => `${k} ${l.data[k]}`).join(' · ') %></div><% } %>
+        <% if (l.data.note) { %><p class="prewrap"><%= l.data.note %></p><% } %></div><% } %>
+    </div>
+  </div>
+  <div>
+    <% if (canManage) { %>
+    <form method="post" action="<%= base %>/logs" class="card form-stack"><%- csrfField %>
+      <h2>Record progress</h2>
+      <label class="field"><span>Type</span><select name="kind"><option value="review">Practitioner progress review</option><option value="symptom">Symptom score</option><option value="wellness">Wellness scores</option></select></label>
+      <label class="field"><span>Date</span><input type="date" name="log_date" value="<%= new Date().toISOString().slice(0, 10) %>"></label>
+      <div class="grid-2"><input name="symptom" placeholder="Symptom (for symptom scores)" aria-label="Symptom"><input type="number" min="0" max="10" name="severity" placeholder="Severity 0–10" aria-label="Severity"></div>
+      <div class="grid-3"><% for (const k of ['energy', 'sleep', 'mood', 'stress', 'digestion']) { %><input type="number" min="0" max="10" name="<%= k %>" placeholder="<%= k %>" aria-label="<%= k %> 0 to 10"><% } %></div>
+      <textarea name="note" rows="3" placeholder="Notes" aria-label="Notes"></textarea>
+      <button class="btn btn-sm">Save</button>
+    </form>
+    <% } %>
+  </div>
+</div>

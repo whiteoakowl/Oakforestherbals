@@ -31,7 +31,9 @@ router.use('/customers', allow('customers.view', 'customers.manage'), require('.
 router.use('/discounts', allow('discounts.manage'), require('./discounts'));
 router.use('/costing', allow('costing.manage'), require('./costing'));
 router.use('/pos', allow('pos.use'), require('./pos'));
+router.use('/clinic/forms', allow('clinic.records.manage'), require('./clinic-forms'));
 router.use('/clinic', require('./clinic'));
+router.use('/education', allow('education.manage'), require('./education'));
 router.use('/herbs', require('./herbs'));
 router.use('/inventory', allow('inventory.manage'), require('./inventory'));
 router.use('/formulas', require('./formulas'));

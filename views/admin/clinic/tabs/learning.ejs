@@ -1,0 +1,18 @@
+<div class="layout-2">
+  <div class="card flush">
+    <% if (!lessonsAssigned.length) { %><p class="pad muted">Nothing assigned yet.</p><% } else { %>
+    <table class="table small"><thead><tr><th>Lesson</th><th>Assigned</th><th>Progress</th><th>Quiz</th></tr></thead><tbody>
+      <% for (const l of lessonsAssigned) { %><tr><td><a href="/admin/education/lessons/<%= l.id %>"><%= l.title %></a><%= l.course_title ? ` · ${l.course_title}` : '' %></td><td><%= formatDate(l.assigned_at) %><%= l.due_at ? ` · due ${ymd(l.due_at)}` : '' %></td>
+        <td><%= l.completed_at ? `Completed ${formatDate(l.completed_at)}` : l.acknowledged_at ? 'Read' : 'Not started' %></td><td><%= l.quiz_total ? `${l.quiz_score}/${l.quiz_total}` : '—' %></td></tr><% } %>
+    </tbody></table><% } %>
+  </div>
+  <% if (canManage) { %>
+  <form method="post" action="<%= base %>/learning" class="card form-stack"><%- csrfField %>
+    <h2>Assign learning</h2>
+    <label class="field"><span>Lesson</span><select name="lesson_id"><option value="">—</option><% for (const l of lessonOptions) { %><option value="<%= l.id %>"><%= l.title %></option><% } %></select></label>
+    <label class="field"><span>or a course</span><select name="course_id"><option value="">—</option><% for (const c of courseOptions) { %><option value="<%= c.id %>"><%= c.title %></option><% } %></select></label>
+    <label class="field"><span>Due</span><input type="date" name="due_at"></label>
+    <button class="btn btn-sm">Assign</button>
+  </form>
+  <% } %>
+</div>

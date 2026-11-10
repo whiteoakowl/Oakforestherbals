@@ -86,7 +86,15 @@ const SECTIONS = [
   {
     label: 'Clinic',
     items: [
-      { href: '/admin/clinic/patients', label: 'Patients', icon: 'patients', anyPerm: ['clinic.patients.view_assigned', 'clinic.patients.view_all'] },
+      {
+        href: '/admin/clinic/patients', label: 'Patients', icon: 'patients', anyPerm: ['clinic.patients.view_assigned', 'clinic.patients.view_all'],
+        children: [
+          { href: '/admin/clinic/patients', label: 'All patients', exact: true, match: /^\/admin\/clinic\/patients\/(\d+|new)/ },
+          { href: '/admin/clinic/inbox', label: 'Inbox' },
+          { href: '/admin/clinic/forms', label: 'Forms', perm: 'clinic.records.manage' },
+        ],
+      },
+      { href: '/admin/education', label: 'Education', icon: 'content', perm: 'education.manage' },
     ],
   },
   {

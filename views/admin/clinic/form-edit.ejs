@@ -1,0 +1,47 @@
+<%- include('../partials/header') %>
+<% const rows = [...fields, {}, {}, {}]; const f = form || { name: '', kind: 'custom', description: '', status: 'draft' }; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: form ? form.name : 'New form', backHref: '/admin/clinic/forms', badges: form ? [[`${form.status} · v${form.version}`, form.status === 'published' ? 'success' : 'default']] : [] }) %>
+  <div class="layout-2">
+    <form method="post" action="<%= form ? `/admin/clinic/forms/${form.id}` : '/admin/clinic/forms/new' %>" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="card form-stack">
+        <div class="grid-2"><label class="field"><span>Name</span><input name="name" value="<%= f.name %>" required></label>
+          <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of FORM_KINDS) { %><option value="<%= k %>" <%= k === f.kind ? 'selected' : '' %>><%= l %></option><% } %></select></label></div>
+        <label class="field"><span>Introduction shown to the patient</span><textarea name="description" rows="2"><%= f.description %></textarea></label>
+      </div>
+      <div class="card form-stack">
+        <h2>Questions</h2>
+        <% rows.forEach((q, i) => { %>
+          <div class="sub-card form-stack question-row">
+            <input type="hidden" name="fields[<%= i %>][id]" value="<%= q.id || '' %>">
+            <div class="grid-3">
+              <label class="field"><span>Type</span><select name="fields[<%= i %>][type]"><option value="">—</option><% for (const [k, l] of FIELD_TYPES) { %><option value="<%= k %>" <%= k === q.type ? 'selected' : '' %>><%= l %></option><% } %></select></label>
+              <label class="field" style="grid-column: span 2"><span>Question</span><input name="fields[<%= i %>][label]" value="<%= q.label || '' %>"></label>
+            </div>
+            <div class="grid-3">
+              <label class="field"><span>Choices (one per line)</span><textarea name="fields[<%= i %>][options]" rows="2"><%= (q.options || []).join('\n') %></textarea></label>
+              <label class="field"><span>Help text</span><input name="fields[<%= i %>][help]" value="<%= q.help || '' %>"></label>
+              <div class="field"><span>Show only if</span>
+                <select name="fields[<%= i %>][cond_field]" aria-label="Condition question"><option value="">Always shown</option><% for (const p of fields.slice(0, i)) { if (p.type === 'heading') continue; %><option value="<%= p.id %>" <%= q.condition && q.condition.field === p.id ? 'selected' : '' %>><%= p.label.slice(0, 40) %></option><% } %></select>
+                <input name="fields[<%= i %>][cond_value]" value="<%= q.condition ? q.condition.equals : '' %>" placeholder="…is answered" aria-label="Condition answer"></div>
+            </div>
+            <div class="row-gap small"><label class="check"><input type="checkbox" name="fields[<%= i %>][required]" value="1" <%= q.required ? 'checked' : '' %>> Required</label>
+              <% if (q.type) { %><label class="check"><input type="checkbox" name="fields[<%= i %>][remove]" value="1"> Remove</label><% } %></div>
+          </div>
+        <% }) %>
+        <p class="muted small">Three blank questions are added each time you save. Conditions can refer to earlier questions.</p>
+      </div>
+      <div class="card row-gap">
+        <% if (form) { %><select name="status" aria-label="Status"><% for (const s of ['draft', 'published', 'archived']) { %><option value="<%= s %>" <%= s === f.status ? 'selected' : '' %>><%= s %></option><% } %></select><% } %>
+        <button class="btn btn-primary">Save form</button>
+      </div>
+    </form>
+    <div class="card form-stack form-preview">
+      <h2>Preview</h2>
+      <% if (f.description) { %><p class="small"><%= f.description %></p><% } %>
+      <% for (const q of fields) { %><%- include('_field', { f: q, value: '', disabled: true }) %><% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

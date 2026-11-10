@@ -58,6 +58,7 @@ async function locals(req, res, next) {
   res.locals.toDateTimeInput = utils.toDateTimeInput;
   res.locals.stripHtml = utils.stripHtml;
   res.locals.path = req.path;
+  res.locals.originalPath = req.originalUrl.split('?')[0];
   res.locals.query = req.query;
   res.locals.cartCount = (req.session.cart || []).reduce((s, i) => s + i.quantity, 0);
   const [staff, customer, menus] = await Promise.all([
@@ -67,6 +68,8 @@ async function locals(req, res, next) {
   ]);
   if (staff) staff.permissions = await permissions.forRole(staff.role);
   Object.assign(res.locals, { staff: staff || null, customer: customer || null });
+  // Customers with a clinic record get a "My clinic" link in their account.
+  res.locals.isPatient = Boolean(customer && await get("SELECT 1 FROM patients WHERE customer_id = ? AND portal_enabled = 1 AND status != 'archived'", customer.id).catch(() => null));
   res.locals.can = (perm) => Boolean(staff && staff.permissions.has(perm));
   res.locals.menu = (handle) => menus[handle] || [];
   next();

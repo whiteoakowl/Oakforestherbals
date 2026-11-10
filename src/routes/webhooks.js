@@ -16,7 +16,7 @@ function verify(raw, header, secret) {
 }
 
 router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-  const secret = settings.load('payments').stripe_webhook_secret;
+  const secret = process.env.STRIPE_WEBHOOK_SECRET || settings.load('payments').stripe_webhook_secret;
   const raw = req.body.toString('utf8');
   if (!secret || !verify(raw, req.get('stripe-signature'), secret)) return res.status(400).send('Invalid signature');
   const event = JSON.parse(raw);

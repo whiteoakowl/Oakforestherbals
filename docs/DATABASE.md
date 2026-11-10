@@ -103,3 +103,18 @@ estimate from the recipe. Quantities are stored in base units (g, ml, each).
 
 Cost changes cascade: a material price change recalculates products that use it **and** formulas
 that use it, which re-price their components, which recalculate the products using those.
+
+## 0006_clinic_plans_portal_education
+Patient content (`_enc` columns) is encrypted; templates (forms, lessons) are not patient data.
+
+| Table | Purpose |
+|---|---|
+| `intake_forms` | Form builder templates: questions (text, long text, choice, checkboxes, dropdown, date, 0–10 scale, file, signature, headings), required and conditional questions, versions. |
+| `form_assignments`, `form_submissions` | Forms sent to a patient, and their encrypted answers with the exact questions they saw, typed signature, and review. Uploaded files become encrypted patient documents. |
+| `care_plans`, `care_plan_items`, `care_plan_versions`, `care_plan_completions` | Care plans with goals and overview, items (herbal recommendations, approved formulas, products, supplements, nutrition, diet, lifestyle, routines, lessons, resources, recipes, goals, checklist items, follow-ups, assessments) with dose, frequency, timing, duration, preparation and cautions; shared with the patient when ready; previous versions kept when an active plan changes; daily task completion by the patient. |
+| `patient_logs` | Journal entries, symptom scores and wellness scores (energy, sleep, mood, stress, digestion) by the patient, and practitioner progress reviews. |
+| `message_threads`, `messages` | Secure two-way messages. Email notifications say a message is waiting and never include its content. |
+| `note_templates` | Reusable clinical note templates (private or shared). |
+| `lessons`, `lesson_questions`, `courses`, `course_lessons`, `lesson_assignments`, `lesson_progress` | Education library (lessons, information sheets, guides, recipes, preparation instructions, videos, checklists, quizzes), courses, assignments to patients and their progress. |
+| `patient_documents` (new columns) | `shared_with_patient`, `uploaded_by_patient`. |
+| `patients.portal_enabled` | Whether the patient can use My clinic. |

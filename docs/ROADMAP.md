@@ -60,11 +60,12 @@ notes and a full audit trail — see `docs/PRIVACY.md`, including what that does
 Patient-facing wording uses "recommendation" and "care plan", never "prescription" or "diagnosis".
 - Done: patients, consent, profile, health history, practitioner assignments, clinical notes with
   signing and amendments, encrypted documents, timeline, permanent deletion.
-- Next: intake form builder (and patient-completed forms in the portal), note templates, care
-  plans with versions, recommendations linked to formulas, progress tracking, two-factor sign-in
-  for clinical staff.
+- Done (phases 6–7): form builder and patient-completed forms, note templates, care plans with
+  versions linked to approved formulas, products and lessons, progress tracking, secure messages,
+  clinic inbox, education library, and the My clinic portal.
+- Still to do: two-factor sign-in for clinical staff; key rotation.
 
-## Phase 7 — Patient portal and education
+## Phase 7 — Patient portal and education ✅
 "My Clinic", "My Learning", "My Wellness" inside the existing `/account` area; lessons, courses,
 quizzes and assignments; purchase-from-care-plan.
 

@@ -48,7 +48,8 @@ test('every admin screen renders', async () => {
     '/admin/clinic/patients', '/admin/clinic/patients/new',
     '/admin/herbs', '/admin/herbs/browse', '/admin/herbs/sources', '/admin/herbs/sources/new', '/admin/herbs/terms', '/admin/herbs/import', '/admin/herbs/new',
     '/admin/inventory', '/admin/inventory/purchase-orders', '/admin/inventory/purchase-orders/new', '/admin/inventory/suppliers', '/admin/inventory/suppliers/new', '/admin/inventory/locations',
-    '/admin/formulas', '/admin/formulas/new', '/admin/production', '/admin/production/new', '/admin/production/trace'];
+    '/admin/formulas', '/admin/formulas/new', '/admin/production', '/admin/production/new', '/admin/production/trace',
+    '/admin/clinic/inbox', '/admin/clinic/forms', '/admin/clinic/forms/new', '/admin/clinic/forms/new?starter=intake', '/admin/education', '/admin/education/lessons/new'];
   for (const url of urls) {
     const res = await admin.get(url);
     assert.equal(res.status, 200, `${url} -> ${res.status} ${res.text.slice(0, 200)}`);

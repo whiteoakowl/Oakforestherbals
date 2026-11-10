@@ -89,7 +89,7 @@ async function notes(patientId) {
 }
 
 async function documents(patientId) {
-  const rows = await all('SELECT id, patient_id, kind, title_enc, mime, size_bytes, uploaded_by_name, created_at FROM patient_documents WHERE patient_id = ? ORDER BY id DESC', patientId);
+  const rows = await all('SELECT id, patient_id, kind, title_enc, mime, size_bytes, uploaded_by_name, uploaded_by_patient, shared_with_patient, created_at FROM patient_documents WHERE patient_id = ? ORDER BY id DESC', patientId);
   return rows.map((r) => ({ ...r, title: vault.open(r.title_enc) || 'Untitled' }));
 }
 

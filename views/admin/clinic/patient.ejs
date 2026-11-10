@@ -16,7 +16,7 @@
     <div class="banner banner-critical" role="note"><strong>Allergies:</strong> <%= allergies.map((a) => a.data.name).join(', ') %></div>
   <% } %>
   <nav class="tabs card flush patient-tabs" aria-label="Patient record sections">
-    <% for (const [k, l] of [['overview', 'Overview'], ['health', 'Health history'], ['notes', `Notes (${notes.length})`], ['documents', `Documents (${documents.length})`], ['timeline', 'Timeline']]) { %>
+    <% for (const [k, l] of [['overview', 'Overview'], ['health', 'Health history'], ['notes', `Notes (${notes.length})`], ['forms', 'Forms'], ['plans', 'Care plans'], ['progress', 'Progress'], ['learning', 'Learning'], ['messages', 'Messages'], ['documents', `Documents (${documents.length})`], ['timeline', 'Timeline']]) { %>
       <a href="?tab=<%= k %>" class="tab <%= tab === k ? 'active' : '' %>" <%= tab === k ? 'aria-current="page"' : '' %>><%= l %></a>
     <% } %>
   </nav>
@@ -150,13 +150,19 @@
           <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of NOTE_KINDS) { %><option value="<%= k %>" <%= k === 'consultation' ? 'selected' : '' %>><%= l %></option><% } %></select></label>
           <label class="field"><span>Visit date</span><input type="date" name="visit_date" value="<%= new Date().toISOString().slice(0, 10) %>"></label>
         </div>
-        <label class="field"><span>Note</span><textarea name="text" rows="8" placeholder="For SOAP notes, use the four fields below instead."></textarea></label>
+        <% const tpl = typeof templates !== 'undefined' ? templates : []; const chosen = tpl.find((t) => String(t.id) === String(query.template)); %>
+        <% if (tpl.length) { %><p class="small">Template: <% for (const t of tpl) { %><a href="?tab=notes&template=<%= t.id %>"><%= t.name %></a> &nbsp; <% } %></p><% } %>
+        <label class="field"><span>Note</span><textarea name="text" rows="8" placeholder="For SOAP notes, use the four fields below instead."><%= chosen ? chosen.body : '' %></textarea></label>
         <details><summary class="small">SOAP fields (used when Type is SOAP note)</summary>
           <% for (const [k, l] of SOAP_FIELDS) { %><label class="field mt-sm"><span><%= l %></span><textarea name="<%= k %>" rows="3"></textarea></label><% } %>
         </details>
         <p class="muted small">Notes are internal: they are never shown to the patient. Drafts can be edited by their author; signing locks the note permanently.</p>
         <div class="row-gap right"><button class="btn" name="sign" value="0">Save draft</button><button class="btn btn-primary" name="sign" value="1">Sign and lock</button></div>
       </form>
+      <details class="mt-sm"><summary class="small">Save a reusable note template</summary>
+        <form method="post" action="/admin/clinic/note-templates" class="form-stack mt-sm"><%- csrfField %><input type="hidden" name="back" value="<%= base %>?tab=notes">
+          <input name="name" placeholder="Template name" required aria-label="Template name"><textarea name="body" rows="5" placeholder="Headings and prompts to fill in" aria-label="Template text"></textarea>
+          <label class="check small"><input type="checkbox" name="shared" value="1"> Share with all practitioners</label><button class="btn btn-sm">Save template</button></form></details>
     </details>
     <% } %>
     <% if (!notes.length) { %><div class="card"><p class="muted">No notes yet.</p></div><% } %>
@@ -219,7 +225,8 @@
             <td><a href="<%= base %>/documents/<%= d.id %><%= viewable ? '?view=1' : '' %>" target="_blank" rel="noopener"><%= d.title %></a></td>
             <td class="small"><%= (DOCUMENT_KINDS.find(([k]) => k === d.kind) || [, d.kind])[1] %></td>
             <td class="small nowrap"><%= (d.size_bytes / 1024).toFixed(0) %> KB</td>
-            <td class="small"><%= formatDate(d.created_at) %> · <%= d.uploaded_by_name %></td>
+            <td class="small"><%= formatDate(d.created_at) %> · <%= d.uploaded_by_patient ? 'patient' : d.uploaded_by_name %><%= d.shared_with_patient ? ' · shared with patient' : '' %>
+              <% if (canManage && !d.uploaded_by_patient) { %><form method="post" action="<%= base %>/documents/<%= d.id %>/share" class="inline"><%- csrfField %><button class="link-plain small"><%= d.shared_with_patient ? 'Stop sharing' : 'Share with patient' %></button></form><% } %></td>
             <td class="num nowrap"><a class="small" href="<%= base %>/documents/<%= d.id %>">Download</a>
               <% if (canManage) { %><form method="post" action="<%= base %>/documents/<%= d.id %>/delete" class="inline" data-confirm="Delete <%= d.title %>?"><%- csrfField %><button class="link-plain small critical-text">Delete</button></form><% } %></td>
           </tr>
@@ -229,6 +236,8 @@
       <% } %>
     </div>
   <% } %>
+
+  <% if (['forms', 'plans', 'progress', 'learning', 'messages'].includes(tab)) { %><%- include(`tabs/${tab}`, { csrfField, base }) %><% } %>
 
   <% if (tab === 'timeline') { %>
     <div class="card">

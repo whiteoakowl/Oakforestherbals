@@ -1,0 +1,18 @@
+<div class="layout-2">
+  <div>
+    <% if (activeThread) { %>
+      <div class="card form-stack">
+        <h2><%= activeThread.subject %></h2>
+        <% for (const m of activeThread.messages) { %><div class="msg msg-<%= m.sender_type %>"><div class="muted small"><%= m.sender_type === 'staff' ? m.sender_name : patient.name %> · <%= formatDate(m.created_at, true) %></div><p class="prewrap"><%= m.body %></p></div><% } %>
+        <% if (canManage) { %><form method="post" action="<%= base %>/messages" class="form-stack"><%- csrfField %><input type="hidden" name="thread_id" value="<%= activeThread.id %>">
+          <textarea name="body" rows="3" required aria-label="Reply"></textarea><div class="right"><button class="btn btn-primary btn-sm">Reply</button></div></form><% } %>
+      </div>
+    <% } else { %><div class="card"><p class="muted">No messages yet.</p></div><% } %>
+  </div>
+  <div>
+    <div class="card"><h2>Conversations</h2><% for (const t of threadList) { %><p class="small"><a href="?tab=messages&thread=<%= t.id %>"><%= t.subject %></a><%= Number(t.unread_staff) ? ` · ${t.unread_staff} new` : '' %> <span class="muted"><%= formatDate(t.last_message_at) %></span></p><% } %></div>
+    <% if (canManage) { %><form method="post" action="<%= base %>/messages" class="card form-stack"><%- csrfField %><h2>New message</h2>
+      <input name="subject" placeholder="Subject" required aria-label="Subject"><textarea name="body" rows="3" required aria-label="Message"></textarea>
+      <p class="muted small">The patient gets an email saying a message is waiting — never the message itself.</p><button class="btn btn-sm">Send</button></form><% } %>
+  </div>
+</div>
