@@ -1,0 +1,13 @@
+<% const pr = profile || {}; %>
+<div class="grid-3">
+  <label class="field"><span>Date of birth</span><input type="date" name="date_of_birth" value="<%= pr.date_of_birth || '' %>"></label>
+  <label class="field"><span>Preferred name</span><input name="preferred_name" value="<%= pr.preferred_name || '' %>"></label>
+  <label class="field"><span>Pronouns</span><input name="pronouns" value="<%= pr.pronouns || '' %>"></label>
+</div>
+<label class="field"><span>Occupation</span><input name="occupation" value="<%= pr.occupation || '' %>"></label>
+<div class="grid-3">
+  <label class="field"><span>Emergency contact</span><input name="emergency_name" value="<%= pr.emergency_name || '' %>"></label>
+  <label class="field"><span>Relationship</span><input name="emergency_relationship" value="<%= pr.emergency_relationship || '' %>"></label>
+  <label class="field"><span>Phone</span><input name="emergency_phone" value="<%= pr.emergency_phone || '' %>"></label>
+</div>
+<label class="field"><span>Summary</span><textarea name="summary" rows="3" placeholder="Why they came to the clinic, in a sentence or two"><%= pr.summary || '' %></textarea></label>

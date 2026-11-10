@@ -5,8 +5,8 @@
 // views use res.locals.can() only to hide links the server would refuse anyway.
 const { get, all, run, insert, tx } = require('./db');
 
-// [key, module, label, sensitive]. Sensitive permissions (clinical records, later phases) are
-// never granted to a role by default except where listed explicitly in ROLE_DEFAULTS.
+// [key, module, label, sensitive]. Sensitive permissions (clinical records) are never granted to a
+// role by default except where listed explicitly in ROLE_DEFAULTS — not even to Administrator.
 const PERMISSIONS = [
   ['analytics.view', 'Store', 'View sales, revenue and analytics', 0],
   ['orders.view', 'Store', 'View orders', 0],
@@ -19,6 +19,10 @@ const PERMISSIONS = [
   ['pos.use', 'Store', 'Take in-person sales at the point of sale', 0],
   ['content.manage', 'Online store', 'Manage pages, blog posts, files and navigation', 0],
   ['themes.manage', 'Online store', 'Edit the storefront theme', 0],
+  ['clinic.patients.view_assigned', 'Clinic', 'See the clinical records of patients assigned to them', 1],
+  ['clinic.patients.view_all', 'Clinic', 'See every patient\'s clinical records', 1],
+  ['clinic.records.manage', 'Clinic', 'Add and edit patients, health history, notes and documents (for patients they can see)', 1],
+  ['clinic.assignments.manage', 'Clinic', 'Assign practitioners to patients', 1],
   ['settings.manage', 'Administration', 'Store settings: payments, checkout, shipping, taxes, notifications, policies, preferences', 0],
   ['staff.manage', 'Administration', 'Manage staff accounts and roles', 0],
   ['audit.view', 'Administration', 'View the audit log', 0],
@@ -32,8 +36,8 @@ const STORE_ALL = ['analytics.view', 'orders.view', 'orders.manage', 'products.m
 const ROLE_DEFAULTS = {
   staff: STORE_ALL, // the pre-RBAC "staff" role: everything except settings
   administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view'],
-  clinic_manager: [],
-  practitioner: [],
+  clinic_manager: ['clinic.patients.view_all', 'clinic.records.manage', 'clinic.assignments.manage'],
+  practitioner: ['clinic.patients.view_assigned', 'clinic.records.manage'],
   apothecary_manager: ['costing.manage'],
   inventory_manager: ['products.manage', 'costing.manage'],
   store_manager: STORE_ALL,
@@ -42,8 +46,8 @@ const ROLE_DEFAULTS = {
 
 const SYSTEM_ROLES = [
   ['administrator', 'Administrator', 'Manages every module and staff. Cannot grant ownership.'],
-  ['clinic_manager', 'Clinic manager', 'Runs the clinic: scheduling, patients and practitioners (clinic modules arrive in a later phase).'],
-  ['practitioner', 'Herbalist / Practitioner', 'Sees only their assigned patients (clinic modules arrive in a later phase).'],
+  ['clinic_manager', 'Clinic manager', 'Runs the clinic: sees every patient, manages records and assigns practitioners.'],
+  ['practitioner', 'Herbalist / Practitioner', 'Sees and records only for the patients assigned to them.'],
   ['apothecary_manager', 'Apothecary manager', 'Formulas, production and apothecary inventory (arrive in a later phase).'],
   ['inventory_manager', 'Inventory manager', 'Stock levels and, later, raw materials and suppliers.'],
   ['store_manager', 'Store manager', 'Products, orders, customers, discounts and the online store.'],

@@ -31,6 +31,7 @@ router.use('/customers', allow('customers.view', 'customers.manage'), require('.
 router.use('/discounts', allow('discounts.manage'), require('./discounts'));
 router.use('/costing', allow('costing.manage'), require('./costing'));
 router.use('/pos', allow('pos.use'), require('./pos'));
+router.use('/clinic', require('./clinic'));
 router.use('/content', allow('content.manage'), require('./content'));
 router.use('/themes', allow('themes.manage'), require('./theme'));
 router.use('/settings', require('./access'));

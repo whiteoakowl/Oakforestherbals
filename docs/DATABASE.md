@@ -46,3 +46,14 @@ labour (minutes × hourly rate) + other cost, then overhead % on that subtotal, 
 When the variant has a recipe and "use calculated cost" is on, the result is written to the
 existing `variants.cost`, which the product editor's margin display already reads. Changing a
 material's price recalculates every variant that uses it, in one transaction.
+
+## 0003_clinic_core
+All `_enc` columns hold AES-256-GCM ciphertext (`v1:<base64>`) from `src/vault.js`. See `docs/PRIVACY.md`.
+
+| Table | Purpose |
+|---|---|
+| `patients` | One per customer (`customer_id` UNIQUE, `ON DELETE RESTRICT`). Status, encrypted profile (DOB, preferred name, pronouns, occupation, emergency contact, summary), consent time and who recorded it. |
+| `patient_health_items` | Concerns, conditions, medications, supplements, allergies, sensitivities and history entries; `category` in plain text, content encrypted; `active` = current vs past. |
+| `practitioner_assignments` | Which staff are assigned to which patient (one can be primary). Drives what practitioners can see. |
+| `clinical_notes` | Consultation, SOAP, follow-up, progress, assessment and internal notes; encrypted body; `amends_note_id` links corrections. A trigger blocks any change or deletion once `signed_at` is set (cascading deletes from an owner's permanent record deletion are allowed). |
+| `patient_documents` | Metadata for encrypted files in the private bucket: kind, encrypted title, storage key, type, size, uploader. |

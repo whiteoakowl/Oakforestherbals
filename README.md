@@ -33,6 +33,7 @@ In Netlify, open the site → **Site configuration → Environment variables** a
 | `DATABASE_URL` | the Transaction pooler connection string from step 1 |
 | `SUPABASE_URL` | your Supabase Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | your secret key (`sb_secret_...`) or legacy service_role key |
+| `CLINIC_ENCRYPTION_KEY` | needed before using Clinic → Patients. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and keep a copy in a password manager |
 | `SETUP_KEY` | any password you make up — you'll type it once to create your admin account |
 | `BASE_URL` | optional — your store's address, e.g. `https://oakforestherbals.netlify.app`. Netlify fills this in automatically; set it if emails should link to a custom domain |
 
@@ -91,6 +92,7 @@ Without `DATABASE_URL`, the store uses a built-in copy of Postgres saved in `dat
 - **Collections** — manual (pick and order products) or automated (rules on tag, type, vendor, title, price or stock)
 - **Customers** — segments (subscribers, repeat customers, prospects, account holders), detail with order history and lifetime spend, notes and tags, CSV export
 - **Costing** — materials (herbs, ingredients, packaging) priced per pack, per-product recipes with labour, waste and overhead, automatic cost roll-up and price-change impact, profitability by product and category
+- **Clinic** — patient records with consent, health history, signed clinical notes, encrypted documents, practitioner assignments and a timeline; clinical data is encrypted before storage and every access is audited (see `docs/PRIVACY.md`)
 - **Point of sale** — in-person sales with barcode search, cash/card/other, receipts and stock deduction
 - **Discounts** — percentage, fixed amount or free shipping; minimum subtotal, usage limits, one per customer, start/end dates
 - **Content** — pages, blog posts, file uploads, header/footer navigation menus with dropdowns
@@ -117,6 +119,8 @@ Order confirmations, shipping updates, cancellations, welcome and password-reset
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | — | Store uploaded images in Supabase Storage. Without them, images go to `uploads/` |
 | `SUPABASE_BUCKET` | `store-media` | Storage bucket name (created automatically, public) |
 | `SETUP_KEY` | — | Required to create the first admin account, when set |
+| `CLINIC_ENCRYPTION_KEY` | — | **Required for clinic records.** 64 hex characters (32 random bytes). Encrypts clinical data before it is stored. Back it up; it cannot be recovered. See `docs/PRIVACY.md` |
+| `SUPABASE_PRIVATE_BUCKET` | `clinic-private` | Private bucket for encrypted clinic documents (created automatically, never public) |
 | `BASE_URL` | Netlify's `URL` | Public URL of the store, used for links in emails |
 | `SESSION_SECRET` | derived | Cookie signing secret; defaults to one derived from `DATABASE_URL` |
 | `PORT` | `3000` | HTTP port when running with `npm start` |

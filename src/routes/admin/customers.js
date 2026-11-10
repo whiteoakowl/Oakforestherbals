@@ -93,6 +93,10 @@ router.post('/:id', async (req, res) => {
 });
 
 router.post('/:id/delete', async (req, res) => {
+  if (await get('SELECT 1 FROM patients WHERE customer_id = ?', toInt(req.params.id))) {
+    flash(req, 'error', 'This customer has a clinic record, so their account can\'t be deleted here. An owner can delete the clinic record first.');
+    return res.redirect(`/admin/customers/${toInt(req.params.id)}`);
+  }
   await run('DELETE FROM customers WHERE id = ?', toInt(req.params.id));
   flash(req, 'success', 'Customer deleted. Their past orders were kept.');
   res.redirect('/admin/customers');

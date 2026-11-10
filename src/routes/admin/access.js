@@ -78,7 +78,9 @@ router.post('/roles/:id', async (req, res, next) => {
   const name = String(req.body.name || role.name).trim() || role.name;
   const description = String(req.body.description ?? role.description).trim();
   await run('UPDATE roles SET name = ?, description = ? WHERE id = ?', name, description, role.id);
-  const saved = await permissions.setRolePermissions(role.id, wanted);
+  // Permissions the editor doesn't hold are shown disabled and never posted; keep them as they were.
+  const untouchable = role.permissions.filter((k) => !mine.has(k));
+  const saved = await permissions.setRolePermissions(role.id, [...wanted, ...untouchable]);
   const before = new Set(role.permissions);
   await audit.record(req, 'role.updated', {
     entityType: 'role',

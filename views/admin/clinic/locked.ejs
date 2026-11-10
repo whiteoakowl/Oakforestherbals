@@ -1,0 +1,13 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <div class="card form-stack">
+    <h1>Clinic records are locked</h1>
+    <p>Clinic records are encrypted with a key that only this site holds, and the key hasn't been set up yet.</p>
+    <ol>
+      <li>Generate a key on any computer with Node installed:<br><code>node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"</code></li>
+      <li>Save the 64-character key in a password manager. <strong>If it is lost, encrypted records can never be read again.</strong></li>
+      <li>In Netlify, add it as the environment variable <code>CLINIC_ENCRYPTION_KEY</code>, then redeploy.</li>
+    </ol>
+  </div>
+</div>
+<%- include('../partials/footer') %>

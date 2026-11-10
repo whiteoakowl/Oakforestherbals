@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased — Clinic core
+
+### Added
+- **Clinic → Patients**: patient records linked to customer accounts, with consent recorded before
+  a record can be created; profile (date of birth, pronouns, emergency contact, summary); health
+  history in seven sections (concerns, conditions, medications, supplements, allergies,
+  sensitivities, history) with current/past status; allergy banner on every record page.
+- **Clinical notes**: consultation, SOAP, follow-up, progress, assessment and internal notes. Drafts
+  are editable by their author; signing locks a note permanently; corrections are linked amendments.
+- **Documents**: upload lab results, photos, consent and intake forms and other files (PDF, images,
+  Word, text, up to 4 MB), stored encrypted in a private bucket.
+- **Practitioner assignments** and a per-patient **timeline** (record events plus the customer's orders).
+- New sensitive permissions: see assigned patients, see all patients, manage records, assign
+  practitioners. Practitioners and clinic managers get them by default; administrators don't.
+
+### Security and privacy
+- Clinical content and files are encrypted in the app before storage (`CLINIC_ENCRYPTION_KEY`).
+- Every record view and change is audited without clinical content.
+- Fixed: saving a role could silently remove permissions the editor didn't hold.
+
+
 ## Unreleased — Phase 3: store management and product costing
 
 ### Added

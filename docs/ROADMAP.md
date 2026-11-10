@@ -36,7 +36,7 @@ Status key: ✅ done · 🔜 next · ⏸ waiting on a decision from you
   digital downloads, subscriptions (Stripe Billing) and card payments at the point of sale
   through Stripe Terminal. Each is its own piece of work; they're scheduled alongside Phase 8.
 
-## Phase 4 — Herbal database and materia medica 🔜
+## Phase 4 — Herbal database and materia medica 🔜 (next)
 - Normalised schema: herbs, botanical names and synonyms, plant families, actions, energetics,
   tastes, body systems, constituents, preparations, parts used, traditions (Western, Ayurvedic,
   TCM… kept separate, never merged), safety information, references.
@@ -59,15 +59,16 @@ Status key: ✅ done · 🔜 next · ⏸ waiting on a decision from you
 - Full traceability: lot → batches → finished goods → orders and patients, and the reverse
   (recall lookup). Printable batch records, weighing sheets and labels.
 
-## Phase 6 — Clinic management ⏸ (built privacy-first; no real patient data until cleared)
-Decision so far: Supabase **free plan**, which has no Business Associate Agreement. So the clinic
-module will be built and tested with test data only, behind its own permission, and real patient
-records must not be entered on the live site until you're on a plan with a signed BAA (if HIPAA
-applies) or have confirmed it doesn't. Patient-facing wording uses "recommendation" and "care plan",
-never "prescription" or "diagnosis".
-Patients (linked to customers), private practitioner assignments, intake form builder, clinical
-notes and templates, care plans with versions, recommendations linked to formulas, progress
-tracking, private document storage with signed URLs, access-logged record views.
+## Phase 6 — Clinic management (core ✅)
+You chose to keep real patient records on the current setup (Supabase free plan, no BAA). The
+clinic is built privacy-first: app-level encryption, private storage, need-to-know access, signed
+notes and a full audit trail — see `docs/PRIVACY.md`, including what that does and doesn't cover.
+Patient-facing wording uses "recommendation" and "care plan", never "prescription" or "diagnosis".
+- Done: patients, consent, profile, health history, practitioner assignments, clinical notes with
+  signing and amendments, encrypted documents, timeline, permanent deletion.
+- Next: intake form builder (and patient-completed forms in the portal), note templates, care
+  plans with versions, recommendations linked to formulas, progress tracking, two-factor sign-in
+  for clinical staff.
 
 ## Phase 7 — Patient portal and education
 "My Clinic", "My Learning", "My Wellness" inside the existing `/account` area; lessons, courses,

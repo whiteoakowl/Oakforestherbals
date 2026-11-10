@@ -8,6 +8,8 @@ const { execFileSync } = require('node:child_process');
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'store-test-'));
 process.env.UPLOAD_DIR = dir;
+process.env.PRIVATE_UPLOAD_DIR = path.join(dir, 'private');
+process.env.CLINIC_ENCRYPTION_KEY = require('node:crypto').randomBytes(32).toString('hex');
 process.env.ADMIN_EMAIL = 'owner@example.com';
 process.env.ADMIN_PASSWORD = 'password123';
 delete process.env.SUPABASE_URL;

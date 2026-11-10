@@ -3,7 +3,7 @@
 // sidebar never links to something that doesn't exist yet. Items a staff member's role can't
 // open are left out (the server enforces the same permissions on the routes themselves).
 //
-// item: { href, label, icon, perm, exact, children: [{ href, label, perm, exact, match }] }
+// item: { href, label, icon, perm, anyPerm, exact, children: [{ href, label, perm, exact, match }] }
 
 const SECTIONS = [
   {
@@ -47,6 +47,12 @@ const SECTIONS = [
     ],
   },
   {
+    label: 'Clinic',
+    items: [
+      { href: '/admin/clinic/patients', label: 'Patients', icon: 'patients', anyPerm: ['clinic.patients.view_assigned', 'clinic.patients.view_all'] },
+    ],
+  },
+  {
     label: 'Sales channels',
     items: [
       {
@@ -66,7 +72,7 @@ function navFor(can) {
   return SECTIONS.map((section) => ({
     label: section.label,
     items: section.items
-      .filter((item) => !item.perm || can(item.perm))
+      .filter((item) => (!item.perm || can(item.perm)) && (!item.anyPerm || item.anyPerm.some(can)))
       .map((item) => ({ ...item, children: item.children && item.children.filter((c) => !c.perm || can(c.perm)) })),
   })).filter((s) => s.items.length);
 }

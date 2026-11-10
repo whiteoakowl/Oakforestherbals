@@ -1,0 +1,39 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Patients', actions: can('clinic.records.manage') ? '<a class="btn btn-primary" href="/admin/clinic/patients/new">New patient</a>' : '' }) %>
+  <div class="card flush">
+    <div class="tabs">
+      <% for (const [k, l] of [['active', 'Active'], ['inactive', 'Inactive'], ['archived', 'Archived']]) { %>
+        <a href="?status=<%= k %><%= mine ? '&mine=1' : '' %>" class="tab <%= status === k ? 'active' : '' %>"><%= l %></a>
+      <% } %>
+    </div>
+    <form class="filter-bar" method="get" role="search">
+      <input type="hidden" name="status" value="<%= status %>">
+      <input name="q" value="<%= q %>" placeholder="Search name, email or phone" class="grow" aria-label="Search patients">
+      <% if (seesAll) { %><label class="check small"><input type="checkbox" name="mine" value="1" <%= mine ? 'checked' : '' %>> Assigned to me</label><% } %>
+      <button class="btn">Search</button>
+    </form>
+    <% if (!patients.length) { %>
+      <div class="pad">
+        <p><strong><%= q ? 'No patients match.' : seesAll ? 'No patients yet.' : 'No patients are assigned to you yet.' %></strong></p>
+        <% if (!q && can('clinic.records.manage')) { %><p class="muted">Create a record for a new or existing customer. You'll record their consent to storing health information first.</p><% } %>
+      </div>
+    <% } else { %>
+    <div class="table-scroll"><table class="table">
+      <thead><tr><th>Patient</th><th>Practitioners</th><th>Last visit</th><th>Since</th></tr></thead>
+      <tbody>
+      <% for (const p of patients) { %>
+        <tr>
+          <td><a href="/admin/clinic/patients/<%= p.id %>"><strong><%= `${p.first_name} ${p.last_name}`.trim() || p.email %></strong></a><div class="muted small"><%= p.email %></div></td>
+          <td class="small"><%= p.practitioners || '—' %></td>
+          <td class="small nowrap"><%= p.last_visit ? formatDate(p.last_visit) : '—' %></td>
+          <td class="small nowrap muted"><%= formatDate(p.created_at) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table></div>
+    <% } %>
+  </div>
+  <%- include('../partials/pagination', { pager }) %>
+</div>
+<%- include('../partials/footer') %>

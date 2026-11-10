@@ -1,0 +1,244 @@
+<%- include('../partials/header') %>
+<% const pr = patient.profile; const years = age(pr.date_of_birth); const base = `/admin/clinic/patients/${patient.id}`;
+   const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`;
+   const activeOf = (cat) => health.filter((h) => h.category === cat && h.active);
+   const kindLabel = (k) => (NOTE_KINDS.find(([x]) => x === k) || [, 'Note'])[1]; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: patient.name, backHref: '/admin/clinic/patients', badges: patient.status !== 'active' ? [[patient.status, 'default']] : [] }) %>
+  <p class="muted small patient-meta">
+    <%= patient.email %><%= patient.phone ? ` · ${patient.phone}` : '' %>
+    <%= pr.date_of_birth ? ` · Born ${pr.date_of_birth}${years !== null ? ` (${years})` : ''}` : '' %>
+    <%= pr.pronouns ? ` · ${pr.pronouns}` : '' %>
+    · <a href="/admin/customers/<%= patient.customer_id %>">Customer account</a>
+  </p>
+  <% const allergies = activeOf('allergy'); %>
+  <% if (allergies.length) { %>
+    <div class="banner banner-critical" role="note"><strong>Allergies:</strong> <%= allergies.map((a) => a.data.name).join(', ') %></div>
+  <% } %>
+  <nav class="tabs card flush patient-tabs" aria-label="Patient record sections">
+    <% for (const [k, l] of [['overview', 'Overview'], ['health', 'Health history'], ['notes', `Notes (${notes.length})`], ['documents', `Documents (${documents.length})`], ['timeline', 'Timeline']]) { %>
+      <a href="?tab=<%= k %>" class="tab <%= tab === k ? 'active' : '' %>" <%= tab === k ? 'aria-current="page"' : '' %>><%= l %></a>
+    <% } %>
+  </nav>
+
+  <% if (tab === 'overview') { %>
+  <div class="layout-2">
+    <div>
+      <% if (canManage) { %>
+      <form method="post" action="<%= base %>/profile" class="card form-stack">
+        <%- csrfField %>
+        <h2>Profile</h2>
+        <div class="grid-3">
+          <label class="field"><span>First name</span><input name="first_name" value="<%= patient.first_name %>"></label>
+          <label class="field"><span>Last name</span><input name="last_name" value="<%= patient.last_name %>"></label>
+          <label class="field"><span>Phone</span><input name="phone" value="<%= patient.phone %>"></label>
+        </div>
+        <%- include('_profile-fields', { profile: pr }) %>
+        <div class="right"><button class="btn btn-primary">Save profile</button></div>
+      </form>
+      <% } else { %>
+      <div class="card">
+        <h2>Profile</h2>
+        <dl class="kv">
+          <% for (const [k, l] of [['preferred_name', 'Preferred name'], ['occupation', 'Occupation'], ['emergency_name', 'Emergency contact'], ['emergency_relationship', 'Relationship'], ['emergency_phone', 'Emergency phone'], ['summary', 'Summary']]) { if (!pr[k]) continue; %><dt><%= l %></dt><dd><%= pr[k] %></dd><% } %>
+        </dl>
+      </div>
+      <% } %>
+      <div class="card">
+        <h2>At a glance</h2>
+        <% for (const [cat, label] of HEALTH_CATEGORIES.filter(([c]) => ['concern', 'medication', 'supplement', 'condition'].includes(c))) { const items = activeOf(cat); %>
+          <p class="small"><strong><%= label %>:</strong> <%= items.length ? items.map((i) => i.data.name).join(', ') : 'None recorded' %></p>
+        <% } %>
+        <p class="small"><a href="?tab=health">Full health history →</a></p>
+      </div>
+    </div>
+    <div>
+      <div class="card form-stack">
+        <h2>Practitioners</h2>
+        <% if (!practitioners.length) { %><p class="muted small">No one is assigned. Only staff who can see all patients can open this record.</p><% } %>
+        <% for (const s of practitioners) { %>
+          <div class="row-between small"><span><%= s.name %><%= s.is_primary ? ' (primary)' : '' %></span>
+            <% if (can('clinic.assignments.manage')) { %><form method="post" action="<%= base %>/assignments/<%= s.id %>/delete" data-confirm="Remove <%= s.name %> from this patient?"><%- csrfField %><button class="link-plain small critical-text">Remove</button></form><% } %></div>
+        <% } %>
+        <% if (typeof assignable !== 'undefined') { %>
+          <form method="post" action="<%= base %>/assignments" class="form-stack">
+            <%- csrfField %>
+            <label class="field"><span>Assign practitioner</span><select name="staff_id"><% for (const s of assignable) { %><option value="<%= s.id %>"><%= s.name %></option><% } %></select></label>
+            <label class="check small"><input type="checkbox" name="is_primary" value="1"> Primary practitioner</label>
+            <button class="btn btn-sm">Assign</button>
+          </form>
+        <% } %>
+      </div>
+      <div class="card">
+        <h2>Consent</h2>
+        <p class="small">Recorded <%= formatDate(patient.consent_at, true) %><%= patient.consent_recorded_by ? ` by ${patient.consent_recorded_by}` : '' %>.</p>
+      </div>
+      <% if (canManage) { %>
+      <form method="post" action="<%= base %>/status" class="card form-stack">
+        <%- csrfField %>
+        <h2>Status</h2>
+        <select name="status" aria-label="Status"><% for (const s of ['active', 'inactive', 'archived']) { %><option value="<%= s %>" <%= s === patient.status ? 'selected' : '' %>><%= s.charAt(0).toUpperCase() + s.slice(1) %></option><% } %></select>
+        <button class="btn btn-sm">Update</button>
+      </form>
+      <% } %>
+      <% if (staff.role === 'owner') { %>
+      <form method="post" action="<%= base %>/delete" class="card form-stack" data-confirm="Permanently delete this clinic record, its notes and documents? This cannot be undone.">
+        <%- csrfField %>
+        <h2>Delete permanently</h2>
+        <p class="muted small">Removes the clinic record, notes, health history and documents for good. The customer account and orders stay. Type <strong><%= patient.email %></strong> to confirm.</p>
+        <input name="confirm" aria-label="Type the patient's email to confirm" autocomplete="off">
+        <button class="btn btn-critical btn-sm">Delete clinic record</button>
+      </form>
+      <% } %>
+    </div>
+  </div>
+  <% } %>
+
+  <% if (tab === 'health') { %>
+    <% for (const [cat, label] of HEALTH_CATEGORIES) { const items = health.filter((h) => h.category === cat); %>
+      <div class="card flush">
+        <div class="card-head pad"><h2><%= label %></h2></div>
+        <% if (!items.length) { %><p class="pad muted small">Nothing recorded.</p><% } %>
+        <% for (const h of items) { %>
+          <div class="pad health-item <%= h.active ? '' : 'inactive' %>">
+            <% if (canManage) { %>
+            <form method="post" action="<%= base %>/health/<%= h.id %>" class="health-form">
+              <%- csrfField %>
+              <input name="name" value="<%= h.data.name %>" aria-label="Name" required>
+              <input name="since" value="<%= h.data.since %>" placeholder="Since" aria-label="Since">
+              <input name="details" value="<%= h.data.details %>" placeholder="Details, dose, reaction…" aria-label="Details" class="grow">
+              <button class="btn btn-sm">Save</button>
+            </form>
+            <div class="row-gap small">
+              <form method="post" action="<%= base %>/health/<%= h.id %>"><%- csrfField %><input type="hidden" name="toggle" value="1"><button class="link-plain small"><%= h.active ? 'Mark as past' : 'Mark as current' %></button></form>
+              <form method="post" action="<%= base %>/health/<%= h.id %>/delete" data-confirm="Remove this entry?"><%- csrfField %><button class="link-plain small critical-text">Remove</button></form>
+              <span class="muted"><%= h.active ? 'Current' : 'Past' %> · added <%= formatDate(h.created_at) %></span>
+            </div>
+            <% } else { %>
+              <p><strong><%= h.data.name %></strong><%= h.data.since ? ` · since ${h.data.since}` : '' %><%= h.active ? '' : ' (past)' %></p><% if (h.data.details) { %><p class="small"><%= h.data.details %></p><% } %>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+    <% if (canManage) { %>
+    <form method="post" action="<%= base %>/health" class="card form-stack">
+      <%- csrfField %>
+      <h2>Add to health history</h2>
+      <div class="grid-2">
+        <label class="field"><span>Section</span><select name="category"><% for (const [k, l] of HEALTH_CATEGORIES) { %><option value="<%= k %>"><%= l %></option><% } %></select></label>
+        <label class="field"><span>Name</span><input name="name" required placeholder="e.g. Sertraline 50 mg, Ragweed, Poor sleep"></label>
+      </div>
+      <div class="grid-2">
+        <label class="field"><span>Since</span><input name="since" placeholder="e.g. 2019, childhood"></label>
+        <label class="field"><span>Details</span><input name="details" placeholder="Dose, frequency, reaction, notes"></label>
+      </div>
+      <div class="right"><button class="btn btn-primary">Add</button></div>
+    </form>
+    <% } %>
+  <% } %>
+
+  <% if (tab === 'notes') { %>
+    <% const amending = amend ? notes.find((n) => n.id === amend && n.signed_at) : null; %>
+    <% if (canManage) { %>
+    <details class="card" <%= amending || !notes.length ? 'open' : '' %>>
+      <summary><h2 class="inline"><%= amending ? `Amendment to ${kindLabel(amending.kind).toLowerCase()} of ${ymd(amending.visit_date)}` : 'New note' %></h2></summary>
+      <form method="post" action="<%= base %>/notes" class="form-stack mt-sm">
+        <%- csrfField %>
+        <% if (amending) { %><input type="hidden" name="amends_note_id" value="<%= amending.id %>"><% } %>
+        <div class="grid-2">
+          <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of NOTE_KINDS) { %><option value="<%= k %>" <%= k === 'consultation' ? 'selected' : '' %>><%= l %></option><% } %></select></label>
+          <label class="field"><span>Visit date</span><input type="date" name="visit_date" value="<%= new Date().toISOString().slice(0, 10) %>"></label>
+        </div>
+        <label class="field"><span>Note</span><textarea name="text" rows="8" placeholder="For SOAP notes, use the four fields below instead."></textarea></label>
+        <details><summary class="small">SOAP fields (used when Type is SOAP note)</summary>
+          <% for (const [k, l] of SOAP_FIELDS) { %><label class="field mt-sm"><span><%= l %></span><textarea name="<%= k %>" rows="3"></textarea></label><% } %>
+        </details>
+        <p class="muted small">Notes are internal: they are never shown to the patient. Drafts can be edited by their author; signing locks the note permanently.</p>
+        <div class="row-gap right"><button class="btn" name="sign" value="0">Save draft</button><button class="btn btn-primary" name="sign" value="1">Sign and lock</button></div>
+      </form>
+    </details>
+    <% } %>
+    <% if (!notes.length) { %><div class="card"><p class="muted">No notes yet.</p></div><% } %>
+    <% for (const n of notes) { const mine = n.author_id === staff.id; const editing = editNote === n.id && mine && !n.signed_at && canManage; %>
+      <article id="note-<%= n.id %>" class="card form-stack">
+        <div class="row-between">
+          <h2><%= kindLabel(n.kind) %> · <%= ymd(n.visit_date) %></h2>
+          <span class="badge badge-<%= n.signed_at ? 'success' : 'attention' %>"><%= n.signed_at ? 'Signed' : 'Draft' %></span>
+        </div>
+        <p class="muted small">By <%= n.author_name || 'staff' %><%= n.signed_at ? ` · signed ${formatDate(n.signed_at, true)}` : ` · last edited ${formatDate(n.updated_at, true)}` %>
+          <% if (n.amends_note_id) { %> · amends <a href="#note-<%= n.amends_note_id %>">an earlier note</a><% } %></p>
+        <% if (editing) { %>
+          <form method="post" action="<%= base %>/notes/<%= n.id %>" class="form-stack">
+            <%- csrfField %>
+            <label class="field"><span>Visit date</span><input type="date" name="visit_date" value="<%= ymd(n.visit_date) %>"></label>
+            <% if (n.kind === 'soap') { %>
+              <% for (const [k, l] of SOAP_FIELDS) { %><label class="field"><span><%= l %></span><textarea name="<%= k %>" rows="3"><%= n.body[k] || '' %></textarea></label><% } %>
+            <% } else { %>
+              <label class="field"><span>Note</span><textarea name="text" rows="8"><%= n.body.text || '' %></textarea></label>
+            <% } %>
+            <div class="row-gap right"><a class="btn" href="?tab=notes#note-<%= n.id %>">Cancel</a><button class="btn" name="sign" value="0">Save draft</button><button class="btn btn-primary" name="sign" value="1">Sign and lock</button></div>
+          </form>
+        <% } else { %>
+          <% if (n.kind === 'soap') { %>
+            <% for (const [k, l] of SOAP_FIELDS) { if (!n.body[k]) continue; %><div><strong class="small"><%= l %></strong><p class="note-text"><%= n.body[k] %></p></div><% } %>
+          <% } else { %><p class="note-text"><%= n.body.text %></p><% } %>
+          <div class="row-gap small">
+            <% if (canManage && !n.signed_at && mine) { %>
+              <a href="?tab=notes&edit=<%= n.id %>#note-<%= n.id %>">Edit</a>
+              <form method="post" action="<%= base %>/notes/<%= n.id %>/delete" data-confirm="Delete this draft?"><%- csrfField %><button class="link-plain small critical-text">Delete draft</button></form>
+            <% } %>
+            <% if (canManage && n.signed_at) { %><a href="?tab=notes&amend=<%= n.id %>">Add amendment</a><% } %>
+          </div>
+        <% } %>
+      </article>
+    <% } %>
+  <% } %>
+
+  <% if (tab === 'documents') { %>
+    <% if (canManage) { %>
+    <form method="post" action="<%= base %>/documents" enctype="multipart/form-data" class="card form-stack">
+      <%- csrfField %>
+      <h2>Upload</h2>
+      <div class="grid-3">
+        <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of DOCUMENT_KINDS) { %><option value="<%= k %>"><%= l %></option><% } %></select></label>
+        <label class="field"><span>Title</span><input name="title" placeholder="e.g. Blood panel March 2026"></label>
+        <label class="field"><span>File</span><input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.txt,.csv,.doc,.docx"></label>
+      </div>
+      <p class="muted small">PDF, images, Word or text, up to 4 MB. Files are encrypted before they're stored and can only be opened from this page.</p>
+      <div class="right"><button class="btn btn-primary">Upload</button></div>
+    </form>
+    <% } %>
+    <div class="card flush">
+      <% if (!documents.length) { %><p class="pad muted">No documents yet.</p><% } else { %>
+      <div class="table-scroll"><table class="table">
+        <thead><tr><th>Document</th><th>Type</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
+        <tbody>
+        <% for (const d of documents) { const viewable = /^(image\/(jpeg|png|webp)|application\/pdf|text\/plain)$/.test(d.mime); %>
+          <tr>
+            <td><a href="<%= base %>/documents/<%= d.id %><%= viewable ? '?view=1' : '' %>" target="_blank" rel="noopener"><%= d.title %></a></td>
+            <td class="small"><%= (DOCUMENT_KINDS.find(([k]) => k === d.kind) || [, d.kind])[1] %></td>
+            <td class="small nowrap"><%= (d.size_bytes / 1024).toFixed(0) %> KB</td>
+            <td class="small"><%= formatDate(d.created_at) %> · <%= d.uploaded_by_name %></td>
+            <td class="num nowrap"><a class="small" href="<%= base %>/documents/<%= d.id %>">Download</a>
+              <% if (canManage) { %><form method="post" action="<%= base %>/documents/<%= d.id %>/delete" class="inline" data-confirm="Delete <%= d.title %>?"><%- csrfField %><button class="link-plain small critical-text">Delete</button></form><% } %></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table></div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (tab === 'timeline') { %>
+    <div class="card">
+      <ol class="timeline-list">
+        <% for (const e of events) { %>
+          <li><span class="muted small nowrap"><%= formatDate(e.at, true) %></span>
+            <span><% if (e.href) { %><a href="<%= e.href %>"><%= e.text %></a><% } else { %><%= e.text %><% } %><%= e.total !== undefined ? ` · ${money(e.total)}` : '' %></span></li>
+        <% } %>
+      </ol>
+    </div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

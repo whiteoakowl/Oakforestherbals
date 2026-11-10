@@ -1,0 +1,45 @@
+# Clinic records: privacy safeguards
+
+The clinic module stores real patient health information. This page describes what the software
+does to protect it, what it can't do on its own, and what you need to do.
+
+**This is not a statement of HIPAA compliance.** The site runs on Supabase's free plan and Netlify,
+and neither has a Business Associate Agreement (BAA) with you. If HIPAA applies to your practice,
+storing patient records here is not compliant whatever the software does; you would need a plan
+with a signed BAA from every service that stores or carries the data. State health-privacy laws
+can apply even when HIPAA doesn't. Please confirm your position with a lawyer.
+
+## What the software does
+| Safeguard | How |
+|---|---|
+| Encryption before storage | Profiles (date of birth, emergency contact, summary), every health-history entry, every clinical note, document titles and document files are encrypted with AES-256-GCM inside the app, using `CLINIC_ENCRYPTION_KEY`. Supabase, its backups and its dashboard only ever see ciphertext. Patient names, emails and phone numbers stay readable because they are the customer account (needed for login, orders and search). |
+| Private files | Documents go to a **private** Supabase bucket (`clinic-private`), never the public image bucket. The app refuses to use the bucket if someone makes it public. Files are only served through an access-checked page, with `no-store` caching. |
+| Need-to-know access | Practitioners see only patients assigned to them; clinic managers see all. Administrators and every other role get **no** clinical access unless the owner grants it. Records a person can't see are reported as "not found". |
+| Permission guard rails | Nobody can grant a permission they don't hold, so an administrator can't give themselves clinical access. |
+| Signed notes | A signed note can't be edited or deleted — enforced by the database itself, not only the app. Corrections are added as linked amendments. Drafts can only be changed by their author. |
+| Audit trail | Every record view, change, download, refused access, assignment and deletion is logged (who, when, which record, from which IP), in an append-only table. Clinical content is never written to the log. |
+| Consent | A record can't be created until staff confirm the patient's consent to storing health information; the time and staff member are recorded. |
+| Deletion | Only an owner can permanently delete a clinic record (typed confirmation). It removes notes, history and files; the customer account and orders stay. A customer with a clinic record can't be deleted from the Customers screen. |
+| Database API closed | Row Level Security is on for every table, so Supabase's public Data API can't read anything. |
+
+## What you need to do
+1. **Set the encryption key.** Generate one with
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`, add it in Netlify as
+   `CLINIC_ENCRYPTION_KEY`, and redeploy. Until then the clinic shows "records locked".
+2. **Back the key up** in a password manager. If it's lost, no one — including Supabase or me —
+   can recover the records. If it leaks, treat it like a breach.
+3. **Never change the key** once records exist (key rotation isn't built yet; changing it makes
+   existing records unreadable).
+4. **Back up the database yourself.** The free plan has no automatic backups. Backups contain only
+   ciphertext for clinical data, so the key is needed to restore anything useful.
+5. **Keep accounts tight:** give clinical roles only to people who need them, use strong unique
+   passwords, remove staff who leave, and review Settings → Audit log regularly.
+6. **Keep clinical detail out of email and SMS.** The store's emails don't include clinical
+   information; don't add any to templates.
+7. Devices used to view records should have screen locks and disk encryption.
+
+## Known limits (planned work)
+- No two-factor sign-in yet for staff.
+- No key rotation yet.
+- No automatic session timeout for clinic staff beyond the normal 30-day login (sign out on shared devices).
+- Patient-facing access (portal) is not built yet; patients can't see any clinic data.

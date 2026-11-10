@@ -4,3 +4,5 @@ uploads/*
 !uploads/.gitkeep
 .env
 data/.session-secret
+data/.clinic-key
+data/private-uploads/
