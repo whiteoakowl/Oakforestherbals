@@ -19,6 +19,12 @@ const PERMISSIONS = [
   ['pos.use', 'Store', 'Take in-person sales at the point of sale', 0],
   ['content.manage', 'Online store', 'Manage pages, blog posts, files and navigation', 0],
   ['themes.manage', 'Online store', 'Edit the storefront theme', 0],
+  ['inventory.manage', 'Apothecary', 'Manage stock, lots, suppliers and purchase orders', 0],
+  ['formulas.view', 'Apothecary', 'View shared formulas', 0],
+  ['formulas.manage', 'Apothecary', 'Create and edit formulas (shared, or private to themselves)', 0],
+  ['formulas.approve', 'Apothecary', 'Approve formulas for production and recommendation', 0],
+  ['production.manage', 'Apothecary', 'Plan and run production batches and record quality checks', 0],
+  ['production.approve', 'Apothecary', 'Complete, release and recall batches (deducts stock)', 0],
   ['herbs.view', 'Herbalist', 'Search and read the herbal database', 0],
   ['herbs.manage', 'Herbalist', 'Add and edit herbs, safety information, references and categories; import and export', 0],
   ['clinic.patients.view_assigned', 'Clinic', 'See the clinical records of patients assigned to them', 1],
@@ -36,13 +42,13 @@ const STORE_ALL = ['analytics.view', 'orders.view', 'orders.manage', 'products.m
 // System roles and the permissions they start with. Permissions added in later releases are
 // granted to these roles once, when they first appear; after that the owner's edits stand.
 const ROLE_DEFAULTS = {
-  staff: [...STORE_ALL, 'herbs.view'], // the pre-RBAC "staff" role: everything except settings
-  administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view', 'herbs.view', 'herbs.manage'],
-  clinic_manager: ['herbs.view', 'herbs.manage', 'clinic.patients.view_all', 'clinic.records.manage', 'clinic.assignments.manage'],
-  practitioner: ['herbs.view', 'clinic.patients.view_assigned', 'clinic.records.manage'],
-  apothecary_manager: ['costing.manage', 'herbs.view', 'herbs.manage'],
-  inventory_manager: ['products.manage', 'costing.manage', 'herbs.view'],
-  store_manager: [...STORE_ALL, 'herbs.view'],
+  staff: [...STORE_ALL, 'herbs.view', 'inventory.manage', 'formulas.view', 'production.manage'], // the pre-RBAC "staff" role: everything except settings
+  administrator: [...STORE_ALL, 'settings.manage', 'staff.manage', 'audit.view', 'herbs.view', 'herbs.manage', 'inventory.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'production.manage', 'production.approve'],
+  clinic_manager: ['herbs.view', 'herbs.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'clinic.patients.view_all', 'clinic.records.manage', 'clinic.assignments.manage'],
+  practitioner: ['herbs.view', 'formulas.view', 'formulas.manage', 'clinic.patients.view_assigned', 'clinic.records.manage'],
+  apothecary_manager: ['costing.manage', 'herbs.view', 'herbs.manage', 'inventory.manage', 'formulas.view', 'formulas.manage', 'formulas.approve', 'production.manage', 'production.approve'],
+  inventory_manager: ['products.manage', 'costing.manage', 'herbs.view', 'inventory.manage', 'formulas.view', 'production.manage'],
+  store_manager: [...STORE_ALL, 'herbs.view', 'inventory.manage'],
   customer_service: ['orders.view', 'orders.manage', 'customers.view', 'customers.manage', 'pos.use'],
 };
 

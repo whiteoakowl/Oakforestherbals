@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Plan a batch', backHref: '/admin/production' }) %>
+  <form method="post" action="/admin/production/new" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Make</span><select name="make" required>
+      <option value="">Choose…</option>
+      <optgroup label="Approved formulas (bulk preparations)"><% for (const f of formulaList) { %><option value="formula:<%= f.id %>" <%= pre.formula === f.id ? 'selected' : '' %>><%= f.name %> (batch <%= Number(f.yield_qty) %> <%= UNITS[f.yield_unit].label %>)</option><% } %></optgroup>
+      <optgroup label="Products with a recipe"><% for (const v of variants) { %><option value="variant:<%= v.id %>" <%= pre.variant === v.id ? 'selected' : '' %>><%= v.product_title %><%= v.title !== 'Default Title' ? ` — ${v.title}` : '' %></option><% } %></optgroup>
+    </select><small class="muted">Formulas must be approved. Products need a recipe under Costing.</small></label>
+    <div class="grid-2">
+      <label class="field"><span>Quantity to make</span><input name="planned_qty" inputmode="decimal" required><small class="muted">For a formula, in its yield unit; for a product, in units.</small></label>
+      <label class="field"><span>Planned for</span><input type="date" name="planned_for"></label>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>Reason</span><select name="source"><% for (const [k, l] of SOURCES) { %><option value="<%= k %>" <%= pre.source === k ? 'selected' : '' %>><%= l %></option><% } %></select></label>
+      <label class="field"><span>Reference</span><input name="source_ref" value="<%= pre.ref %>" placeholder="Order number, care plan, etc."></label>
+    </div>
+    <label class="field"><span>Notes</span><textarea name="notes" rows="2"></textarea></label>
+    <div class="right"><button class="btn btn-primary">Plan batch</button></div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

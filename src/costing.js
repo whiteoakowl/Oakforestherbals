@@ -19,7 +19,7 @@ const UNITS = {
 
 const KINDS = [
   ['herb', 'Herb'], ['ingredient', 'Other ingredient'], ['container', 'Bottle / jar'], ['closure', 'Cap / dropper'],
-  ['label', 'Label'], ['packaging', 'Packaging'], ['shipping', 'Shipping material'], ['other', 'Other'],
+  ['label', 'Label'], ['packaging', 'Packaging'], ['shipping', 'Shipping material'], ['component', 'Component (made in-house)'], ['other', 'Other'],
 ];
 
 const isUnit = (u) => Object.hasOwn(UNITS, u);
@@ -136,12 +136,22 @@ async function variantsUsing(materialId) {
 }
 
 // After a material price change: recalculates every affected variant and reports the impact.
-async function recalcForMaterial(materialId) {
+// depth guards against a component that (wrongly) contains itself.
+async function recalcForMaterial(materialId, depth = 0) {
   return tx(async () => {
     const impact = [];
+    impact.formulas = [];
     for (const v of await variantsUsing(materialId)) {
       const r = await recalcVariant(v.id);
       impact.push({ ...v, before: r.before, after: r.after, applied: r.applied, calculated: r.calculated });
+    }
+    // Formulas using this material re-price their component, which re-prices products using it.
+    if (depth < 5) {
+      const formulas = require('./formulas');
+      for (const f of await formulas.usingMaterial(materialId)) {
+        impact.formulas.push(f);
+        if (f.output_material_id && f.output_material_id !== materialId) await formulas.refreshOutputPrice(f.id, depth);
+      }
     }
     return impact;
   });

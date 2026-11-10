@@ -45,17 +45,13 @@ category management, CSV import/export with duplicate detection, bulk editing an
 No herb content is shipped: entries come from your sources via the editor or CSV import.
 Next, with Phase 5: the formula builder reads herbs and their safety entries from here.
 
-## Phase 5 — Apothecary, formulas and manufacturing 🔜
-- Raw herbs and supplies as inventory items with **lots** (supplier, lot number, cost, harvest and
-  expiry dates, location, certificates), suppliers and purchase orders, receiving, adjustments,
-  waste, expiry and reorder alerts.
-- Formula builder linked to the herb database: parts/ratios/percentages, unit conversion,
-  scaling, cost roll-up, versions, safety flags, practitioner review before use.
-- Production batches: planned → in progress → QC → completed → released. Completing a batch, in
-  one transaction, deducts the exact lots used, records every movement, creates finished-goods stock
-  (linked to a store variant), and writes the actual cost.
-- Full traceability: lot → batches → finished goods → orders and patients, and the reverse
-  (recall lookup). Printable batch records, weighing sheets and labels.
+## Phase 5 — Apothecary, formulas and manufacturing ✅
+Done: lots with landed cost, FEFO/FIFO consumption, suppliers, purchase orders and receiving,
+adjustments/waste/counts, locations, expiry and reorder alerts, valuation; formulas (amounts, parts,
+percentages, scaling, costs, herb safety, versions, approval); components; production batches with
+QC, actual cost, quarantine/release, batch records and labels; finished-goods lots consumed by
+sales; full traceability and recall. Barcode label printing uses lot codes as text (scanner input
+works in search fields); generating barcode images is a later addition.
 
 ## Phase 6 — Clinic management (core ✅)
 You chose to keep real patient records on the current setup (Supabase free plan, no BAA). The

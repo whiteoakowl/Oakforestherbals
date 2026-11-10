@@ -62,6 +62,28 @@ const SECTIONS = [
     ],
   },
   {
+    label: 'Apothecary',
+    items: [
+      {
+        href: '/admin/inventory', label: 'Inventory', icon: 'box', perm: 'inventory.manage',
+        children: [
+          { href: '/admin/inventory', label: 'Stock', exact: true, match: /^\/admin\/inventory\/materials\// },
+          { href: '/admin/inventory/purchase-orders', label: 'Purchase orders' },
+          { href: '/admin/inventory/suppliers', label: 'Suppliers' },
+          { href: '/admin/inventory/locations', label: 'Locations' },
+        ],
+      },
+      { href: '/admin/formulas', label: 'Formulas', icon: 'flask', anyPerm: ['formulas.view', 'formulas.manage'] },
+      {
+        href: '/admin/production', label: 'Production', icon: 'batch', perm: 'production.manage',
+        children: [
+          { href: '/admin/production', label: 'Batches', exact: true, match: /^\/admin\/production\/(\d+|new)/ },
+          { href: '/admin/production/trace', label: 'Batch tracing' },
+        ],
+      },
+    ],
+  },
+  {
     label: 'Clinic',
     items: [
       { href: '/admin/clinic/patients', label: 'Patients', icon: 'patients', anyPerm: ['clinic.patients.view_assigned', 'clinic.patients.view_all'] },

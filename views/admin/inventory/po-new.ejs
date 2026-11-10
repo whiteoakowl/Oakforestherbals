@@ -1,0 +1,19 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'New purchase order', backHref: '/admin/inventory/purchase-orders' }) %>
+  <form method="post" action="/admin/inventory/purchase-orders/new" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="grid-2">
+      <label class="field"><span>Supplier</span><select name="supplier_id"><option value="">—</option><% for (const s of suppliers) { %><option value="<%= s.id %>" <%= s.id === supplierId ? 'selected' : '' %>><%= s.name %></option><% } %></select></label>
+      <label class="field"><span>Expected</span><input type="date" name="expected_at"></label>
+    </div>
+    <% if (low.length) { %>
+      <div class="field"><span>Reorder low stock</span>
+        <% for (const m of low) { %><label class="check small"><input type="checkbox" name="material_ids" value="<%= m.id %>" checked> <%= m.name %> <span class="muted">(<%= fmtQty(m.on_hand, m) %> left; reorder at <%= fmtQty(m.reorder_point, m) %>)</span></label><% } %>
+      </div>
+    <% } else { %><p class="muted small">Nothing is below its reorder point. You can add lines on the next screen.</p><% } %>
+    <label class="field"><span>Notes</span><textarea name="notes" rows="2"></textarea></label>
+    <div class="right"><button class="btn btn-primary">Create draft</button></div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

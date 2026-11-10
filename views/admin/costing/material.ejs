@@ -28,21 +28,37 @@
       <label class="field"><span>Name</span><input name="name" value="<%= m.name %>" required placeholder="Chamomile flower"></label>
       <label class="field"><span>Botanical name</span><input name="botanical_name" value="<%= m.botanical_name %>" placeholder="Matricaria chamomilla"></label>
     </div>
-    <label class="field"><span>Type</span><select name="kind"><% for (const [k, label] of KINDS) { %><option value="<%= k %>" <%= k === m.kind ? 'selected' : '' %>><%= label %></option><% } %></select></label>
+    <div class="grid-3">
+      <label class="field"><span>Type</span><select name="kind"><% for (const [k, label] of KINDS) { %><option value="<%= k %>" <%= k === m.kind ? 'selected' : '' %>><%= label %></option><% } %></select></label>
+      <label class="field"><span>Herbal database entry</span><select name="herb_id"><option value="">Not linked</option><% for (const h of herbOptions) { %><option value="<%= h.id %>" <%= h.id === m.herb_id ? 'selected' : '' %>><%= h.common_name %> (<%= h.latin_name %>)</option><% } %></select><small class="muted">Links formulas to this herb's safety information.</small></label>
+      <label class="field"><span>Plant part</span><input name="plant_part" value="<%= m.plant_part || '' %>" placeholder="e.g. flower, root"></label>
+    </div>
     <div class="grid-3">
       <label class="field"><span>Pack size</span><input name="pack_size" inputmode="decimal" value="<%= m.pack_size %>" required></label>
       <label class="field"><span>Unit</span><select name="pack_unit"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= k === m.pack_unit ? 'selected' : '' %>><%= u.label %> (<%= u.type %>)</option><% } %></select></label>
       <label class="field"><span>Pack cost</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="pack_cost" inputmode="decimal" value="<%= centsToInput(m.pack_cost) %>" required placeholder="0.00"></div></label>
     </div>
     <p class="muted small">What you pay for one pack, e.g. 1 lb for <%= store.currency_symbol %>24.00, or 100 each for <%= store.currency_symbol %>45.00. Include shipping or duties you pay on it if you want them in product costs.</p>
+    <div class="grid-3">
+      <label class="field"><span>Stock counted in</span><select name="stock_unit"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= k === (m.stock_unit || m.pack_unit) ? 'selected' : '' %>><%= u.label %></option><% } %></select></label>
+      <label class="field"><span>Reorder when below</span><input name="reorder_point" inputmode="decimal" value="<%= m.reorder_point === null || m.reorder_point === undefined ? '' : Math.round((Number(m.reorder_point) / UNITS[m.stock_unit || m.pack_unit].factor) * 100) / 100 %>" placeholder="No alert"><small class="muted">In the stock unit.</small></label>
+      <label class="field"><span>SKU / barcode</span><input name="sku" value="<%= m.sku || '' %>"></label>
+    </div>
     <div class="grid-2">
-      <label class="field"><span>Supplier</span><input name="supplier" value="<%= m.supplier %>"></label>
+      <label class="field"><span>Storage instructions</span><input name="storage_instructions" value="<%= m.storage_instructions || '' %>" placeholder="Cool, dark, airtight"></label>
+      <div class="field"><span>Options</span>
+        <label class="check small"><input type="checkbox" name="organic" value="1" <%= m.organic ? 'checked' : '' %>> Certified organic</label>
+        <label class="check small"><input type="hidden" name="track_stock" value="0"><input type="checkbox" name="track_stock" value="1" <%= m.track_stock === 0 ? '' : 'checked' %>> Track stock (lots)</label></div>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>Supplier</span><select name="supplier_id"><option value="">—</option><% for (const s of supplierOptions) { %><option value="<%= s.id %>" <%= s.id === m.supplier_id ? 'selected' : '' %>><%= s.name %></option><% } %></select><input type="hidden" name="supplier" value="<%= m.supplier %>"><% if (m.supplier && !m.supplier_id) { %><small class="muted">Currently “<%= m.supplier %>”. <a href="/admin/inventory/suppliers/new">Add suppliers</a>.</small><% } %></label>
       <label class="field"><span>Supplier product code</span><input name="supplier_sku" value="<%= m.supplier_sku %>"></label>
     </div>
     <label class="field"><span>Notes</span><textarea name="notes" rows="2"><%= m.notes %></textarea></label>
     <div class="right"><button class="btn btn-primary"><%= material ? 'Save' : 'Add material' %></button></div>
   </form>
   <% if (material) { %>
+    <% if (can('inventory.manage')) { %><p><a class="btn" href="/admin/inventory/materials/<%= material.id %>">Stock, lots and movements →</a></p><% } %>
     <div class="card flush">
       <div class="card-head pad"><h2>Used in (<%= usedIn.length %>)</h2></div>
       <% if (!usedIn.length) { %><p class="pad muted small">Not in any product recipe yet.</p><% } else { %>

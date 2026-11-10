@@ -460,3 +460,15 @@ sup.ref a { text-decoration: none; font-size: 11px; }
 .herb-photos figure { margin: 0; }
 .term-picker { border: 0; }
 @media (max-width: 900px) { .herb-layout { grid-template-columns: 1fr; } .herb-filters { position: static; max-height: none; } .kv-row { grid-template-columns: 1fr; gap: 2px; } }
+
+/* Apothecary */
+.sub-tabs { padding: 4px; margin-bottom: 16px; overflow-x: auto; }
+.warning-text { color: #8a6116; }
+.small-stat { font-size: 18px; }
+.qc-row { display: grid; grid-template-columns: 1fr 110px 1fr; gap: 8px; align-items: center; padding: 4px 0; border-top: 1px solid var(--border); }
+.qc-row:first-of-type { border-top: 0; }
+.trace-tree { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.trace-tree ul { padding-left: 18px; margin-top: 4px; }
+.cost-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--surface-2, #eee); margin: 8px 0; }
+.cost-bar span { display: block; height: 100%; }
+@media (max-width: 640px) { .qc-row { grid-template-columns: 1fr; } }

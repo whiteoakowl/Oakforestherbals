@@ -13,8 +13,12 @@ const { toInt, parseMoney, asBool, asList, paginate } = require('../../utils');
 const router = express.Router();
 const KIND_KEYS = costing.KINDS.map(([k]) => k);
 
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
   Object.assign(res.locals, { UNITS: costing.UNITS, KINDS: costing.KINDS, costPerBase: costing.costPerBase, margin: costing.margin });
+  if (req.method === 'GET' && /^\/materials\//.test(req.path)) {
+    res.locals.herbOptions = await all("SELECT id, common_name, latin_name FROM herbs ORDER BY lower(common_name)");
+    res.locals.supplierOptions = await all('SELECT id, name FROM suppliers WHERE archived = 0 ORDER BY lower(name)');
+  }
   next();
 });
 
@@ -68,13 +72,35 @@ function readMaterial(body) {
     supplier: String(body.supplier || '').trim(),
     supplier_sku: String(body.supplier_sku || '').trim(),
     notes: String(body.notes || ''),
+    sku: String(body.sku || '').trim(),
+    herb_id: Number(body.herb_id) || null,
+    plant_part: String(body.plant_part || '').trim(),
+    stock_unit: costing.isUnit(body.stock_unit) ? body.stock_unit : null,
+    reorder_point: num(body.reorder_point),
+    storage_instructions: String(body.storage_instructions || ''),
+    organic: body.organic === '1' ? 1 : 0,
+    track_stock: body.track_stock === '0' ? 0 : 1,
+    supplier_id: Number(body.supplier_id) || null,
   };
   const errors = [];
   if (!m.name) errors.push('Name is required.');
   if (!(m.pack_size > 0)) errors.push('Pack size must be more than zero.');
   if (!costing.isUnit(m.pack_unit)) errors.push('Choose a unit.');
   if (m.pack_cost === null || m.pack_cost < 0) errors.push('Enter the pack cost (0 or more).');
+  if (m.stock_unit && costing.isUnit(m.pack_unit) && costing.UNITS[m.stock_unit].type !== costing.UNITS[m.pack_unit].type) m.stock_unit = m.pack_unit;
+  // The reorder point is entered in the stock unit and stored in base units (g, ml, each).
+  if (Number.isNaN(m.reorder_point)) errors.push('The reorder point must be a number.');
+  else if (m.reorder_point !== null && costing.isUnit(m.pack_unit)) m.reorder_point *= costing.UNITS[m.stock_unit || m.pack_unit].factor;
   return { m, errors };
+}
+
+const EXTRA_COLS = ['sku', 'herb_id', 'plant_part', 'stock_unit', 'reorder_point', 'storage_instructions', 'organic', 'track_stock', 'supplier_id'];
+async function saveExtras(id, m) {
+  if (m.supplier_id) {
+    const s = await get('SELECT name FROM suppliers WHERE id = ?', m.supplier_id);
+    if (s) m.supplier = s.name; else m.supplier_id = null;
+  }
+  await run(`UPDATE materials SET ${EXTRA_COLS.map((c) => `${c} = ?`).join(', ')}, supplier = COALESCE(NULLIF(?, ''), supplier) WHERE id = ?`, ...EXTRA_COLS.map((c) => m[c]), m.supplier_id ? m.supplier : '', id);
 }
 
 router.get('/materials/new', async (req, res) => {
@@ -92,6 +118,7 @@ router.post('/materials/new', async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, m.name, m.botanical_name, m.kind, m.pack_size, m.pack_unit, m.pack_cost, m.supplier, m.supplier_sku, m.notes);
     await run('INSERT INTO material_price_history (material_id, pack_size, pack_unit, pack_cost, changed_by) VALUES (?, ?, ?, ?, ?)',
       newId, m.pack_size, m.pack_unit, m.pack_cost, res.locals.staff.name);
+    await saveExtras(newId, m);
     return newId;
   });
   flash(req, 'success', 'Material added.');
@@ -135,6 +162,7 @@ router.post('/materials/:id', async (req, res, next) => {
     await run(`UPDATE materials SET name = ?, botanical_name = ?, kind = ?, pack_size = ?, pack_unit = ?, pack_cost = ?, supplier = ?,
       supplier_sku = ?, notes = ?, updated_at = now() WHERE id = ?`, m.name, m.botanical_name, m.kind, m.pack_size, m.pack_unit, m.pack_cost,
     m.supplier, m.supplier_sku, m.notes, before.id);
+    await saveExtras(before.id, m);
     if (priceChanged) {
       await run('INSERT INTO material_price_history (material_id, pack_size, pack_unit, pack_cost, changed_by) VALUES (?, ?, ?, ?, ?)',
         before.id, m.pack_size, m.pack_unit, m.pack_cost, res.locals.staff.name);
@@ -180,7 +208,18 @@ router.get('/products/:id', async (req, res, next) => {
   const product = await catalog.productById(toInt(req.params.id));
   if (!product) return next();
   const variants = [];
-  for (const v of product.variants) variants.push({ ...v, costing: await costing.costVariant(v.id) });
+  for (const v of product.variants) {
+    const batches = await all(`SELECT id, code, status, actual_qty, actual_cost, estimated_cost, planned_qty, completed_at FROM production_batches
+      WHERE variant_id = ? AND actual_cost IS NOT NULL ORDER BY id DESC LIMIT 5`, v.id);
+    const made = batches.reduce((s, b) => s + Number(b.actual_qty), 0);
+    const sold = await get(`SELECT COALESCE(SUM(oi.quantity), 0) AS units, COALESCE(SUM(oi.unit_cost * oi.quantity), 0) AS cogs FROM order_items oi JOIN orders o ON o.id = oi.order_id
+      WHERE oi.variant_id = ? AND o.status != 'cancelled' AND oi.unit_cost IS NOT NULL AND o.created_at >= now() - interval '90 days'`, v.id);
+    variants.push({
+      ...v, costing: await costing.costVariant(v.id), batches,
+      actualUnit: made ? Math.round(batches.reduce((s, b) => s + b.actual_cost, 0) / made) : null,
+      soldUnits: Number(sold.units), soldUnit: Number(sold.units) ? Math.round(Number(sold.cogs) / Number(sold.units)) : null,
+    });
+  }
   const materials = await all('SELECT id, name, kind, pack_unit, archived FROM materials ORDER BY archived, lower(name)');
   res.render('admin/costing/product', { title: `Costing — ${product.title}`, product, variants, materials, rates: costing.storeRates() });
 });

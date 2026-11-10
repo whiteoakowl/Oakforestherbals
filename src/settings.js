@@ -109,6 +109,13 @@ const DEFAULTS = {
     default_waste_percent: 0,
     default_overhead_percent: 0,
   },
+  inventory: {
+    expiry_warning_days: 60,
+  },
+  production: {
+    batch_prefix: 'B',
+    qc_checklist: 'Ingredients and lots verified against the batch sheet\nWeights and measures recorded\nAppearance, colour and aroma as expected\nContainers clean, filled and sealed\nLabelled with batch code and best-before date',
+  },
   pos: {
     tax_country: 'US',
     tax_province: '',

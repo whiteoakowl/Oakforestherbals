@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased — Phase 5: apothecary, formulas and manufacturing
+
+### Added
+- **Inventory** (Apothecary → Inventory): stock on hand by lot with landed cost, value, reorder
+  points, expiry warnings, locations, waste/loss, stock counts and corrections (with reasons), and
+  a full movement history per material. CSV export.
+- **Suppliers and purchase orders**: draft, order, print, receive in part or in full; shipping and
+  tax spread into each lot's cost; supplier lot numbers, harvest and expiry dates and organic status
+  recorded on receipt; reorder suggestions from low stock.
+- **Formulas** (Apothecary → Formulas): ingredients by amount, parts or percentage, with automatic
+  weights, shares, ratios, costs and scaling to any batch size; linked to the herbal database to show
+  cautions and flag missing safety information; approval with a safety-review confirmation; version
+  history; private or shared; printable formula and weighing sheets.
+- **Components**: a formula (e.g. a bulk tincture) can become a stock item used in product
+  recipes; its cost follows the formula, Craftybase-style.
+- **Production** (Apothecary → Production): batches from approved formulas or product recipes,
+  quality checklist, completion that deducts the exact lots in one transaction and records actual
+  cost, quarantine and release, printable batch manufacturing records and labels.
+- **Traceability and recall**: from any lot, see every batch, component, finished product and order
+  it reached; from any batch, see every lot (and supplier lot) it was made from. Recall marks the lot
+  and everything made from it, and pulls unsold stock.
+- **Actual cost of goods**: sales draw finished units from batch lots oldest-first at their actual
+  cost; restocking returns them. The product cost page shows a cost breakdown bar, each material's
+  share, actual cost per unit from recent batches, and cost of goods sold.
+- New permissions for inventory, formulas (view, manage, approve) and production (manage, approve).
+
+
 ## Unreleased — Phase 4: herbal database and materia medica
 
 ### Added

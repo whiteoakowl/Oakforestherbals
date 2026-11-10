@@ -1,0 +1,70 @@
+<%- include('../partials/header') %>
+<% const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`; const draft = po.status === 'draft'; const receivable = ['draft', 'ordered', 'partial'].includes(po.status); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: `Purchase order #${po.number}`, backHref: '/admin/inventory/purchase-orders', badges: [[po.status, po.status === 'received' ? 'success' : 'attention']], actions: `<a class="btn" href="/admin/inventory/purchase-orders/${po.id}/print" target="_blank" rel="noopener">Print</a>` }) %>
+  <form method="post" action="/admin/inventory/purchase-orders/<%= po.id %>" class="card form-stack">
+    <%- csrfField %>
+    <div class="grid-3">
+      <label class="field"><span>Supplier</span><select name="supplier_id" <%= draft ? '' : 'disabled' %>><option value="">—</option><% for (const s of suppliers) { %><option value="<%= s.id %>" <%= s.id === po.supplier_id ? 'selected' : '' %>><%= s.name %></option><% } %></select></label>
+      <label class="field"><span>Expected</span><input type="date" name="expected_at" value="<%= po.expected_at ? ymd(po.expected_at) : '' %>" <%= draft ? '' : 'disabled' %>></label>
+      <label class="field"><span>Supplier reference</span><input name="reference" value="<%= po.reference %>" <%= draft ? '' : 'disabled' %>></label>
+    </div>
+    <div class="table-scroll"><table class="table small">
+      <thead><tr><th>Material</th><th class="num">Packs</th><th>Pack size</th><th class="num">Price per pack</th><th class="num">Line total</th><th class="num">Received</th><% if (draft) { %><th>Remove</th><% } %></tr></thead>
+      <tbody>
+      <% items.forEach((i, n) => { %>
+        <tr>
+          <td><a href="/admin/inventory/materials/<%= i.material_id %>"><%= i.name %></a><input type="hidden" name="items[<%= n %>][id]" value="<%= i.id %>"></td>
+          <td class="num"><% if (draft) { %><input class="tiny-input" name="items[<%= n %>][packs]" value="<%= Number(i.packs) %>" inputmode="decimal" aria-label="Packs"><% } else { %><%= Number(i.packs) %><% } %></td>
+          <td class="nowrap"><% if (draft) { %><input class="tiny-input" name="items[<%= n %>][pack_size]" value="<%= Number(i.pack_size) %>" inputmode="decimal" aria-label="Pack size"><select name="items[<%= n %>][pack_unit]" aria-label="Unit"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= k === i.pack_unit ? 'selected' : '' %>><%= u.label %></option><% } %></select><% } else { %><%= Number(i.pack_size) %> <%= UNITS[i.pack_unit].label %><% } %></td>
+          <td class="num"><% if (draft) { %><input class="tiny-input" name="items[<%= n %>][pack_cost]" value="<%= centsToInput(i.pack_cost) %>" inputmode="decimal" aria-label="Price"><% } else { %><%= money(i.pack_cost) %><% } %></td>
+          <td class="num"><%= money(i.line_total) %></td>
+          <td class="num nowrap"><%= fmtQty(i.received_base, { pack_unit: i.pack_unit }) %> / <%= fmtQty(i.ordered_base, { pack_unit: i.pack_unit }) %></td>
+          <% if (draft) { %><td><input type="checkbox" name="items[<%= n %>][remove]" value="1" aria-label="Remove line"></td><% } %>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+    <% if (draft) { %>
+      <label class="field"><span>Add a line</span><select name="add_material_id"><option value="">Choose a material…</option><% for (const m of materials) { %><option value="<%= m.id %>"><%= m.name %> (<%= money(m.pack_cost) %>/<%= Number(m.pack_size) %> <%= UNITS[m.pack_unit].label %>)</option><% } %></select></label>
+    <% } %>
+    <div class="grid-3">
+      <label class="field"><span>Shipping</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="shipping_cost" value="<%= centsToInput(po.shipping_cost) %>" inputmode="decimal" <%= draft ? '' : 'disabled' %>></div></label>
+      <label class="field"><span>Tax / duties</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="tax_cost" value="<%= centsToInput(po.tax_cost) %>" inputmode="decimal" <%= draft ? '' : 'disabled' %>></div></label>
+      <div class="field"><span>Total</span><strong><%= money(total) %></strong><small class="muted">Shipping and tax are spread over the lines by value, so each lot's cost is its landed cost.</small></div>
+    </div>
+    <label class="field"><span>Notes</span><textarea name="notes" rows="2" <%= draft ? '' : 'disabled' %>><%= po.notes %></textarea></label>
+    <% if (draft) { %><div class="right"><button class="btn">Save draft</button></div><% } %>
+  </form>
+  <div class="row-gap">
+    <% if (draft) { %><form method="post" action="/admin/inventory/purchase-orders/<%= po.id %>/status"><%- csrfField %><input type="hidden" name="status" value="ordered"><button class="btn btn-primary">Mark as ordered</button></form><% } %>
+    <% if (['draft', 'ordered'].includes(po.status)) { %><form method="post" action="/admin/inventory/purchase-orders/<%= po.id %>/status" data-confirm="Cancel this purchase order?"><%- csrfField %><input type="hidden" name="status" value="cancelled"><button class="btn">Cancel order</button></form><% } %>
+  </div>
+  <% if (receivable && items.length) { %>
+  <form method="post" action="/admin/inventory/purchase-orders/<%= po.id %>/receive" class="card form-stack">
+    <%- csrfField %>
+    <h2>Receive delivery</h2>
+    <div class="table-scroll"><table class="table small">
+      <thead><tr><th>Material</th><th>Packs received</th><th>Lot no.</th><th>Supplier lot</th><th>Harvested</th><th>Expires</th><th>Location</th><th>Organic</th></tr></thead>
+      <tbody>
+      <% items.forEach((i, n) => { const left = Math.max(0, (i.ordered_base - i.received_base) / (Number(i.pack_size) * UNITS[i.pack_unit].factor)); %>
+        <tr><td><%= i.name %><input type="hidden" name="receive[<%= n %>][item_id]" value="<%= i.id %>"></td>
+          <td><input class="tiny-input" name="receive[<%= n %>][packs]" value="<%= Math.round(left * 1000) / 1000 || '' %>" inputmode="decimal" aria-label="Packs received for <%= i.name %>"></td>
+          <td><input class="tiny-input" name="receive[<%= n %>][lot_code]" placeholder="Auto" aria-label="Lot number"></td>
+          <td><input class="tiny-input" name="receive[<%= n %>][supplier_lot]" aria-label="Supplier lot"></td>
+          <td><input type="date" name="receive[<%= n %>][harvest_date]" aria-label="Harvest date"></td>
+          <td><input type="date" name="receive[<%= n %>][expires_at]" aria-label="Expiry date"></td>
+          <td><select name="receive[<%= n %>][location_id]" aria-label="Location"><% for (const l of locations) { %><option value="<%= l.id %>"><%= l.name %></option><% } %></select></td>
+          <td><input type="checkbox" name="receive[<%= n %>][organic]" value="1" aria-label="Organic"></td></tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+    <p class="muted small">Receiving creates a lot per line, updates each material's replacement price to this order's pack price, and recalculates affected product costs.</p>
+    <div class="right"><button class="btn btn-primary">Receive into stock</button></div>
+  </form>
+  <% } %>
+  <% if (lots.length) { %>
+  <div class="card"><h2>Lots received</h2><% for (const l of lots) { %><p class="small"><a href="/admin/inventory/materials/<%= l.material_id %>"><%= l.name %></a> · <%= l.lot_code %> · <%= fmtQty(Number(l.qty_received), l) %> at <%= money(Math.round(Number(l.unit_cost) * UNITS[stockUnit(l)].factor)) %>/<%= UNITS[stockUnit(l)].label %> landed</p><% } %></div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,85 @@
+<%- include('../partials/header') %>
+<% const label = Object.fromEntries(STATUSES); const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`; const unitLabel = b.variant_id ? 'units' : UNITS[b.output_unit].label;
+   const open = ['planned', 'in_progress', 'awaiting_qc'].includes(b.status); const canComplete = ['in_progress', 'awaiting_qc'].includes(b.status);
+   const qcDone = b.checks.every((c) => ['pass', 'na'].includes(c.result)); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: `Batch ${b.code}`, backHref: '/admin/production', badges: [[label[b.status], b.status === 'released' ? 'success' : 'attention']],
+    actions: `<a class="btn" href="/admin/production/${b.id}/record" target="_blank" rel="noopener">Batch record</a> <a class="btn" href="/admin/production/${b.id}/labels" target="_blank" rel="noopener">Labels</a> <a class="btn" href="/admin/production/trace?batch=${b.id}">Trace</a>` }) %>
+  <p><strong><%= b.name %></strong> · planned <%= Number(b.planned_qty) %> <%= unitLabel %><%= b.formula_version ? ` · formula v${b.formula_version}` : '' %><%= b.source !== 'manual' ? ` · ${(SOURCES.find(([k]) => k === b.source) || [, b.source])[1]}${b.source_ref ? ` ${b.source_ref}` : ''}` : '' %></p>
+  <div class="grid-3 stat-row">
+    <div class="card"><div class="stat-label">Estimated cost</div><div class="stat-value"><%= b.estimated_cost === null ? '—' : money(b.estimated_cost) %></div><div class="stat-sub muted small"><%= b.estimated_cost ? `${money(Math.round(b.estimated_cost / Number(b.planned_qty)))} per ${b.variant_id ? 'unit' : UNITS[b.output_unit].label}` : '' %></div></div>
+    <div class="card"><div class="stat-label">Actual cost</div><div class="stat-value"><%= b.actual_cost === null ? '—' : money(b.actual_cost) %></div><div class="stat-sub muted small"><%= b.actual_cost !== null && b.actual_qty ? `${money(Math.round(b.actual_cost / Number(b.actual_qty)))} per ${b.variant_id ? 'unit' : UNITS[b.output_unit].label} from the lots used` : 'from the actual lots used, at completion' %></div></div>
+    <div class="card"><div class="stat-label">Yield</div><div class="stat-value"><%= b.actual_qty === null ? '—' : `${Number(b.actual_qty)} ${unitLabel}` %></div><div class="stat-sub muted small"><%= b.waste_qty !== null && b.waste_qty !== undefined ? `waste ${Number(b.waste_qty)}` : '' %><%= b.best_before ? ` · best before ${ymd(b.best_before)}` : '' %></div></div>
+  </div>
+  <form method="post" action="/admin/production/<%= b.id %>/complete" class="card flush" id="inputs">
+    <%- csrfField %>
+    <div class="card-head pad"><h2>Ingredients and lots</h2></div>
+    <div class="table-scroll"><table class="table small">
+      <thead><tr><th>Material</th><th class="num">Planned</th><th class="num">Available</th><th>Lot</th><th class="num">Used</th><th class="num">Cost</th></tr></thead>
+      <tbody><% for (const i of b.inputs) { const su = stockUnit(i); const short = canComplete || b.status === 'planned' ? i.available + 1e-9 < Number(i.planned_qty) : false; %>
+        <tr>
+          <td><a href="/admin/inventory/materials/<%= i.material_id %>"><%= i.name %></a></td>
+          <td class="num nowrap"><%= Number(i.planned_qty) ? fmtQty(Number(i.planned_qty), i) : '—' %></td>
+          <td class="num nowrap <%= short ? 'critical-text' : '' %>"><%= i.lots ? fmtQty(i.available, i) : '' %><%= short ? ' — short' : '' %></td>
+          <td><% if (canComplete) { %><select name="used[id<%= i.id %>][lot_id]" aria-label="Lot for <%= i.name %>"><option value="">Automatic (first to expire, then oldest)</option><% for (const l of i.lots) { %><option value="<%= l.id %>"><%= l.lot_code %> · <%= fmtQty(Number(l.qty_remaining), i) %><%= l.expires_at ? ` · exp ${ymd(l.expires_at)}` : '' %></option><% } %></select><% } else { %><%= i.lot_code || '—' %><%= i.supplier_lot ? ` (supplier ${i.supplier_lot})` : '' %><% } %></td>
+          <td class="num"><% if (canComplete) { %><input class="tiny-input" name="used[id<%= i.id %>][qty]" inputmode="decimal" placeholder="<%= Math.round((Number(i.planned_qty) / UNITS[su].factor) * 100) / 100 %>" aria-label="Amount of <%= i.name %> used in <%= UNITS[su].label %>"> <%= UNITS[su].label %><% } else { %><%= i.used_qty === null ? '—' : fmtQty(Number(i.used_qty), i) %><% } %></td>
+          <td class="num"><%= i.cost === null ? '—' : money(i.cost) %></td>
+        </tr><% } %></tbody>
+    </table></div>
+    <% if (canComplete) { %>
+      <div class="pad form-stack">
+        <p class="muted small">Leave “Used” blank to use the planned amount. If a material comes from several lots, it is split across them automatically and each lot is recorded.</p>
+        <div class="grid-3">
+          <label class="field"><span>Actual yield (<%= unitLabel %>)</span><input name="actual_qty" inputmode="decimal" required value="<%= Number(b.planned_qty) %>"></label>
+          <label class="field"><span>Waste (<%= unitLabel %>)</span><input name="waste_qty" inputmode="decimal"></label>
+          <label class="field"><span>Labour (minutes)</span><input name="labour_minutes" inputmode="decimal" value="<%= Number(b.labour_minutes) %>"></label>
+        </div>
+        <label class="field"><span>Best before</span><input type="date" name="best_before" value="<%= b.best_before ? ymd(b.best_before) : '' %>"></label>
+        <% if (!qcDone) { %><p class="small critical-text">All quality checks must pass (or be marked N/A) before completing.</p><% } %>
+        <% if (canApproveBatches) { %><div class="right"><button class="btn btn-primary" <%= qcDone ? '' : 'disabled' %>>Complete batch and deduct stock</button></div><% } else { %><p class="muted small">Someone with production approval permission completes the batch.</p><% } %>
+      </div>
+    <% } %>
+  </form>
+  <div class="layout-2">
+    <form method="post" action="/admin/production/<%= b.id %>/checks" class="card form-stack">
+      <%- csrfField %>
+      <h2>Quality checks</h2>
+      <% for (const c of b.checks) { %>
+        <div class="qc-row">
+          <span><%= c.label %><% if (c.checked_by) { %><span class="muted small"> — <%= c.checked_by %>, <%= formatDate(c.checked_at, true) %></span><% } %></span>
+          <% if (open) { %>
+            <select name="checks[id<%= c.id %>][result]" aria-label="Result for <%= c.label %>"><% for (const [k, l] of [['pending', 'Pending'], ['pass', 'Pass'], ['fail', 'Fail'], ['na', 'N/A']]) { %><option value="<%= k %>" <%= c.result === k ? 'selected' : '' %>><%= l %></option><% } %></select>
+            <input name="checks[id<%= c.id %>][notes]" value="<%= c.notes %>" placeholder="Notes" aria-label="Notes for <%= c.label %>">
+          <% } else { %><span class="badge badge-<%= c.result === 'pass' ? 'success' : c.result === 'fail' ? 'critical' : 'default' %>"><%= c.result %></span> <span class="small"><%= c.notes %></span><% } %>
+        </div>
+      <% } %>
+      <% if (open) { %><div class="right"><button class="btn btn-sm">Save checks</button></div><% } %>
+    </form>
+    <div>
+      <div class="card form-stack">
+        <h2>Next step</h2>
+        <% if (b.status === 'planned') { %>
+          <form method="post" action="/admin/production/<%= b.id %>/start"><%- csrfField %><button class="btn btn-primary">Start production</button></form>
+        <% } else if (b.status === 'in_progress') { %>
+          <form method="post" action="/admin/production/<%= b.id %>/qc"><%- csrfField %><button class="btn">Send for quality review</button></form>
+          <p class="muted small">Or record the checks and complete the batch above.</p>
+        <% } else if (b.status === 'awaiting_qc') { %><p class="small">Record the quality checks, then complete the batch above.</p>
+        <% } else if (b.status === 'completed') { %>
+          <p class="small">The output is in quarantine: it can't be used or sold until released.</p>
+          <% if (canApproveBatches) { %><form method="post" action="/admin/production/<%= b.id %>/release" data-confirm="Release batch <%= b.code %> for use and sale?"><%- csrfField %><button class="btn btn-primary">Release batch</button></form><% } %>
+        <% } else if (b.status === 'released') { %>
+          <p class="small">Released <%= formatDate(b.released_at, true) %> by <%= b.released_by %>.</p>
+          <form method="post" action="/admin/production/<%= b.id %>/archive"><%- csrfField %><button class="btn btn-sm">Archive</button></form>
+        <% } %>
+        <% if (open) { %><form method="post" action="/admin/production/<%= b.id %>/cancel" class="inline-fields" data-confirm="Cancel this batch? No stock has been used."><%- csrfField %><input name="reason" placeholder="Reason" aria-label="Cancellation reason"><button class="btn btn-sm">Cancel batch</button></form><% } %>
+      </div>
+      <% if (b.outputs.length || b.finished.length) { %>
+      <div class="card"><h2>Output</h2>
+        <% for (const o of b.outputs) { %><p class="small"><a href="/admin/inventory/materials/<%= o.material_id %>"><%= b.output_name %></a> lot <%= o.lot_code %> · <%= fmtQty(Number(o.qty_received), { pack_unit: b.output_unit }) %> · <span class="badge badge-default"><%= o.status %></span></p><% } %>
+        <% for (const f of b.finished) { %><p class="small"><a href="/admin/products/<%= b.product_id %>"><%= b.product_title %></a> · <%= f.qty_made %> made, <%= f.qty_remaining %> left · <%= money(Math.round(Number(f.unit_cost))) %> each · <span class="badge badge-default"><%= f.status %></span></p><% } %>
+      </div><% } %>
+      <div class="card"><h2>History</h2><% for (const e of b.events) { %><p class="small"><span class="muted"><%= formatDate(e.created_at, true) %> · <%= e.author %></span><br><%= e.message %></p><% } %></div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

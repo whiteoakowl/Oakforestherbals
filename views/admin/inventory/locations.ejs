@@ -1,0 +1,12 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Storage locations' }) %>
+  <%- include('_tabs') %>
+  <div class="card flush"><table class="table"><thead><tr><th>Location</th><th class="num">Lots with stock</th><th></th></tr></thead><tbody>
+    <% for (const l of locations) { %><tr><td><strong><%= l.name %></strong><div class="muted small"><%= l.notes %></div></td><td class="num"><%= l.lots %></td>
+      <td class="num"><% if (!Number(l.lots)) { %><form method="post" action="/admin/inventory/locations/<%= l.id %>/delete" data-confirm="Delete <%= l.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Delete</button></form><% } %></td></tr><% } %>
+  </tbody></table></div>
+  <form method="post" action="/admin/inventory/locations" class="card inline-fields"><input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input name="name" placeholder="e.g. Drying room, Shelf B" required aria-label="Location name" class="grow"><input name="notes" placeholder="Notes" aria-label="Notes"><button class="btn btn-sm">Add location</button></form>
+</div>
+<%- include('../partials/footer') %>

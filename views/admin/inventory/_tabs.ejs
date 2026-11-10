@@ -1,0 +1,5 @@
+<nav class="tabs card flush sub-tabs" aria-label="Inventory sections">
+  <% for (const [href, label] of [['/admin/inventory', 'Stock'], ['/admin/inventory/purchase-orders', 'Purchase orders'], ['/admin/inventory/suppliers', 'Suppliers'], ['/admin/inventory/locations', 'Locations']]) { %>
+    <a href="<%= href %>" class="tab <%= (href === '/admin/inventory' ? adminPath === href || adminPath.startsWith('/admin/inventory/materials') : adminPath.startsWith(href)) ? 'active' : '' %>"><%= label %></a>
+  <% } %>
+</nav>

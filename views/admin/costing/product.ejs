@@ -10,7 +10,7 @@
     <div class="row-between"><h2><%= v.title === 'Default Title' ? product.title : v.title %></h2>
       <span class="small">Cost per unit: <strong><%= v.cost === null ? 'not set' : money(v.cost) %></strong></span></div>
     <div class="table-scroll"><table class="table">
-      <thead><tr><th>Material</th><th>Quantity per unit</th><th>Unit</th><th class="num">Cost</th><th class="check-col">Remove</th></tr></thead>
+      <thead><tr><th>Material</th><th>Quantity per unit</th><th>Unit</th><th class="num">Cost</th><th class="num">Share</th><th class="check-col">Remove</th></tr></thead>
       <tbody>
       <% const rows = [...c.lines, {}, {}, {}]; %>
       <% rows.forEach((l, i) => { const item = r.items[i]; %>
@@ -20,6 +20,7 @@
           <td><input name="lines[<%= i %>][quantity]" value="<%= l.quantity ?? '' %>" inputmode="decimal" class="cell-input" aria-label="Quantity <%= i + 1 %>"></td>
           <td><select name="lines[<%= i %>][unit]" aria-label="Unit <%= i + 1 %>"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= k === (l.unit || 'g') ? 'selected' : '' %>><%= u.label %></option><% } %></select></td>
           <td class="num small"><%= item ? (item.error ? '⚠' : money(Math.round(item.cost))) : '' %></td>
+          <td class="num small muted"><%= item && !item.error && r.total ? `${Math.round((item.cost / r.total) * 1000) / 10}%` : '' %></td>
           <td class="check-col"><% if (l.material_id) { %><input type="checkbox" name="lines[<%= i %>][remove]" value="1" aria-label="Remove line <%= i + 1 %>"><% } %></td>
         </tr>
       <% }) %>
@@ -37,6 +38,11 @@
     </div>
     <label class="check"><input type="checkbox" name="use_calculated" value="1" <%= !c.costing || cs.use_calculated ? 'checked' : '' %>> Use the calculated cost as this product's cost per item</label>
     <% if (r.problems.length) { %><div class="banner banner-critical"><% for (const p of r.problems) { %><div><%= p %></div><% } %></div><% } %>
+    <% const parts = [['Materials', r.materials, '#4f7a4a'], ['Waste', r.waste, '#c8873a'], ['Labour', r.labour, '#5b5f97'], ['Other', r.extra, '#a3485a'], ['Overhead', r.overhead, '#7d7a2e']].filter((p) => p[1] > 0); %>
+    <% if (r.total) { %>
+      <div class="cost-bar" role="img" aria-label="Cost breakdown: <%= parts.map((p) => `${p[0]} ${Math.round((p[1] / r.total) * 100)}%`).join(', ') %>"><% for (const p of parts) { %><span style="width:<%= (p[1] / r.total) * 100 %>%;background:<%= p[2] %>" title="<%= p[0] %>"></span><% } %></div>
+      <p class="small muted"><% for (const p of parts) { %><span class="nowrap"><span class="swatch" style="background:<%= p[2] %>;display:inline-block;width:10px;height:10px;border-radius:2px"></span> <%= p[0] %> <%= Math.round((p[1] / r.total) * 100) %>%</span> &nbsp; <% } %></p>
+    <% } %>
     <table class="summary-table small">
       <tr><td>Materials</td><td class="num"><%= money(r.materials) %></td></tr>
       <tr><td>Waste (<%= c.opts.waste_percent %>%)</td><td class="num"><%= money(r.waste) %></td></tr>
@@ -46,7 +52,11 @@
       <tr><td><strong>Calculated cost per unit</strong></td><td class="num"><strong><%= money(r.total) %></strong></td></tr>
       <tr><td>Retail <%= money(v.price) %></td><td class="num"><%= retail ? `${money(retail.profit)} profit · ${retail.percent}%` : '—' %></td></tr>
       <tr><td>Wholesale <%= v.wholesale_price === null ? '' : money(v.wholesale_price) %></td><td class="num"><%= whole ? `${money(whole.profit)} profit · ${whole.percent}%` : '—' %></td></tr>
+      <tr><td>Actual cost per unit (last <%= v.batches.length %> batch<%= v.batches.length === 1 ? '' : 'es' %>)</td><td class="num"><%= v.actualUnit === null ? 'No batches yet' : `${money(v.actualUnit)} ${v.actualUnit > r.total ? '▲' : v.actualUnit < r.total ? '▼' : ''}` %></td></tr>
+      <tr><td>Cost of goods sold, last 90 days</td><td class="num"><%= v.soldUnit === null ? '—' : `${money(v.soldUnit)} per unit · ${v.soldUnits} sold` %></td></tr>
     </table>
+    <% if (v.batches.length) { %><p class="small"><% for (const b of v.batches) { %><a href="/admin/production/<%= b.id %>"><%= b.code %></a> <span class="muted"><%= money(Math.round(b.actual_cost / Number(b.actual_qty))) %>/unit</span> &nbsp; <% } %></p><% } %>
+    <% if (can('production.manage')) { %><p class="small"><a href="/admin/production/new?variant=<%= v.id %>">Make a batch of this product →</a></p><% } %>
     <div class="right"><button class="btn btn-primary">Save</button></div>
   </form>
   <% } %>

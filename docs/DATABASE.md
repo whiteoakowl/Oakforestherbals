@@ -82,3 +82,24 @@ citations are shipped** — herbs come from the editor or CSV import.
 Search: all selected categories must match (AND); free text matches names, synonyms, family,
 categories, constituents, conditions and tradition names via the full-text index plus substring
 matching. An exact common, Latin, synonym or tradition name opens the profile directly.
+
+## 0005_apothecary_manufacturing
+Works like Craftybase: every purchase is a **lot** with its own landed unit cost; production uses
+lots first-expiring-first, then oldest-first, so each batch carries its **actual** cost next to the
+estimate from the recipe. Quantities are stored in base units (g, ml, each).
+
+| Table | Purpose |
+|---|---|
+| `suppliers` | Supplier directory (contact, website, certifications, lead time, minimum order). Existing free-text supplier names on materials were copied in. |
+| `inventory_locations` | Storage locations (seeded with "Main apothecary"). |
+| `materials` (new columns) | `supplier_id`, `herb_id` (link to the herbal database), `plant_part`, `sku`, `stock_unit`, `reorder_point`/`reorder_qty` (base units), `storage_instructions`, `organic`, `track_stock`, `formula_id` (set on a component made from a formula). |
+| `purchase_orders`, `purchase_order_items` | Draft → ordered → partly received → received (or cancelled). Shipping and tax are spread over lines by value into each lot's cost. Receiving updates the material's replacement price and recalculates product costs. |
+| `material_lots` | One receipt or one production output: lot code, supplier lot, harvest and expiry dates, location, organic, quality notes, quantity received/remaining, unit cost, status (available, quarantine, recalled, depleted). |
+| `inventory_transactions` | Every movement (receive, production use/output, adjustment, waste, count, transfer, recall) with signed quantity, value, reason and who. |
+| `formulas`, `formula_ingredients`, `formula_versions` | Formulas with amounts, parts or percentages; yield; instructions; storage; shelf life; labour; visibility (shared/private); status draft → approved (with reviewer) → archived; version snapshots saved on each approval. A formula can create a **component** material whose price follows the formula. |
+| `production_batches`, `production_batch_inputs`, `production_quality_checks`, `production_batch_events` | Planned → in progress → awaiting QC → completed (output in quarantine) → released → archived. Inputs record the exact lot, quantity and cost used (one row per lot). QC checklist from settings. |
+| `finished_goods_lots` | Finished products made in a batch, with unit cost and best-before; sales draw from them oldest-first. |
+| `order_item_lots` | Which batch lot each sold unit came from, so recalls reach orders and restocks return units to their lot. |
+
+Cost changes cascade: a material price change recalculates products that use it **and** formulas
+that use it, which re-price their components, which recalculate the products using those.

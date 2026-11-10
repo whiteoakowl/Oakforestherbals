@@ -1,0 +1,79 @@
+<%- include('../partials/header') %>
+<% const r = resolved; const factor = scaled ? scaled.factor : 1; const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`;
+   const showQty = (l) => { const q = l.amount * factor; const v = Math.abs(q) >= 100 ? Math.round(q * 10) / 10 : Math.round(q * 100) / 100; return `${v} ${UNITS[l.amount_unit].label}`; };
+   const catLabel = Object.fromEntries(CATEGORIES); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: f.name, backHref: '/admin/formulas', badges: [[`${f.status} · v${f.version}`, f.status === 'approved' ? 'success' : 'attention'], [f.visibility, 'default']],
+    actions: `<a class="btn" href="/admin/formulas/${f.id}/sheet${scaled ? `?qty=${scaled.qty}&unit=${scaled.unit}` : ''}" target="_blank" rel="noopener">Print sheet</a>${canEditFormulas ? ` <a class="btn btn-primary" href="/admin/formulas/${f.id}/edit">Edit</a>` : ''}` }) %>
+  <p class="muted"><%= catLabel[f.category] %> · one batch makes <%= f.yield_qty %> <%= UNITS[f.yield_unit].label %><%= f.reviewed_by ? ` · approved by ${f.reviewed_by} ${formatDate(f.reviewed_at)}` : '' %></p>
+  <% if (r.problems.length) { %><div class="banner banner-critical"><% for (const p of r.problems) { %><div><%= p %></div><% } %></div><% } %>
+  <div class="layout-2">
+    <div>
+      <div class="card flush">
+        <div class="card-head pad row-between"><h2>Ingredients<%= scaled ? ` — scaled to ${scaled.qty} ${UNITS[scaled.unit].label} (×${Math.round(factor * 1000) / 1000})` : '' %></h2>
+          <form method="get" class="inline-fields"><input name="qty" value="<%= scaled ? scaled.qty : '' %>" inputmode="decimal" placeholder="Batch size" class="tiny-input" aria-label="Scale to"><select name="unit" aria-label="Scale unit"><% for (const [k, u] of Object.entries(UNITS)) { if (u.type !== UNITS[f.yield_unit].type) continue; %><option value="<%= k %>" <%= (scaled ? scaled.unit : f.yield_unit) === k ? 'selected' : '' %>><%= u.label %></option><% } %></select><button class="btn btn-sm">Scale</button><% if (scaled) { %><a class="small" href="?">Reset</a><% } %></form></div>
+        <% if (!r.lines.length) { %><p class="pad muted">No ingredients yet.</p><% } else { %>
+        <div class="table-scroll"><table class="table">
+          <thead><tr><th>Ingredient</th><% if (f.entry_mode !== 'amount') { %><th class="num"><%= f.entry_mode === 'parts' ? 'Parts' : '%' %></th><% } %><th class="num">Amount</th><th class="num">Share</th><th class="num">Ratio</th><th class="num">Cost</th></tr></thead>
+          <tbody><% for (const l of r.lines) { %>
+            <tr><td><a href="/admin/inventory/materials/<%= l.material_id %>"><%= l.name %></a><% if (l.herb_slug) { %> <a class="tag" href="/admin/herbs/<%= l.herb_slug %>">herb profile</a><% } %><% if (l.notes) { %><div class="muted small"><%= l.notes %></div><% } %></td>
+              <% if (f.entry_mode !== 'amount') { %><td class="num"><%= l.quantity %></td><% } %>
+              <td class="num nowrap"><%= showQty(l) %></td><td class="num"><%= l.percent === null ? '—' : `${l.percent}%` %></td><td class="num"><%= l.ratio === null ? '—' : l.ratio %></td><td class="num"><%= money(Math.round(l.cost * factor)) %></td></tr>
+          <% } %></tbody>
+          <tfoot><tr><td><strong>Total</strong></td><% if (f.entry_mode !== 'amount') { %><td></td><% } %><td class="num"><strong><%= r.totalType ? `${Math.round((r.totalBase * factor) / (r.totalType === 'mass' ? 1 : 1) * 10) / 10} ${r.totalType === 'mass' ? 'g' : r.totalType === 'volume' ? 'ml' : 'each'}` : 'mixed units' %></strong></td><td class="num">100%</td><td></td><td class="num"><strong><%= money(Math.round(r.cost.materials * factor)) %></strong></td></tr></tfoot>
+        </table></div><% } %>
+      </div>
+      <% if (f.instructions) { %><div class="card"><h2>Preparation</h2><p class="prewrap"><%= f.instructions %></p></div><% } %>
+      <div class="card" id="safety">
+        <h2>Safety review</h2>
+        <% if (!safety.herbs.length && !safety.unlinked.length) { %><p class="muted small">No herb ingredients are linked to the herbal database.</p><% } %>
+        <% if (safety.unlinked.length) { %><div class="banner small">Not linked to the herbal database (no safety information shown): <%= safety.unlinked.map((m) => m.name).join(', ') %>. Link them on the material page.</div><% } %>
+        <% if (safety.noSafety.length) { %><div class="banner banner-critical small"><strong>No safety information recorded</strong> for <%= safety.noSafety.map((h) => h.common_name).join(', ') %>. Check authoritative references before approving.</div><% } %>
+        <% for (const e of safety.entries) { %><div class="use-item small"><strong><%= e.common_name %></strong> · <%= e.kind %><p class="prewrap"><%= e.description %></p><span class="muted">Source: <%= e.source_title %></span></div><% } %>
+        <% if (f.safety_notes) { %><h3>Formula safety notes</h3><p class="prewrap small"><%= f.safety_notes %></p><% } %>
+        <% if (f.status !== 'approved' && canApprove) { %>
+          <form method="post" action="/admin/formulas/<%= f.id %>/approve" class="form-stack mt-sm"><%- csrfField %>
+            <label class="check small"><input type="checkbox" name="reviewed_safety" value="1" required> I have reviewed the cautions, contraindications and interactions for every ingredient.</label>
+            <input name="note" placeholder="Approval note (optional)" aria-label="Approval note">
+            <button class="btn btn-primary btn-sm">Approve version <%= f.version %></button>
+          </form>
+        <% } else if (f.status !== 'approved') { %><p class="muted small">A reviewer with approval permission must approve this formula before it's produced or recommended.</p><% } %>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Cost per batch<%= scaled ? ' (scaled)' : '' %></h2>
+        <table class="summary-table small">
+          <tr><td>Materials</td><td class="num"><%= money(Math.round(r.cost.materials * factor)) %></td></tr>
+          <tr><td>Waste</td><td class="num"><%= money(Math.round(r.cost.waste * factor)) %></td></tr>
+          <tr><td>Labour (<%= Math.round(Number(f.labour_minutes) * factor) %> min)</td><td class="num"><%= money(Math.round(r.cost.labour * factor)) %></td></tr>
+          <tr><td>Overhead</td><td class="num"><%= money(Math.round(r.cost.overhead * factor)) %></td></tr>
+          <tr><td><strong>Total</strong></td><td class="num"><strong><%= money(Math.round(r.cost.total * factor)) %></strong></td></tr>
+          <tr><td>Per <%= UNITS[f.yield_unit].label %></td><td class="num"><%= money(Math.round((r.cost.total / f.yield_qty) * 100) / 100) %></td></tr>
+        </table>
+      </div>
+      <div class="card form-stack">
+        <h2>Component</h2>
+        <% if (output) { %><p class="small">Stocked as <a href="/admin/inventory/materials/<%= output.id %>"><%= output.name %></a>, priced at this formula's cost. Used in <%= usedBy.length %> product recipe(s).</p>
+          <% for (const v of usedBy) { %><p class="small"><a href="/admin/costing/products/<%= v.product_id %>"><%= v.product_title %></a> <span class="muted"><%= v.title !== 'Default Title' ? v.title : '' %></span></p><% } %>
+        <% } else if (canEditFormulas) { %><p class="muted small">Make this formula a stock item (e.g. a bulk tincture) that product recipes can use.</p>
+          <form method="post" action="/admin/formulas/<%= f.id %>/component"><%- csrfField %><button class="btn btn-sm">Create component</button></form><% } %>
+      </div>
+      <div class="card"><h2>Production</h2>
+        <% if (f.status === 'approved' && can('production.manage')) { %><p><a class="btn btn-primary btn-sm" href="/admin/production/new?formula=<%= f.id %>">Plan a batch</a></p><% } %>
+        <% if (!batches.length) { %><p class="muted small">No batches yet.</p><% } %>
+        <% for (const b of batches) { %><p class="small"><a href="/admin/production/<%= b.id %>"><%= b.code %></a> <span class="badge badge-default"><%= b.status %></span> <span class="muted"><%= b.actual_cost !== null ? money(b.actual_cost) : '' %></span></p><% } %>
+      </div>
+      <div class="card"><h2>Versions</h2><% if (!versions.length) { %><p class="muted small">Versions are saved each time the formula is approved.</p><% } %>
+        <% for (const v of versions) { %><p class="small"><a href="/admin/formulas/<%= f.id %>/versions/<%= v.version %>">v<%= v.version %></a> · <%= v.note %> <span class="muted"><%= v.saved_by %> · <%= formatDate(v.created_at) %></span></p><% } %></div>
+      <% if (f.intended_use || f.storage || f.shelf_life_days || f.practitioner_notes) { %><div class="card"><dl class="kv small">
+        <% if (f.intended_use) { %><dt>Intended use</dt><dd><%= f.intended_use %></dd><% } %><% if (f.storage) { %><dt>Storage</dt><dd><%= f.storage %></dd><% } %>
+        <% if (f.shelf_life_days) { %><dt>Shelf life</dt><dd><%= f.shelf_life_days %> days</dd><% } %><% if (f.practitioner_notes) { %><dt>Practitioner notes</dt><dd><%= f.practitioner_notes %></dd><% } %></dl></div><% } %>
+      <% if (canEditFormulas) { %><div class="row-gap">
+        <form method="post" action="/admin/formulas/<%= f.id %>/duplicate"><%- csrfField %><button class="btn btn-sm">Duplicate</button></form>
+        <form method="post" action="/admin/formulas/<%= f.id %>/status"><%- csrfField %><input type="hidden" name="status" value="<%= f.status === 'archived' ? 'draft' : 'archived' %>"><button class="btn btn-sm"><%= f.status === 'archived' ? 'Restore' : 'Archive' %></button></form>
+      </div><% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -94,6 +94,7 @@ Without `DATABASE_URL`, the store uses a built-in copy of Postgres saved in `dat
 - **Costing** — materials (herbs, ingredients, packaging) priced per pack, per-product recipes with labour, waste and overhead, automatic cost roll-up and price-change impact, profitability by product and category
 - **Herbal database** — searchable materia medica with combined filters (actions, energetics, tastes, body systems, parts, preparations, family, tradition, constituents), synonyms and autocomplete; profiles with evidence levels, sourced-only safety information and numbered references; Western, Ayurvedic and TCM vocabularies kept separate; CSV import/export. Ships with categories only, no herb entries
 - **Clinic** — patient records with consent, health history, signed clinical notes, encrypted documents, practitioner assignments and a timeline; clinical data is encrypted before storage and every access is audited (see `docs/PRIVACY.md`)
+- **Apothecary** — inventory by lot with landed cost, suppliers and purchase orders, formulas (parts/percent/amounts, scaling, safety review, versions, approval), components, production batches with QC and actual cost, finished-goods lots, traceability and recall
 - **Point of sale** — in-person sales with barcode search, cash/card/other, receipts and stock deduction
 - **Discounts** — percentage, fixed amount or free shipping; minimum subtotal, usage limits, one per customer, start/end dates
 - **Content** — pages, blog posts, file uploads, header/footer navigation menus with dropdowns

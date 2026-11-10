@@ -76,9 +76,12 @@ async function createOrder({ cart, totals, contact, shippingAddress, billingAddr
     discount ? discount.code : '', shipping ? shipping.name : '', JSON.stringify(shippingAddress || {}),
     JSON.stringify(billingAddress || shippingAddress || {}), payment.name, note || '', source);
     for (const line of cart.lines) {
-      await run(`INSERT INTO order_items (order_id, product_id, variant_id, title, variant_title, sku, image, price, quantity, requires_shipping, unit_cost)
+      const itemId = await insert(`INSERT INTO order_items (order_id, product_id, variant_id, title, variant_title, sku, image, price, quantity, requires_shipping, unit_cost)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, line.product_id, line.variant_id, line.title, line.variant_title,
       line.sku, line.image, line.price, line.quantity, line.requires_shipping ? 1 : 0, costs.get(line.variant_id) ?? null);
+      // Units made in production batches are drawn from their lots (oldest first) at their actual cost.
+      const actual = await require('./production').allocateSale(itemId, line.variant_id, line.quantity, costs.get(line.variant_id) ?? null);
+      if (actual !== (costs.get(line.variant_id) ?? null)) await run('UPDATE order_items SET unit_cost = ? WHERE id = ?', actual, itemId);
       await run('UPDATE variants SET inventory_qty = inventory_qty - ? WHERE id = ? AND track_inventory = 1', line.quantity, line.variant_id);
     }
     if (discount) await run('UPDATE discounts SET used_count = used_count + 1 WHERE id = ?', discount.id);
@@ -137,6 +140,7 @@ async function fulfill(orderId, { items = [], tracking_company = '', tracking_nu
 async function restockItems(order) {
   for (const item of order.items) {
     if (item.variant_id) await run('UPDATE variants SET inventory_qty = inventory_qty + ? WHERE id = ? AND track_inventory = 1', item.quantity, item.variant_id);
+    await require('./production').returnSale(item.id);
   }
 }
 
