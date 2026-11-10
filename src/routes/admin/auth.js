@@ -5,6 +5,7 @@ const crypto = require('node:crypto');
 const { get, run, insert } = require('../../db');
 const settings = require('../../settings');
 const { flash, throttle } = require('../../middleware');
+const audit = require('../../audit');
 
 const router = express.Router();
 
@@ -48,6 +49,7 @@ router.post('/setup', async (req, res) => {
   const id = await insert("INSERT INTO staff (email, name, password_hash, role) VALUES (?, ?, ?, 'owner')",
     email.trim(), name.trim(), bcrypt.hashSync(password, 10));
   if (store_name.trim()) await settings.save('store', { name: store_name.trim(), email: email.trim() });
+  await audit.record(req, 'staff.owner_setup', { entityType: 'staff', entityId: id, actor: { type: 'staff', id, name: name.trim() }, details: { email: email.trim() } });
   await signIn(req, id, () => res.redirect('/admin'));
 });
 
@@ -60,13 +62,16 @@ router.get('/login', async (req, res) => {
 router.post('/login', throttle('staff'), async (req, res) => {
   const staff = await get('SELECT * FROM staff WHERE email = ?', String(req.body.email || '').trim());
   if (!staff || !bcrypt.compareSync(String(req.body.password || ''), staff.password_hash)) {
+    await audit.record(req, 'staff.login_failed', { details: { email: String(req.body.email || '').trim().slice(0, 200) } });
     flash(req, 'error', 'Incorrect email or password.');
     return res.redirect(`/admin/login?next=${encodeURIComponent(safeNext(req.body.next))}`);
   }
+  await audit.record(req, 'staff.login', { entityType: 'staff', entityId: staff.id, actor: { type: 'staff', id: staff.id, name: staff.name } });
   await signIn(req, staff.id, () => res.redirect(safeNext(req.body.next)));
 });
 
 router.post('/logout', async (req, res) => {
+  if (res.locals.staff) await audit.record(req, 'staff.logout', { entityType: 'staff', entityId: res.locals.staff.id });
   req.session.regenerate(() => res.redirect('/admin/login'));
 });
 

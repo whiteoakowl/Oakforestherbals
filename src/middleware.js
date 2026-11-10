@@ -5,6 +5,8 @@ const settings = require('./settings');
 const utils = require('./utils');
 const catalog = require('./catalog');
 const { themeColors } = require('./colors');
+const permissions = require('./permissions');
+const audit = require('./audit');
 
 // CSRF: one token per session, required on every non-GET request.
 function csrfToken(req) {
@@ -63,7 +65,9 @@ async function locals(req, res, next) {
     req.session.customerId ? get('SELECT * FROM customers WHERE id = ?', req.session.customerId) : null,
     catalog.menus(),
   ]);
+  if (staff) staff.permissions = await permissions.forRole(staff.role);
   Object.assign(res.locals, { staff: staff || null, customer: customer || null });
+  res.locals.can = (perm) => Boolean(staff && staff.permissions.has(perm));
   res.locals.menu = (handle) => menus[handle] || [];
   next();
 }
@@ -77,10 +81,24 @@ async function requireStaff(req, res, next) {
 }
 
 function requireOwner(req, res, next) {
-  if (res.locals.staff.role !== 'owner') {
-    return res.status(403).render('admin/error', { title: 'Permission required', message: 'Only the store owner can manage these settings.' });
-  }
+  if (res.locals.staff.role !== 'owner') return denied(req, res, 'owner');
   next();
+}
+
+function denied(req, res, perm) {
+  audit.record(req, 'access.denied', { details: { permission: perm, method: req.method, path: req.originalUrl.split('?')[0] } });
+  return res.status(403).render('admin/error', { title: 'Permission required', message: 'Your role does not include access to this area. Ask the store owner if you need it.' });
+}
+
+// Gates a router: reads (GET/HEAD) need viewPerm or managePerm; everything else needs managePerm.
+// With one argument, that permission covers both.
+function requirePermission(viewPerm, managePerm = viewPerm) {
+  return (req, res, next) => {
+    const reading = req.method === 'GET' || req.method === 'HEAD';
+    const ok = reading ? (res.locals.can(viewPerm) || res.locals.can(managePerm)) : res.locals.can(managePerm);
+    if (!ok) return denied(req, res, reading ? viewPerm : managePerm);
+    next();
+  };
 }
 
 function requireCustomer(req, res, next) {
@@ -130,6 +148,6 @@ function securityHeaders(req, res, next) {
 }
 
 module.exports = {
-  csrfGuard, verifyCsrf, flash, loadSettings, locals, requireStaff, requireOwner, requireCustomer,
+  csrfGuard, verifyCsrf, flash, loadSettings, locals, requireStaff, requireOwner, requirePermission, requireCustomer,
   storefrontPassword, trackView, throttle, securityHeaders,
 };

@@ -94,7 +94,7 @@ Without `DATABASE_URL`, the store uses a built-in copy of Postgres saved in `dat
 - **Content** — pages, blog posts, file uploads, header/footer navigation menus with dropdowns
 - **Analytics** — sales breakdown, top products, top customers, discount usage
 - **Online Store → Themes** — live theme editor: colors, fonts, logo, favicon, button radius, announcement bar, home page sections, product card options, footer, social links, with desktop/mobile preview
-- **Settings** — store details and currency, payments, checkout options, shipping rates, taxes, email notifications (with outbox), policies, preferences (SEO, tracking code, store password) and staff accounts (owner vs staff permissions)
+- **Settings** — store details and currency, payments, checkout options, shipping rates, taxes, email notifications (with outbox), policies, preferences (SEO, tracking code, store password), staff accounts, **roles and permissions** (built-in and custom roles, enforced on the server) and an **audit log**
 
 ## Taking payments
 
@@ -134,8 +134,15 @@ src/orders.js          placing, paying, fulfilling, refunding and cancelling ord
 src/routes/            storefront, checkout, account, webhooks, admin/*
 views/store, views/admin, views/emails   EJS templates
 public/                CSS, JS and images
+src/migrations.js      versioned schema migrations + Row Level Security lockdown
+src/permissions.js     permission catalog and built-in roles
+src/audit.js           append-only audit log
+src/admin-nav.js       admin sidebar sections
 test/                  end-to-end tests (node:test)
+docs/                  technical assessment, roadmap and database change notes
 ```
+
+The store is growing into a full herbal business system — see `docs/ROADMAP.md` and `CHANGELOG.md`.
 
 ## Not yet included
 

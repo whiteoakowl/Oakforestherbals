@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+<div class="page narrow">
+  <%- include('partials/page-header', { heading: `Welcome, ${staff.name.split(' ')[0]}` }) %>
+  <% const links = adminNav.flatMap((s) => s.items).filter((i) => i.href !== '/admin'); %>
+  <div class="card">
+    <% if (links.length) { %>
+      <p class="muted">Your role gives you access to:</p>
+      <ul class="plain-list">
+        <% for (const l of links) { %><li><a href="<%= l.href %>"><%= l.label %></a></li><% } %>
+      </ul>
+    <% } else { %>
+      <p class="muted">Your role doesn't include access to any admin areas yet. Ask the store owner to update your role under Settings → Roles and permissions.</p>
+    <% } %>
+  </div>
+</div>
+<%- include('partials/footer') %>

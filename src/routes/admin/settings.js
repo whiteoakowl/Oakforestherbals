@@ -1,35 +1,49 @@
 'use strict';
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { get, all, run } = require('../../db');
+const { get, all, run, insert } = require('../../db');
 const settings = require('../../settings');
 const mailer = require('../../mailer');
-const { flash, requireOwner } = require('../../middleware');
+const { flash, requirePermission } = require('../../middleware');
+const audit = require('../../audit');
 const { toInt, parseMoney, asBool } = require('../../utils');
 const { COUNTRIES } = require('../../countries');
 
 const router = express.Router();
 
-router.use(requireOwner);
-
+// [key, label, description, permission]
 const SECTIONS = [
-  ['general', 'General', 'Store details, currency and order IDs'],
-  ['payments', 'Payments', 'Card payments and manual payment methods'],
-  ['checkout', 'Checkout', 'Customer accounts and checkout form'],
-  ['shipping', 'Shipping and delivery', 'Shipping rates and zones'],
-  ['taxes', 'Taxes and duties', 'Tax rates by region'],
-  ['notifications', 'Notifications', 'Email sending and customer notifications'],
-  ['policies', 'Policies', 'Refund, privacy, terms and shipping policies'],
-  ['preferences', 'Preferences', 'SEO, tracking code and store password'],
-  ['staff', 'Users and permissions', 'Staff accounts'],
+  ['general', 'General', 'Store details, currency and order IDs', 'settings.manage'],
+  ['payments', 'Payments', 'Card payments and manual payment methods', 'settings.manage'],
+  ['checkout', 'Checkout', 'Customer accounts and checkout form', 'settings.manage'],
+  ['shipping', 'Shipping and delivery', 'Shipping rates and zones', 'settings.manage'],
+  ['taxes', 'Taxes and duties', 'Tax rates by region', 'settings.manage'],
+  ['notifications', 'Notifications', 'Email sending and customer notifications', 'settings.manage'],
+  ['policies', 'Policies', 'Refund, privacy, terms and shipping policies', 'settings.manage'],
+  ['preferences', 'Preferences', 'SEO, tracking code and store password', 'settings.manage'],
+  ['staff', 'Users', 'Staff accounts and their roles', 'staff.manage'],
+  ['roles', 'Roles and permissions', 'What each role can see and do', 'staff.manage'],
+  ['audit', 'Audit log', 'Sign-ins, permission changes and other security events', 'audit.view'],
 ];
 
+// Only the sections this staff member may open are listed.
+function sectionsFor(res) {
+  return SECTIONS.filter(([, , , perm]) => res.locals.can(perm));
+}
+
 router.use(async (req, res, next) => {
-  res.locals.SECTIONS = SECTIONS;
+  res.locals.SECTIONS = sectionsFor(res);
   next();
 });
 
-router.get('/', async (req, res) => res.render('admin/settings/index', { title: 'Settings' }));
+router.get('/', async (req, res) => {
+  if (!res.locals.SECTIONS.length) return requirePermission('settings.manage')(req, res);
+  res.render('admin/settings/index', { title: 'Settings' });
+});
+
+const staffGate = requirePermission('staff.manage');
+const settingsGate = requirePermission('settings.manage');
+router.use((req, res, next) => (req.path.startsWith('/staff') ? staffGate : settingsGate)(req, res, next));
 
 // Copies the submitted keys that exist in a settings group's defaults, coercing booleans/numbers.
 function patchFrom(group, body, { money = [], exclude = [] } = {}) {
@@ -52,6 +66,7 @@ function simpleSection(section, group, exclude = []) {
   });
   router.post(`/${section}`, async (req, res) => {
     await settings.save(group, patchFrom(group, req.body, { exclude }));
+    await audit.record(req, 'settings.updated', { entityType: 'settings', entityId: section });
     flash(req, 'success', 'Settings saved.');
     res.redirect(`/admin/settings/${section}`);
   });
@@ -73,6 +88,7 @@ router.post('/preferences', async (req, res) => {
     password: String(req.body.password || ''),
     password_message: String(req.body.password_message || ''),
   });
+  await audit.record(req, 'settings.updated', { entityType: 'settings', entityId: 'preferences' });
   flash(req, 'success', 'Preferences saved.');
   res.redirect('/admin/settings/preferences');
 });
@@ -115,6 +131,7 @@ router.post('/payments', async (req, res) => {
     stripe_webhook_secret: webhook || current.stripe_webhook_secret,
     test_mode: asBool(req.body.test_mode),
   });
+  await audit.record(req, 'settings.updated', { entityType: 'settings', entityId: 'payments', details: { stripe_enabled: asBool(req.body.stripe_enabled), stripe_secret_changed: Boolean(secret), webhook_secret_changed: Boolean(webhook) } });
   flash(req, 'success', 'Payment settings saved.');
   res.redirect('/admin/settings/payments');
 });
@@ -178,8 +195,21 @@ router.post('/taxes/rates/:id/delete', async (req, res) => {
 /* ---------- Staff ---------- */
 
 router.get('/staff', async (req, res) => {
-  res.render('admin/settings/staff', { title: 'Users and permissions', members: await all('SELECT id, email, name, role, last_login_at, created_at FROM staff ORDER BY id') });
+  res.render('admin/settings/staff', {
+    title: 'Users',
+    members: await all('SELECT s.id, s.email, s.name, s.role, s.last_login_at, s.created_at, r.name AS role_name FROM staff s JOIN roles r ON r.key = s.role ORDER BY s.id'),
+    roles: await all("SELECT key, name, description FROM roles ORDER BY key = 'owner' DESC, is_system DESC, name"),
+  });
 });
+
+// Signs a staff member out everywhere. Matches the id exactly ("staffId":5 must not hit 50).
+const endStaffSessions = (id) => run('DELETE FROM sessions WHERE data LIKE ? OR data LIKE ?', `%"staffId":${id},%`, `%"staffId":${id}}%`);
+
+// Only an owner can hand out (or take away) ownership.
+async function roleAllowed(res, roleKey) {
+  if (!await get('SELECT 1 FROM roles WHERE key = ?', roleKey)) return false;
+  return roleKey !== 'owner' || res.locals.staff.role === 'owner';
+}
 
 router.post('/staff', async (req, res) => {
   const email = String(req.body.email || '').trim();
@@ -192,9 +222,36 @@ router.post('/staff', async (req, res) => {
     flash(req, 'error', 'That staff member already exists.');
     return res.redirect('/admin/settings/staff');
   }
-  await run('INSERT INTO staff (email, name, password_hash, role) VALUES (?, ?, ?, ?)', email, String(req.body.name || email),
-    bcrypt.hashSync(password, 10), req.body.role === 'owner' ? 'owner' : 'staff');
+  const role = String(req.body.role || 'staff');
+  if (!await roleAllowed(res, role)) {
+    flash(req, 'error', role === 'owner' ? 'Only an owner can create another owner.' : 'Choose a valid role.');
+    return res.redirect('/admin/settings/staff');
+  }
+  const newId = await insert('INSERT INTO staff (email, name, password_hash, role) VALUES (?, ?, ?, ?)', email, String(req.body.name || email),
+    bcrypt.hashSync(password, 10), role);
+  await audit.record(req, 'staff.created', { entityType: 'staff', entityId: newId, details: { email, role } });
   flash(req, 'success', 'Staff account created. Share the temporary password with them securely.');
+  res.redirect('/admin/settings/staff');
+});
+
+router.post('/staff/:id/role', async (req, res) => {
+  const id = toInt(req.params.id);
+  const role = String(req.body.role || '');
+  const target = await get('SELECT * FROM staff WHERE id = ?', id);
+  const owners = (await get("SELECT COUNT(*) AS n FROM staff WHERE role = 'owner'")).n;
+  if (!target || id === res.locals.staff.id) {
+    flash(req, 'error', 'You cannot change your own role.');
+  } else if (!await roleAllowed(res, role) || (target.role === 'owner' && res.locals.staff.role !== 'owner')) {
+    flash(req, 'error', 'Only an owner can grant or remove ownership.');
+  } else if (target.role === 'owner' && role !== 'owner' && owners <= 1) {
+    flash(req, 'error', 'The store needs at least one owner.');
+  } else if (target.role !== role) {
+    await run('UPDATE staff SET role = ? WHERE id = ?', role, id);
+    // End their sessions so the new permissions apply from their next sign-in.
+    await endStaffSessions(id);
+    await audit.record(req, 'staff.role_changed', { entityType: 'staff', entityId: id, details: { email: target.email, from: target.role, to: role } });
+    flash(req, 'success', `${target.name} is now ${(await get('SELECT name FROM roles WHERE key = ?', role)).name}. They will need to sign in again.`);
+  }
   res.redirect('/admin/settings/staff');
 });
 
@@ -204,12 +261,16 @@ router.post('/staff/:id/delete', async (req, res) => {
   const target = await get('SELECT * FROM staff WHERE id = ?', id);
   if (!target || id === res.locals.staff.id || (target.role === 'owner' && owners <= 1)) {
     flash(req, 'error', 'You cannot remove yourself or the last owner.');
+  } else if (target.role === 'owner' && res.locals.staff.role !== 'owner') {
+    flash(req, 'error', 'Only an owner can remove another owner.');
   } else {
     await run('DELETE FROM staff WHERE id = ?', id);
-    await run('DELETE FROM sessions WHERE data LIKE ?', `%"staffId":${id}%`);
+    await audit.record(req, 'staff.removed', { entityType: 'staff', entityId: id, details: { email: target.email, role: target.role } });
+    await endStaffSessions(id);
     flash(req, 'success', 'Staff account removed.');
   }
   res.redirect('/admin/settings/staff');
 });
 
 module.exports = router;
+module.exports.sectionsFor = sectionsFor;

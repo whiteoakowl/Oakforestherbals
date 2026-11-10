@@ -1,6 +1,7 @@
 'use strict';
 const express = require('express');
-const { requireStaff } = require('../../middleware');
+const { requireStaff, requirePermission: allow } = require('../../middleware');
+const { navFor, showSettings } = require('../../admin-nav');
 
 const router = express.Router();
 
@@ -11,14 +12,25 @@ router.use(async (req, res, next) => {
 
 router.use(require('./auth'));
 router.use(requireStaff);
+router.use((req, res, next) => {
+  res.locals.adminNav = navFor(res.locals.can);
+  res.locals.showSettings = showSettings(res.locals.can);
+  next();
+});
+
+// Every staff member gets a home page; the sales dashboard needs analytics access.
+router.get('/', (req, res, next) => (res.locals.can('analytics.view') ? next() : res.render('admin/home-basic', { title: 'Home' })));
+router.use('/analytics', allow('analytics.view'));
 router.use(require('./dashboard'));
-router.use('/products', require('./products'));
-router.use('/collections', require('./collections'));
-router.use('/orders', require('./orders'));
-router.use('/customers', require('./customers'));
-router.use('/discounts', require('./discounts'));
-router.use('/content', require('./content'));
-router.use('/themes', require('./theme'));
+
+router.use('/products', allow('products.manage'), require('./products'));
+router.use('/collections', allow('products.manage'), require('./collections'));
+router.use('/orders', allow('orders.view', 'orders.manage'), require('./orders'));
+router.use('/customers', allow('customers.view', 'customers.manage'), require('./customers'));
+router.use('/discounts', allow('discounts.manage'), require('./discounts'));
+router.use('/content', allow('content.manage'), require('./content'));
+router.use('/themes', allow('themes.manage'), require('./theme'));
+router.use('/settings', require('./access'));
 router.use('/settings', require('./settings'));
 router.use('/profile', require('./profile'));
 

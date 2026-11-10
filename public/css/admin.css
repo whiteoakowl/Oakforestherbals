@@ -391,3 +391,11 @@ address { font-style: normal; line-height: 1.6; margin-bottom: 8px; }
   .option-row, .rule-row, .menu-row { flex-wrap: wrap; }
   .menu-row > input:first-child { max-width: none; }
 }
+
+/* Roles, permissions and audit log */
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.plain-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.btn-small { padding: 3px 10px; font-size: 13px; }
+.role-form { display: inline-flex; gap: 6px; align-items: center; }
+.role-form select { width: auto; max-width: 180px; }
+.topbar-search-spacer { flex: 1; }

@@ -30,6 +30,7 @@ test('every admin screen renders', async () => {
   const page = (await get('SELECT id FROM pages LIMIT 1')).id;
   const article = (await get('SELECT id FROM articles LIMIT 1')).id;
   const menu = (await get('SELECT id FROM menus LIMIT 1')).id;
+  const role = (await get("SELECT id FROM roles WHERE key = 'staff'")).id;
   const urls = ['/admin', '/admin?range=7', '/admin?range=365', '/admin/analytics', '/admin/orders', '/admin/orders?tab=unfulfilled', '/admin/orders/new',
     `/admin/orders/${order}`, `/admin/orders/${order}/packing-slip`, '/admin/orders/export.csv',
     '/admin/products', '/admin/products/new', `/admin/products/${product}`, '/admin/products/inventory', '/admin/products/export.csv',
@@ -41,7 +42,8 @@ test('every admin screen renders', async () => {
     '/admin/content/navigation', `/admin/content/navigation/${menu}`, '/admin/content/files',
     '/admin/themes', '/admin/themes/customize', '/admin/profile',
     '/admin/settings', '/admin/settings/general', '/admin/settings/payments', '/admin/settings/checkout', '/admin/settings/shipping',
-    '/admin/settings/taxes', '/admin/settings/notifications', '/admin/settings/policies', '/admin/settings/preferences', '/admin/settings/staff'];
+    '/admin/settings/taxes', '/admin/settings/notifications', '/admin/settings/policies', '/admin/settings/preferences', '/admin/settings/staff',
+    '/admin/settings/roles', `/admin/settings/roles/${role}`, '/admin/settings/audit'];
   for (const url of urls) {
     const res = await admin.get(url);
     assert.equal(res.status, 200, `${url} -> ${res.status} ${res.text.slice(0, 200)}`);

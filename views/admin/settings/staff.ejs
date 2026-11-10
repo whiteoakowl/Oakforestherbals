@@ -6,7 +6,20 @@
     <tbody>
     <% for (const m of members) { %>
       <tr><td><strong><%= m.name %></strong><div class="muted small"><%= m.email %></div></td>
-        <td><span class="badge badge-<%= m.role === 'owner' ? 'info' : 'default' %>"><%= m.role === 'owner' ? 'Store owner' : 'Staff' %></span></td>
+        <td>
+          <% if (m.id === staff.id || (m.role === 'owner' && staff.role !== 'owner')) { %>
+            <span class="badge badge-<%= m.role === 'owner' ? 'info' : 'default' %>"><%= m.role_name %></span>
+          <% } else { %>
+            <form action="/admin/settings/staff/<%= m.id %>/role" method="post" class="inline role-form">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <label class="visually-hidden" for="role-<%= m.id %>">Role for <%= m.name %></label>
+              <select id="role-<%= m.id %>" name="role">
+                <% for (const r of roles) { if (r.key === 'owner' && staff.role !== 'owner') continue; %><option value="<%= r.key %>" <%= r.key === m.role ? 'selected' : '' %>><%= r.name %></option><% } %>
+              </select>
+              <button class="btn btn-small">Change</button>
+            </form>
+          <% } %>
+        </td>
         <td class="muted small"><%= m.last_login_at ? formatDate(m.last_login_at, true) : 'Never' %></td>
         <td class="num"><% if (m.id !== staff.id) { %><form action="/admin/settings/staff/<%= m.id %>/delete" method="post" class="inline" data-confirm="Remove <%= m.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Remove</button></form><% } %></td></tr>
     <% } %>
@@ -22,8 +35,11 @@
   </div>
   <div class="grid-2">
     <label class="field"><span>Temporary password</span><input type="text" name="password" minlength="8" required autocomplete="off"></label>
-    <label class="field"><span>Permissions</span><select name="role"><option value="staff">Staff — everything except settings</option><option value="owner">Owner — full access</option></select></label>
+    <label class="field"><span>Role</span><select name="role">
+      <% for (const r of roles) { if (r.key === 'owner' && staff.role !== 'owner') continue; %><option value="<%= r.key %>" <%= r.key === 'staff' ? 'selected' : '' %>><%= r.name %></option><% } %>
+    </select></label>
   </div>
+  <p class="muted small">See what each role can do under <a href="/admin/settings/roles">Roles and permissions</a>.</p>
   <div class="right"><button class="btn btn-primary">Add staff</button></div>
 </form>
 <%- include('_bottom') %>
