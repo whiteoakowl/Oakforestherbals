@@ -1,0 +1,44 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Inventory', actions: '<a class="btn" href="/admin/inventory/export.csv">Export</a> <a class="btn" href="/admin/costing/materials/new">Add material</a> <a class="btn btn-primary" href="/admin/inventory/purchase-orders/new">New purchase order</a>' }) %>
+  <%- include('_tabs') %>
+  <div class="grid-3 stat-row">
+    <div class="card"><div class="stat-label">Raw materials and components</div><div class="stat-value"><%= money(totalValue) %></div><div class="stat-sub muted small">at the cost each lot was bought or made for</div></div>
+    <div class="card"><div class="stat-label">Finished goods from batches</div><div class="stat-value"><%= money(finishedValue) %></div></div>
+    <div class="card"><div class="stat-label">Needs attention</div><div class="stat-value small-stat"><a href="?filter=low"><%= lowCount %> low</a> · <a href="?filter=expiring"><%= expiringCount %> expiring</a></div><div class="stat-sub muted small">within <%= warnDays %> days</div></div>
+  </div>
+  <div class="card flush">
+    <div class="tabs pad-x">
+      <% for (const [k, l] of [['', 'All'], ['low', `Low stock (${lowCount})`], ['expiring', `Expiring (${expiringCount})`]]) { %><a class="tab <%= filter === k ? 'active' : '' %>" href="?filter=<%= k %>"><%= l %></a><% } %>
+    </div>
+    <form class="filter-bar" method="get" role="search">
+      <input type="hidden" name="filter" value="<%= filter %>">
+      <input name="q" value="<%= q %>" placeholder="Search material, SKU or lot number" class="grow" aria-label="Search stock">
+      <select name="kind" aria-label="Type"><option value="">All types</option><% for (const [k, l] of KINDS) { %><option value="<%= k %>" <%= k === kind ? 'selected' : '' %>><%= l %></option><% } %></select>
+      <button class="btn">Filter</button>
+    </form>
+    <% if (!rows.length) { %><p class="pad muted"><%= q || kind || filter ? 'Nothing matches.' : 'No materials yet. Add the herbs and supplies you buy, then receive stock against them.' %></p><% } else { %>
+    <div class="table-scroll"><table class="table">
+      <thead><tr><th>Material</th><th class="num">On hand</th><th class="num">Value</th><th>Reorder at</th><th>Next expiry</th><th>Supplier</th></tr></thead>
+      <tbody>
+      <% for (const r of rows) { %>
+        <tr>
+          <td><a href="/admin/inventory/materials/<%= r.id %>"><strong><%= r.name %></strong></a><% if (r.botanical_name) { %> <em class="muted small"><%= r.botanical_name %></em><% } %>
+            <div class="muted small"><%= (KINDS.find(([k]) => k === r.kind) || [, r.kind])[1] %><%= r.sku ? ` · ${r.sku}` : '' %><%= r.organic ? ' · organic' : '' %></div></td>
+          <td class="num nowrap"><%= r.track_stock ? fmtQty(r.on_hand, r) : '—' %><% if (r.low) { %> <span class="badge badge-critical">Low</span><% } %><% if (r.quarantined) { %><div class="muted small"><%= fmtQty(r.quarantined, r) %> on hold</div><% } %></td>
+          <td class="num"><%= money(r.value) %></td>
+          <td class="small"><%= r.reorder_point === null ? '—' : fmtQty(r.reorder_point, r) %></td>
+          <td class="small nowrap"><% if (r.next_expiry) { %><span class="<%= r.expired ? 'critical-text' : r.expiring ? 'warning-text' : '' %>"><%= r.next_expiry %><%= r.expired ? ' (expired)' : '' %></span><% } else { %>—<% } %></td>
+          <td class="small"><%= r.supplier_name || r.supplier || '—' %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table></div><% } %>
+  </div>
+  <form method="post" action="/admin/inventory/settings" class="card inline-fields">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Warn about expiry this many days ahead</span><input name="expiry_warning_days" type="number" min="1" max="730" value="<%= s.expiry_warning_days %>"></label>
+    <button class="btn btn-sm">Save</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

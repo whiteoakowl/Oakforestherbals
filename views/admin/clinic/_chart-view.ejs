@@ -1,0 +1,10 @@
+<% const marks = n.body.chart || []; const t = n.body.tongue || {}; const pu = n.body.pulse || {}; %>
+<% if (marks.length || Object.keys(t).length || Object.keys(pu).length) { %>
+<div class="charting-grid chart-view">
+  <% if (marks.length) { %><div><%- include('_body-figure', { marks }) %><ol class="marker-list small"><% for (const m of marks) { %><li><%= m.label || '—' %> <span class="muted">(<%= m.view %>)</span></li><% } %></ol></div><% } %>
+  <div class="small">
+    <% if (Object.keys(t).length) { %><strong>Tongue</strong><dl class="kv"><% for (const [k, l] of TONGUE_FIELDS) { if (!t[k]) continue; %><dt><%= l %></dt><dd><%= t[k] %></dd><% } %></dl><% } %>
+    <% if (Object.keys(pu).length) { %><strong>Pulse</strong><dl class="kv"><% for (const [k, l] of PULSE_FIELDS) { if (!pu[k]) continue; %><dt><%= l %></dt><dd><%= pu[k] %></dd><% } %></dl><% } %>
+  </div>
+</div>
+<% } %>

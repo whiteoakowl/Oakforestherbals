@@ -1,0 +1,28 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: `Gift card ••••${card.last4}`, backHref: '/admin/gift-cards' }) %>
+  <div class="card form-stack">
+    <p><strong><%= money(card.balance) %></strong> left of <%= money(card.initial_value) %> · <%= card.status === 'active' ? 'Active' : 'Disabled' %><%= card.expires_on ? ` · expires ${ymd(card.expires_on)}` : '' %></p>
+    <p class="muted small">For: <%= card.recipient_email || card.customer_email || '—' %><%= card.recipient_name ? ` (${card.recipient_name})` : '' %> · <%= card.order_number ? `bought on order #${card.order_number}` : `issued by ${card.created_by}` %><%= card.note ? ` · ${card.note}` : '' %></p>
+    <div class="row-gap">
+      <form method="post" action="/admin/gift-cards/<%= card.id %>" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn" name="action" value="<%= card.status === 'active' ? 'disable' : 'enable' %>"><%= card.status === 'active' ? 'Disable' : 'Enable' %></button></form>
+    </div>
+  </div>
+  <form method="post" action="/admin/gift-cards/<%= card.id %>" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="adjust">
+    <h2>Adjust balance</h2>
+    <div class="grid-2"><label class="field"><span>Amount (use − to take off)</span><input name="amount" inputmode="decimal" required></label><label class="field"><span>Reason</span><input name="note"></label></div>
+    <div><button class="btn">Adjust</button></div>
+  </form>
+  <form method="post" action="/admin/gift-cards/<%= card.id %>" class="card row-gap">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="action" value="expiry">
+    <label class="field"><span>Expiry date</span><input type="date" name="expires_on" value="<%= card.expires_on ? ymd(card.expires_on) : '' %>"></label><button class="btn">Save</button>
+  </form>
+  <div class="card flush">
+    <h2 class="pad">History</h2>
+    <table class="table"><thead><tr><th>When</th><th>What</th><th class="num">Amount</th></tr></thead><tbody>
+      <% for (const t of history) { %><tr><td><%= formatDate(t.created_at, true) %></td><td><%= t.note %><%= t.order_number ? ` — order #${t.order_number}` : '' %><%= t.created_by ? ` (${t.created_by})` : '' %></td><td class="num"><%= t.amount > 0 ? '+' : '−' %><%= money(Math.abs(t.amount)) %></td></tr><% } %>
+    </tbody></table>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,28 @@
+<%- include('_top') %>
+<form class="card filter-bar" method="get" action="/admin/settings/audit" role="search">
+  <label class="field"><span>Search</span><input name="q" value="<%= q %>" placeholder="Person, email or record ID"></label>
+  <label class="field"><span>Area</span><select name="action"><option value="">All</option>
+    <% for (const a of actions) { %><option value="<%= a %>" <%= a === action ? 'selected' : '' %>><%= a %></option><% } %></select></label>
+  <button class="btn">Filter</button>
+</form>
+<div class="card flush">
+  <% if (!entries.length) { %>
+    <div class="pad"><p class="muted">No matching events. Sign-ins, permission changes and settings changes appear here.</p></div>
+  <% } else { %>
+  <div class="table-scroll"><table class="table">
+    <thead><tr><th>When</th><th>Who</th><th>Event</th><th>Details</th></tr></thead>
+    <tbody>
+    <% for (const e of entries) { %>
+      <tr>
+        <td class="muted small nowrap"><%= formatDate(e.created_at, true) %></td>
+        <td><%= e.actor_name || (e.actor_type === 'system' ? 'System' : '—') %><div class="muted small"><%= e.ip %></div></td>
+        <td><code><%= e.action %></code><% if (e.entity_type) { %><div class="muted small"><%= e.entity_type %> <%= e.entity_id %></div><% } %></td>
+        <td class="small"><% for (const [k, v] of Object.entries(e.details)) { %><div><span class="muted"><%= k %>:</span> <%= Array.isArray(v) ? (v.join(', ') || '—') : String(v) %></div><% } %></td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<%- include('../partials/pagination', { pager }) %>
+<%- include('_bottom') %>

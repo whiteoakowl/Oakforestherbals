@@ -32,8 +32,23 @@ if (!storage.useSupabase) {
 // Tables and default menus exist before the first request is handled.
 let baseReady;
 app.use(async (req, res, next) => {
-  baseReady = baseReady || ensureBase();
+  baseReady = baseReady || Promise.all([ensureBase(), require('./permissions').sync()]).then(() => require('./seed').bootstrapAdmin());
   await baseReady;
+  next();
+});
+
+// Scheduled publishing: drafts whose publish time has passed go live. There is no long-running
+// process on Netlify, so this runs on incoming requests, at most once a minute per instance.
+let lastPublishSweep = 0;
+app.use(async (req, res, next) => {
+  if (Date.now() - lastPublishSweep > 60 * 1000) {
+    lastPublishSweep = Date.now();
+    try {
+      await require('./catalog').publishScheduled();
+    } catch (err) {
+      console.error('scheduled publishing failed', err.message);
+    }
+  }
   next();
 });
 
@@ -73,6 +88,8 @@ app.use(mw.csrfGuard);
 app.use('/admin', require('./routes/admin'));
 app.use(mw.storefrontPassword);
 app.use(mw.trackView);
+app.use(require('./routes/booking'));
+app.use('/account/clinic', require('./routes/portal'));
 app.use('/account', require('./routes/account'));
 app.use('/checkout', require('./routes/checkout'));
 app.use('/', require('./routes/store'));

@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<% const s = source || {}; %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: source ? 'Edit reference' : 'Add reference', backHref: '/admin/herbs/sources' }) %>
+  <form method="post" action="<%= source ? `/admin/herbs/sources/${source.id}` : '/admin/herbs/sources/new' %>" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="<%= back %>">
+    <div class="grid-2">
+      <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of SOURCE_KINDS) { %><option value="<%= k %>" <%= s.kind === k ? 'selected' : '' %>><%= l %></option><% } %></select></label>
+      <label class="field"><span>Year</span><input name="year" value="<%= s.year || '' %>"></label>
+    </div>
+    <label class="field"><span>Title</span><input name="title" value="<%= s.title || '' %>" required></label>
+    <label class="field"><span>Authors / editors</span><input name="authors" value="<%= s.authors || '' %>"></label>
+    <div class="grid-2">
+      <label class="field"><span>Publisher / journal</span><input name="publisher" value="<%= s.publisher || '' %>"></label>
+      <label class="field"><span>ISBN</span><input name="isbn" value="<%= s.isbn || '' %>"></label>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>DOI</span><input name="doi" value="<%= s.doi || '' %>"></label>
+      <label class="field"><span>URL</span><input name="url" type="url" value="<%= s.url || '' %>"></label>
+    </div>
+    <label class="field"><span>Notes</span><textarea name="notes" rows="2"><%= s.notes || '' %></textarea></label>
+    <div class="right"><button class="btn btn-primary">Save</button></div>
+  </form>
+  <% if (source) { %><form method="post" action="/admin/herbs/sources/<%= source.id %>/delete" class="right" data-confirm="Delete this reference?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-critical btn-sm">Delete</button></form><% } %>
+</div>
+<%- include('../partials/footer') %>

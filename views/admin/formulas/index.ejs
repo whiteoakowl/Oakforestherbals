@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<% const catLabel = Object.fromEntries(CATEGORIES); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Formulas', actions: canEditFormulas ? '<a class="btn btn-primary" href="/admin/formulas/new">New formula</a>' : '' }) %>
+  <div class="card flush">
+    <div class="tabs pad-x"><% for (const [k, l] of [['', 'Active'], ['draft', 'Drafts'], ['approved', 'Approved'], ['archived', 'Archived']]) { %><a class="tab <%= status === k ? 'active' : '' %>" href="?status=<%= k %>"><%= l %></a><% } %></div>
+    <form class="filter-bar" method="get" role="search">
+      <input type="hidden" name="status" value="<%= status %>">
+      <input name="q" value="<%= q %>" placeholder="Search name or ingredient" class="grow" aria-label="Search formulas">
+      <select name="category" aria-label="Category"><option value="">All types</option><% for (const [k, l] of CATEGORIES) { %><option value="<%= k %>" <%= k === category ? 'selected' : '' %>><%= l %></option><% } %></select>
+      <label class="check small"><input type="checkbox" name="mine" value="1" <%= mine ? 'checked' : '' %>> Mine</label>
+      <button class="btn">Filter</button>
+    </form>
+    <% if (!rows.length) { %><p class="pad muted"><%= q || category || status ? 'No formulas match.' : 'No formulas yet. Formulas use your materials list, so add herbs and supplies under Costing first.' %></p><% } else { %>
+    <div class="table-scroll"><table class="table">
+      <thead><tr><th>Formula</th><th>Type</th><th>Yield</th><th class="num">Ingredients</th><th class="num">Batch cost</th><th>Status</th></tr></thead>
+      <tbody><% for (const f of rows) { %>
+        <tr><td><a href="/admin/formulas/<%= f.id %>"><strong><%= f.name %></strong></a><div class="muted small"><%= f.visibility === 'private' ? 'Private' : 'Shared' %><%= f.owner_name ? ` · ${f.owner_name}` : '' %> · v<%= f.version %></div></td>
+          <td class="small"><%= catLabel[f.category] %></td><td class="small nowrap"><%= Number(f.yield_qty) %> <%= UNITS[f.yield_unit].label %></td><td class="num"><%= f.ingredients %></td>
+          <td class="num"><%= money(f.costing.cost.total) %></td>
+          <td><span class="badge badge-<%= f.status === 'approved' ? 'success' : f.status === 'draft' ? 'attention' : 'default' %>"><%= f.status %></span></td></tr>
+      <% } %></tbody>
+    </table></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

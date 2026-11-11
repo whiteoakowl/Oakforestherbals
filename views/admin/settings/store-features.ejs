@@ -1,0 +1,39 @@
+<%- include('_top') %>
+<form action="/admin/settings/store-features" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card form-stack">
+    <h2>Product reviews</h2>
+    <label class="check"><input type="checkbox" name="reviews_enabled" value="1" <%= reviews.enabled ? 'checked' : '' %>> Show reviews and let customers write them</label>
+    <label class="check"><input type="checkbox" name="reviews_require_purchase" value="1" <%= reviews.require_purchase ? 'checked' : '' %>> Only customers who bought the product can review it</label>
+    <label class="check"><input type="checkbox" name="reviews_auto_publish" value="1" <%= reviews.auto_publish ? 'checked' : '' %>> Publish reviews straight away (otherwise you approve each one under Products → Reviews)</label>
+    <p class="muted small">Reviews of herbal products can make health claims you’re responsible for. Approving reviews first is recommended.</p>
+  </div>
+  <div class="card form-stack">
+    <h2>Gift cards</h2>
+    <label class="field"><span>Cards bought or issued expire after this many months (0 = never). Check your local law: many places forbid gift cards that expire.</span><input type="number" name="gift_expiry_months" min="0" max="120" value="<%= gift.expiry_months %>"></label>
+  </div>
+  <div class="card form-stack">
+    <h2>Digital downloads</h2>
+    <div class="grid-2">
+      <label class="field"><span>Downloads allowed per file (0 = unlimited)</span><input type="number" name="max_downloads" min="0" value="<%= downloads.max_downloads %>"></label>
+      <label class="field"><span>Links work for this many days (0 = forever)</span><input type="number" name="expiry_days" min="0" value="<%= downloads.expiry_days %>"></label>
+    </div>
+  </div>
+  <div class="card form-stack">
+    <h2>Subscribe &amp; save</h2>
+    <% if (!stripeReady) { %><p class="banner">Needs Stripe card payments turned on under Settings → Payments.</p><% } %>
+    <label class="check"><input type="checkbox" name="subscriptions_enabled" value="1" <%= subs.enabled ? 'checked' : '' %>> Let customers subscribe to products that have a delivery schedule</label>
+    <label class="field"><span>Delivery charge per subscription delivery</span><input name="subscription_shipping" inputmode="decimal" value="<%= centsToInput(subs.shipping_price) %>"></label>
+    <label class="check"><input type="checkbox" name="subscriptions_automatic_tax" value="1" <%= subs.automatic_tax ? 'checked' : '' %>> Have Stripe add sales tax (turn on Stripe Tax in your Stripe dashboard first)</label>
+    <p class="muted small">In Stripe, send these webhook events to <code>/webhooks/stripe</code>: <code>checkout.session.completed</code>, <code>invoice.paid</code>, <code>customer.subscription.updated</code>, <code>customer.subscription.deleted</code>. To let customers update their card, set up the customer portal in Stripe (Settings → Billing → Customer portal).</p>
+  </div>
+  <div class="card form-stack">
+    <h2>Abandoned cart reminders</h2>
+    <label class="check"><input type="checkbox" name="abandoned_enabled" value="1" <%= abandoned.enabled ? 'checked' : '' %>> Email shoppers who entered their email at checkout but didn’t finish</label>
+    <label class="field"><span>Send after this many hours</span><input type="number" name="abandoned_delay_hours" min="1" max="168" value="<%= abandoned.delay_hours %>"></label>
+    <label class="check"><input type="checkbox" name="abandoned_require_consent" value="1" <%= abandoned.require_consent ? 'checked' : '' %>> Only email shoppers who ticked “email me news and offers” (recommended — these are marketing emails in many countries)</label>
+    <p class="muted small">One reminder per checkout, never more. The email has a link to stop them.</p>
+  </div>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+<%- include('_bottom') %>

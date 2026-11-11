@@ -1,0 +1,24 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Card readers', backHref: '/admin/pos' }) %>
+  <div class="card form-stack">
+    <p>Take card payments at the counter with a Stripe smart reader (BBPOS WisePOS E or Stripe Reader S700). The amount goes from this screen to the reader, and the sale is recorded once Stripe confirms the payment.</p>
+    <ol class="small">
+      <li>Turn on Stripe card payments under Settings → Payments.</li>
+      <li>In your Stripe dashboard, open Terminal → Locations, add your shop, and register the reader with the code it shows.</li>
+      <li>Choose the reader below. (In test mode, register a “simulated” reader with the code <code>simulated-wpe</code>.)</li>
+    </ol>
+    <% if (error) { %><p class="banner banner-critical">Couldn’t list readers: <%= error %></p><% } %>
+    <form method="post" action="/admin/pos/readers" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <% if (readers.length) { %>
+        <fieldset class="form-stack"><legend>Reader for this point of sale</legend>
+          <% for (const r of readers) { %><label class="check"><input type="radio" name="reader" value="<%= r.id %>" <%= r.id === current ? 'checked' : '' %>> <%= r.label %> <span class="muted small">(<%= r.device_type %>, <%= r.status || 'unknown' %>)</span></label><% } %>
+          <label class="check"><input type="radio" name="reader" value="" <%= !current ? 'checked' : '' %>> No reader</label>
+        </fieldset>
+      <% } else if (!error) { %><p class="muted">No readers registered in Stripe yet.</p><% } %>
+      <% if (can('settings.manage') && readers.length) { %><div><button class="btn btn-primary">Save</button></div><% } %>
+    </form>
+  </div>
+</div>
+<%- include('../partials/footer') %>

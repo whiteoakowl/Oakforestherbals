@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<div class="container section narrow-page">
+  <h1 class="page-title">Packages</h1>
+  <p class="muted">Prepay for a set of sessions and book them as you go.</p>
+  <% if (!list.length) { %><p>No packages are offered online right now.</p><% } %>
+  <% for (const p of list) { const t = typesOf(p); %>
+    <div class="box package-card">
+      <h2 class="h4"><%= p.name %></h2>
+      <p><strong><%= money(p.price) %></strong> for <%= p.sessions %> session<%= p.sessions === 1 ? '' : 's' %><%= p.valid_days ? `, to use within ${p.valid_days} days` : '' %>.</p>
+      <p class="small muted">For: <%= t.length ? types.filter((x) => t.includes(x.id)).map((x) => x.name).join(', ') : 'any appointment' %></p>
+      <% if (p.description) { %><p><%= p.description %></p><% } %>
+      <form method="post" action="/book/packages/<%= p.id %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn">Buy</button></form>
+    </div>
+  <% } %>
+  <p class="small muted">Your package starts when its invoice is paid.</p>
+</div>
+<%- include('../partials/footer') %>

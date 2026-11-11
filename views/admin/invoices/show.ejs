@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<% const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: `Invoice #${inv.number}`, backHref: '/admin/invoices', badges: [[inv.status, inv.status === 'paid' ? 'success' : 'attention']], actions: `<a class="btn" href="/admin/invoices/${inv.id}/print" target="_blank" rel="noopener">Print</a>` }) %>
+  <div class="layout-2">
+    <div class="card">
+      <p><strong><%= inv.name || inv.email %></strong> <span class="muted small"><%= inv.email %></span></p>
+      <p class="small muted"><%= inv.issued_on ? `Issued ${ymd(inv.issued_on)}` : 'Draft' %><%= inv.due_on ? ` · due ${ymd(inv.due_on)}` : '' %><%= inv.appointment_id ? ` · ` : '' %><% if (inv.appointment_id) { %><a href="/admin/schedule/appointments/<%= inv.appointment_id %>">appointment</a><% } %></p>
+      <table class="table small"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr></thead><tbody>
+        <% for (const i of inv.items) { %><tr><td><%= i.description %></td><td class="num"><%= Number(i.quantity) %></td><td class="num"><%= money(i.unit_price) %></td><td class="num"><%= money(Math.round(Number(i.quantity) * i.unit_price)) %></td></tr><% } %>
+        <tr><td colspan="3">Tax</td><td class="num"><%= money(inv.tax_total) %></td></tr><tr><td colspan="3"><strong>Total</strong></td><td class="num"><strong><%= money(inv.total) %></strong></td></tr>
+        <tr><td colspan="3">Paid</td><td class="num"><%= money(inv.paid_total) %></td></tr><tr><td colspan="3"><strong>Balance</strong></td><td class="num"><strong><%= money(inv.balance) %></strong></td></tr>
+      </tbody></table>
+      <h3>Payments</h3><% if (!inv.payments.length) { %><p class="muted small">None yet.</p><% } %>
+      <% for (const p of inv.payments) { %><p class="small"><%= formatDate(p.received_at, true) %> · <%= p.kind %> <%= money(p.amount) %> · <%= p.method %> <%= p.reference %> <span class="muted"><%= p.recorded_by %></span></p><% } %>
+    </div>
+    <div>
+      <% if (inv.status !== 'void') { %>
+      <form method="post" action="/admin/invoices/<%= inv.id %>/payments" class="card form-stack"><%- csrfField %>
+        <h2>Record payment</h2>
+        <div class="grid-2"><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="amount" inputmode="decimal" value="<%= inv.balance > 0 ? centsToInput(inv.balance) : '' %>" aria-label="Amount"></div>
+          <select name="method" aria-label="Method"><% for (const m of METHODS) { %><option><%= m %></option><% } %></select></div>
+        <input name="reference" placeholder="Reference" aria-label="Reference">
+        <select name="kind" aria-label="Payment or refund"><option value="payment">Payment received</option><option value="refund">Refund given</option></select>
+        <button class="btn btn-sm">Record</button>
+      </form>
+      <% } %>
+      <div class="card form-stack"><h2>Share</h2>
+        <% if (inv.status !== 'draft') { %><p class="small">Client link: <a href="/invoices/<%= inv.token %>" target="_blank" rel="noopener"><%= base %>/invoices/<%= inv.token %></a></p>
+          <form method="post" action="/admin/invoices/<%= inv.id %>/send"><%- csrfField %><button class="btn btn-sm">Email to client</button></form><% } %>
+        <% if (inv.status === 'draft') { %><form method="post" action="/admin/invoices/<%= inv.id %>/status"><%- csrfField %><input type="hidden" name="status" value="open"><button class="btn btn-sm btn-primary">Issue invoice</button></form><% } %>
+        <% if (inv.status !== 'void' && !inv.paid_total) { %><form method="post" action="/admin/invoices/<%= inv.id %>/status" data-confirm="Void this invoice?"><%- csrfField %><input type="hidden" name="status" value="void"><button class="btn btn-sm">Void</button></form><% } %>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,103 @@
+<%- include('../partials/header') %>
+<% const su = stockUnit(m); const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`;
+   const KIND_LABEL = { receive: 'Received', production_use: 'Used in production', production_output: 'Made in production', adjustment: 'Adjustment', waste: 'Waste', count: 'Stock count', transfer: 'Moved', return: 'Returned', recall: 'Recall' }; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: m.name, backHref: '/admin/inventory', actions: `<a class="btn" href="/admin/costing/materials/${m.id}">Edit material and price</a>` }) %>
+  <%- include('_tabs') %>
+  <div class="grid-3 stat-row">
+    <div class="card"><div class="stat-label">Available</div><div class="stat-value"><%= fmtQty(onHand, m) %></div><% if (m.reorder_point !== null && Number(m.reorder_point) >= onHand) { %><div class="stat-sub critical-text small">Below reorder point (<%= fmtQty(Number(m.reorder_point), m) %>)</div><% } %></div>
+    <div class="card"><div class="stat-label">Stock value</div><div class="stat-value"><%= money(value) %></div><div class="stat-sub muted small"><%= avg === null ? '' : `average ${money(Math.round(avg * UNITS[su].factor))} per ${UNITS[su].label}` %></div></div>
+    <div class="card"><div class="stat-label">Replacement price</div><div class="stat-value"><%= money(m.pack_cost) %></div><div class="stat-sub muted small">per <%= m.pack_size %> <%= UNITS[m.pack_unit].label %><%= m.supplier_name ? ` · ${m.supplier_name}` : '' %></div></div>
+  </div>
+  <div class="layout-2">
+    <div>
+      <div class="card flush">
+        <div class="card-head pad"><h2>Lots</h2></div>
+        <% if (!lots.length) { %><p class="pad muted small">No stock received yet.</p><% } else { %>
+        <div class="table-scroll"><table class="table small">
+          <thead><tr><th>Lot</th><th class="num">Remaining</th><th class="num">Unit cost</th><th>Received</th><th>Expires</th><th>Location</th><th>Status</th></tr></thead>
+          <tbody>
+          <% for (const l of lots) { %>
+            <tr>
+              <td><strong><%= l.lot_code %></strong><% if (l.supplier_lot) { %><div class="muted">Supplier lot <%= l.supplier_lot %></div><% } %><% if (l.batch_code) { %><div class="muted">Made in <a href="/admin/production/<%= l.production_batch_id %>"><%= l.batch_code %></a></div><% } %><% if (l.supplier) { %><div class="muted"><%= l.supplier %></div><% } %></td>
+              <td class="num nowrap"><%= fmtQty(Number(l.qty_remaining), m) %><div class="muted">of <%= fmtQty(Number(l.qty_received), m) %></div></td>
+              <td class="num nowrap"><%= money(Math.round(Number(l.unit_cost) * UNITS[su].factor)) %>/<%= UNITS[su].label %></td>
+              <td class="nowrap"><%= ymd(l.received_at) %><% if (l.harvest_date) { %><div class="muted">harvest <%= ymd(l.harvest_date) %></div><% } %></td>
+              <td class="nowrap"><%= l.expires_at ? ymd(l.expires_at) : '—' %></td>
+              <td><%= l.location || '—' %></td>
+              <td><span class="badge badge-<%= l.status === 'available' ? 'success' : l.status === 'recalled' ? 'critical' : l.status === 'quarantine' ? 'attention' : 'default' %>"><%= l.status %></span>
+                <a class="small" href="/admin/production/trace?lot=<%= l.id %>">Trace</a></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table></div><% } %>
+      </div>
+      <% const open = lots.filter((l) => Number(l.qty_remaining) > 0 || l.status === 'quarantine'); %>
+      <% if (open.length) { %>
+      <form method="post" action="/admin/inventory/lots/adjust" class="card form-stack">
+        <%- csrfField %>
+        <h2>Adjust stock</h2>
+        <div class="grid-3">
+          <label class="field"><span>Lot</span><select name="lot" required><option value="">Choose…</option><% for (const l of open) { %><option value="<%= l.id %>"><%= l.lot_code %> (<%= fmtQty(Number(l.qty_remaining), m) %>)</option><% } %></select></label>
+          <label class="field"><span>Change</span><select name="kind"><option value="waste">Waste / loss (remove)</option><option value="count">Stock count (set to)</option><option value="adjustment">Correction (+/−)</option></select></label>
+          <label class="field"><span>Quantity (<%= UNITS[su].label %>)</span><input name="qty" inputmode="decimal" required></label>
+        </div>
+        <label class="field"><span>Reason</span><input name="reason" required placeholder="e.g. spilled, moth damage, annual count"></label>
+        <div class="right"><button class="btn btn-sm">Record</button></div>
+      </form>
+      <% } %>
+      <div class="card flush">
+        <div class="card-head pad"><h2>Movements</h2></div>
+        <% if (!txs.length) { %><p class="pad muted small">No movements yet.</p><% } else { %>
+        <div class="table-scroll"><table class="table small">
+          <thead><tr><th>When</th><th>What</th><th>Lot</th><th class="num">Quantity</th><th class="num">Value</th><th>By</th></tr></thead>
+          <tbody><% for (const t of txs) { %>
+            <tr><td class="nowrap"><%= formatDate(t.created_at, true) %></td>
+              <td><%= KIND_LABEL[t.kind] || t.kind %><% if (t.batch_code) { %> · <a href="/admin/production/<%= t.production_batch_id %>"><%= t.batch_code %></a><% } %><% if (t.po_number) { %> · <a href="/admin/inventory/purchase-orders/<%= t.purchase_order_id %>">PO #<%= t.po_number %></a><% } %><% if (t.reason && !t.batch_code && !t.po_number) { %><div class="muted"><%= t.reason %></div><% } %></td>
+              <td><%= t.lot_code || '' %></td>
+              <td class="num nowrap <%= Number(t.qty) < 0 ? 'critical-text' : '' %>"><%= Number(t.qty) === 0 ? '—' : (Number(t.qty) > 0 ? '+' : '−') + fmtQty(Math.abs(Number(t.qty)), m) %></td>
+              <td class="num"><%= t.value ? money(t.value) : '' %></td><td><%= t.staff_name %></td></tr>
+          <% } %></tbody>
+        </table></div><% } %>
+      </div>
+    </div>
+    <div>
+      <form method="post" action="/admin/inventory/materials/<%= m.id %>/receive" class="card form-stack">
+        <%- csrfField %>
+        <h2>Receive stock</h2>
+        <p class="muted small">For purchases without a purchase order, or stock you already had. Each receipt is its own lot with its own cost.</p>
+        <div class="grid-2">
+          <label class="field"><span>Quantity</span><input name="qty" inputmode="decimal" required></label>
+          <label class="field"><span>Unit</span><select name="unit"><% for (const [k, u] of Object.entries(UNITS)) { if (u.type !== UNITS[m.pack_unit].type) continue; %><option value="<%= k %>" <%= k === m.pack_unit ? 'selected' : '' %>><%= u.label %></option><% } %></select></label>
+        </div>
+        <label class="field"><span>Total cost for this quantity</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="total_cost" inputmode="decimal" required placeholder="incl. shipping if wanted"></div></label>
+        <label class="check small"><input type="checkbox" name="update_price" value="1"> Use this as the new replacement price for product costs</label>
+        <div class="grid-2">
+          <label class="field"><span>Lot number</span><input name="lot_code" placeholder="Auto"></label>
+          <label class="field"><span>Supplier's lot</span><input name="supplier_lot"></label>
+        </div>
+        <label class="field"><span>Supplier</span><select name="supplier_id"><option value="">—</option><% for (const s of suppliers) { %><option value="<%= s.id %>" <%= s.id === m.supplier_id ? 'selected' : '' %>><%= s.name %></option><% } %></select></label>
+        <div class="grid-3">
+          <label class="field"><span>Received</span><input type="date" name="received_at" value="<%= new Date().toISOString().slice(0, 10) %>"></label>
+          <label class="field"><span>Harvested</span><input type="date" name="harvest_date"></label>
+          <label class="field"><span>Expires</span><input type="date" name="expires_at"></label>
+        </div>
+        <label class="field"><span>Location</span><select name="location_id"><% for (const l of locations) { %><option value="<%= l.id %>"><%= l.name %></option><% } %></select></label>
+        <label class="check small"><input type="checkbox" name="organic" value="1" <%= m.organic ? 'checked' : '' %>> Certified organic lot</label>
+        <label class="field"><span>Quality documents / notes</span><input name="quality_notes" placeholder="CoA reference, ID check, condition"></label>
+        <button class="btn btn-primary">Receive</button>
+      </form>
+      <% if (open.length) { %>
+      <form method="post" action="/admin/inventory/lots/move" class="card form-stack">
+        <%- csrfField %>
+        <h2>Move a lot</h2>
+        <label class="field"><span>Lot</span><select name="lot" required><option value="">Choose…</option><% for (const l of open) { %><option value="<%= l.id %>"><%= l.lot_code %></option><% } %></select></label>
+        <label class="field"><span>Move to</span><select name="location_id"><% for (const l of locations) { %><option value="<%= l.id %>"><%= l.name %></option><% } %></select></label>
+        <button class="btn btn-sm">Move</button>
+      </form>
+      <% } %>
+      <% if (m.storage_instructions) { %><div class="card"><h2>Storage</h2><p class="small"><%= m.storage_instructions %></p></div><% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

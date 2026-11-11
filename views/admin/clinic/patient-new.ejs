@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'New patient', backHref: '/admin/clinic/patients' }) %>
+  <form method="post" action="/admin/clinic/patients/new" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="card form-stack">
+      <h2>Contact</h2>
+      <p class="muted small">If a customer already uses this email, the record is linked to their account; their name and phone are only filled in where blank.</p>
+      <label class="field"><span>Email</span><input type="email" name="email" value="<%= prefill.email %>" required></label>
+      <div class="grid-3">
+        <label class="field"><span>First name</span><input name="first_name"></label>
+        <label class="field"><span>Last name</span><input name="last_name"></label>
+        <label class="field"><span>Phone</span><input name="phone"></label>
+      </div>
+    </div>
+    <div class="card form-stack">
+      <h2>Profile</h2>
+      <%- include('_profile-fields', { profile: null }) %>
+    </div>
+    <div class="card form-stack">
+      <h2>Consent</h2>
+      <label class="check"><input type="checkbox" name="consent" value="1" required> The patient has consented to <%= store.name %> storing their health information for their care.</label>
+      <p class="muted small">The date and your name are recorded with the consent. Upload a signed consent form under Documents once the record exists.</p>
+      <% if (can('clinic.patients.view_all')) { %><label class="check"><input type="checkbox" name="assign_me" value="1"> Assign this patient to me</label><% } else { %><p class="muted small">You'll be assigned as this patient's practitioner.</p><% } %>
+    </div>
+    <div class="right"><button class="btn btn-primary">Create patient record</button></div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

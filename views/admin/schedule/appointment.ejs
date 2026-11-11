@@ -1,0 +1,39 @@
+<%- include('../partials/header') %>
+<% const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: a.type_name, backHref: '/admin/schedule', badges: [[a.status.replace('_', ' '), a.status === 'confirmed' ? 'success' : 'attention']] }) %>
+  <p><strong><%= when(a.starts_at) %></strong> · <%= a.duration_min || '' %> min with <%= a.staff_name %> · <%= a.mode === 'virtual' ? 'Online' : 'In person' %></p>
+  <p class="small">Client: <%= `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email %> <span class="muted"><%= a.email %> <%= a.phone %></span>
+    <% if (a.patient_id && (can('clinic.patients.view_all') || can('clinic.patients.view_assigned'))) { %> · <a href="/admin/clinic/patients/<%= a.patient_id %>">Clinic record</a><% } else if (a.customer_id) { %> · <a href="/admin/customers/<%= a.customer_id %>">Customer</a><% } %></p>
+  <div class="layout-2">
+    <form method="post" action="/admin/schedule/appointments/<%= a.id %>" class="card form-stack"><%- csrfField %>
+      <div class="grid-2"><label class="field"><span>Status</span><select name="status"><% for (const [k, l] of STATUS) { %><option value="<%= k %>" <%= k === a.status ? 'selected' : '' %>><%= l %></option><% } %></select></label>
+        <label class="field"><span>Cancellation reason</span><input name="cancel_reason" value="<%= a.cancel_reason %>"></label></div>
+      <div class="grid-2"><label class="field"><span>Video link (https)</span><input name="video_link" value="<%= a.video_link %>"></label><label class="field"><span>Location</span><input name="location" value="<%= a.location %>"></label></div>
+      <label class="field"><span>Internal note (encrypted, staff only)</span><textarea name="notes" rows="4"><%= a.notes %></textarea></label>
+      <label class="check small"><input type="checkbox" name="notify" value="1"> Email the client about a confirmation or cancellation</label>
+      <div class="right"><button class="btn btn-primary">Save</button></div>
+    </form>
+    <div>
+      <form method="post" action="/admin/schedule/appointments/<%= a.id %>/reschedule" class="card form-stack"><%- csrfField %>
+        <h2>Move</h2>
+        <div class="grid-2"><input type="date" name="day" value="<%= local.day %>" aria-label="New date"><input type="time" name="time" value="<%= local.time %>" step="300" aria-label="New time"></div>
+        <% if (seesAllCalendars) { %><select name="staff_id" aria-label="Practitioner"><% for (const p of people) { %><option value="<%= p.id %>" <%= p.id === a.staff_id ? 'selected' : '' %>><%= p.name %></option><% } %></select><% } %>
+        <label class="check small"><input type="checkbox" name="override" value="1"> Outside published hours</label>
+        <label class="check small"><input type="checkbox" name="notify" value="1" checked> Email the client</label>
+        <button class="btn btn-sm">Move appointment</button>
+      </form>
+      <% if (rooms.length || pkg) { %><div class="card form-stack"><h2>Room and payment</h2>
+        <% if (pkg) { %><p class="small">Paid with a session from <strong><%= pkg.name %></strong> (<%= pkg.sessions_used %> of <%= pkg.sessions_total %> used). Cancelling gives the session back.</p><% } %>
+        <% if (rooms.length) { %><form method="post" action="/admin/schedule/appointments/<%= a.id %>/room" class="inline-fields"><input type="hidden" name="_csrf" value="<%= csrf %>"><label class="visually-hidden" for="room">Room</label><select id="room" name="room_id"><option value="">No room</option><% for (const r of rooms) { %><option value="<%= r.id %>" <%= r.id === a.room_id ? 'selected' : '' %>><%= r.name %></option><% } %></select><button class="btn btn-sm">Set room</button></form><% } %>
+      </div><% } %>
+      <div class="card"><h2>Billing</h2>
+        <p class="small">Price <%= money(a.price) %><%= a.deposit ? ` · deposit ${money(a.deposit)}` : '' %></p>
+        <% if (invoice) { %><p class="small"><a href="/admin/invoices/<%= invoice.id %>">Invoice #<%= invoice.number %></a> · <%= invoice.status %> · paid <%= money(invoice.paid_total) %> of <%= money(invoice.total) %></p>
+        <% } else if (can('invoices.manage')) { %><form method="post" action="/admin/schedule/appointments/<%= a.id %>/invoice"><%- csrfField %><button class="btn btn-sm">Create invoice</button></form><% } %>
+      </div>
+      <% if (series.length > 1) { %><div class="card"><h2>Series</h2><% for (const s of series) { %><p class="small"><a href="/admin/schedule/appointments/<%= s.id %>"><%= when(s.starts_at) %></a> · <%= s.status %></p><% } %></div><% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

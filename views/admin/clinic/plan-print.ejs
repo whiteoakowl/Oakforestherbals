@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%= title %></title>
+<style>body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;max-width:760px;margin:24px auto;padding:0 16px;font-size:14px}h1{margin:0}.muted{color:#555}.item{border-top:1px solid #ccc;padding:8px 0}@media print{.noprint{display:none}}</style></head>
+<body>
+  <p class="noprint"><button onclick="window.print()">Print</button></p>
+  <h1><%= plan.content.title || 'Care plan' %></h1>
+  <p class="muted"><%= store.name %> · for <%= patient.name %> · version <%= plan.version %><%= plan.start_date ? ` · from ${ymd(plan.start_date)}` : '' %><%= plan.end_date ? ` to ${ymd(plan.end_date)}` : '' %></p>
+  <% if (plan.content.goals) { %><h2>Goals</h2><p style="white-space:pre-wrap"><%= plan.content.goals %></p><% } %>
+  <% if (plan.content.summary) { %><h2>Overview</h2><p style="white-space:pre-wrap"><%= plan.content.summary %></p><% } %>
+  <h2>Recommendations</h2>
+  <% for (const i of plan.items) { %><div class="item"><strong><%= i.content.title %></strong> <span class="muted">(<%= (ITEM_KINDS.find(([k]) => k === i.kind) || [, i.kind])[1] %>)</span>
+    <% const meta = ['dose', 'frequency', 'timing', 'duration'].map((k) => i.content[k]).filter(Boolean); if (meta.length) { %><div><%= meta.join(' · ') %></div><% } %>
+    <% if (i.content.details) { %><div style="white-space:pre-wrap"><%= i.content.details %></div><% } %>
+    <% if (i.content.preparation) { %><div><em>Preparation:</em> <%= i.content.preparation %></div><% } %>
+    <% if (i.content.cautions) { %><div><em>Cautions:</em> <%= i.content.cautions %></div><% } %></div><% } %>
+  <p class="muted small">These recommendations are for <%= patient.name %> only and support, not replace, advice from your doctor.</p>
+</body></html>

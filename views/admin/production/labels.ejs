@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%= title %></title>
+<style>body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;margin:16px}.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(2.6in,1fr));gap:8px}.label{border:1px dashed #999;padding:8px 10px;font-size:11px;line-height:1.35;break-inside:avoid}.label strong{font-size:13px;display:block}.code{font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.5px}@media print{.noprint{display:none}.label{border-color:#ddd}}</style></head>
+<body>
+  <form class="noprint" method="get"><label>Labels <input name="count" type="number" min="1" max="200" value="<%= count %>"></label> <button>Update</button> <button type="button" onclick="window.print()">Print</button></form>
+  <div class="sheet">
+    <% for (let i = 0; i < count; i++) { %>
+      <div class="label">
+        <strong><%= product ? product.title : b.name %></strong>
+        <% if (ingredients) { %><div>Ingredients: <%= ingredients %></div><% } %>
+        <% if (product && product.directions) { %><div><%= product.directions %></div><% } %>
+        <% if (product && product.warnings) { %><div><em><%= product.warnings %></em></div><% } %>
+        <% if (formula && formula.storage) { %><div>Store: <%= formula.storage %></div><% } %>
+        <div class="code">Batch <%= b.code %><%= b.best_before ? ` · Best before ${ymd(b.best_before)}` : '' %></div>
+        <div><%= store.name %></div>
+      </div>
+    <% } %>
+  </div>
+</body></html>

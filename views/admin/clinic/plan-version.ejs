@@ -1,0 +1,12 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: `${snap.content ? snap.content.title : 'Care plan'} — version ${v.version}`, backHref: `/admin/clinic/patients/${patient.id}?tab=plans&plan=${plan.id}` }) %>
+  <div class="card form-stack">
+    <p class="muted small">Saved <%= formatDate(v.created_at, true) %> by <%= v.saved_by %> · status then: <%= snap.status %></p>
+    <% if (snap.content && snap.content.goals) { %><h3>Goals</h3><p class="prewrap small"><%= snap.content.goals %></p><% } %>
+    <% if (snap.content && snap.content.summary) { %><h3>Summary</h3><p class="prewrap small"><%= snap.content.summary %></p><% } %>
+    <h3>Items</h3>
+    <% for (const i of snap.items) { %><div class="use-item small"><strong><%= (ITEM_KINDS.find(([k]) => k === i.kind) || [, i.kind])[1] %>: <%= i.content.title %></strong><% for (const k of ['dose', 'frequency', 'timing', 'duration']) { if (i.content[k]) { %> · <%= i.content[k] %><% } } %><% if (i.content.details) { %><p class="prewrap"><%= i.content.details %></p><% } %></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

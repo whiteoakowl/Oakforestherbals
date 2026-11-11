@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Communities', actions: '<button type="button" class="btn btn-primary" data-dialog-open="new-community">New community</button>' }) %>
+  <p class="muted">Private group spaces for programs and workshops. Invited clients join after accepting the guidelines; they see each other’s posts under the name they choose.</p>
+  <% if (!list.length) { %><div class="card empty-state"><%- include('../partials/icon', { name: 'users', size: 40 }) %><p>No communities yet.</p></div><% } %>
+  <div class="case-grid">
+    <% for (const c of list) { %>
+      <a class="card case-card" href="/admin/communities/<%= c.id %>">
+        <div class="row-between"><strong><%= c.name %></strong><span class="badge badge-<%= c.status === 'active' ? 'success' : 'default' %>"><%= c.status.replace('_', ' ') %></span></div>
+        <p class="muted small"><%= c.members %> member(s)<%= c.invited ? ` · ${c.invited} invited` : '' %><%= c.course_title ? ` · ${c.course_title}` : '' %><%= c.facilitator_name ? ` · led by ${c.facilitator_name}` : '' %></p>
+        <p class="small"><%= c.last_post ? `Last post ${formatDate(c.last_post, true)}` : 'No posts yet' %><% if (c.reported) { %> · <span class="critical-text"><%= c.reported %> reported</span><% } %></p>
+      </a>
+    <% } %>
+  </div>
+</div>
+<dialog id="new-community" class="dialog">
+  <form method="post" action="/admin/communities" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>New community</h2>
+    <label class="field"><span>Name</span><input name="name" required placeholder="e.g. Spring sleep program group"></label>
+    <label class="field"><span>Description</span><textarea name="description" rows="2"></textarea></label>
+    <label class="field"><span>Linked program (optional)</span><select name="course_id"><option value="">—</option><% for (const co of courses) { %><option value="<%= co.id %>"><%= co.title %></option><% } %></select></label>
+    <label class="field"><span>Group guidelines (members accept these to join)</span><textarea name="guidelines" rows="7"><%= DEFAULT_GUIDELINES %></textarea></label>
+    <div class="dialog-actions"><button type="button" class="btn" data-dialog-close>Cancel</button><button class="btn btn-primary">Create</button></div>
+  </form>
+</dialog>
+<%- include('../partials/footer') %>

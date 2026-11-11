@@ -1,0 +1,15 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Clinic inbox' }) %>
+  <div class="grid-2">
+    <div class="card"><h2>Unread messages (<%= unread.length %>)</h2><% if (!unread.length) { %><p class="muted small">All caught up.</p><% } %>
+      <% for (const t of unread) { %><p class="small"><a href="/admin/clinic/patients/<%= t.patient_id %>?tab=messages&thread=<%= t.id %>"><%= `${t.first_name} ${t.last_name}`.trim() || t.email %></a> · <%= t.unread %> new · <span class="muted"><%= formatDate(t.last_message_at, true) %></span></p><% } %></div>
+    <div class="card"><h2>Forms to review (<%= forms.length %>)</h2><% if (!forms.length) { %><p class="muted small">Nothing waiting.</p><% } %>
+      <% for (const f of forms) { %><p class="small"><a href="/admin/clinic/patients/<%= f.patient_id %>?tab=forms"><%= `${f.first_name} ${f.last_name}`.trim() %></a> · <%= f.name %> · <span class="muted"><%= formatDate(f.submitted_at, true) %></span></p><% } %></div>
+    <div class="card"><h2>Care plan reviews due</h2><% if (!reviews.length) { %><p class="muted small">None in the next week.</p><% } %>
+      <% for (const r of reviews) { %><p class="small"><a href="/admin/clinic/patients/<%= r.patient_id %>?tab=plans&plan=<%= r.id %>"><%= `${r.first_name} ${r.last_name}`.trim() %></a> · review <%= ymd(r.review_date) %></p><% } %></div>
+    <div class="card"><h2>My unsigned notes</h2><% if (!drafts.length) { %><p class="muted small">No drafts.</p><% } %>
+      <% for (const d of drafts) { %><p class="small"><a href="/admin/clinic/patients/<%= d.patient_id %>?tab=notes#note-<%= d.id %>"><%= `${d.first_name} ${d.last_name}`.trim() %></a> · <%= d.kind %> · <%= ymd(d.visit_date) %></p><% } %></div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

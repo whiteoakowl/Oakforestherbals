@@ -1,0 +1,109 @@
+<%- include('../partials/header') %>
+<% const vocabLabel = Object.fromEntries(VOCABULARIES); const selected = (key, id) => q[key].includes(id);
+   const actionsHtml = canManageHerbs ? '<a class="btn" href="/admin/herbs/import">Import</a> <a class="btn btn-primary" href="/admin/herbs/new">Add herb</a>' : ''; %>
+<div class="page herb-search">
+  <%- include('../partials/page-header', { heading: 'Herbal database', actions: actionsHtml }) %>
+  <form method="get" action="/admin/herbs" class="herb-layout" role="search">
+    <aside class="card herb-filters" aria-label="Filters">
+      <div class="row-between"><h2>Filters</h2><% if (!empty) { %><a class="small" href="/admin/herbs">Clear all</a><% } %></div>
+      <% for (const [param, vocab] of Object.entries(FILTER_PARAMS)) { const count = q[param].length; %>
+        <details <%= count || ['action', 'energetic', 'taste', 'system'].includes(param) ? 'open' : '' %>>
+          <summary><strong><%= vocabLabel[vocab] %></strong><%= count ? ` (${count})` : '' %></summary>
+          <% for (const g of grouped(allTerms[vocab])) { %>
+            <% if (g.label) { %><div class="muted small filter-group"><%= g.label %></div><% } %>
+            <div class="chip-list">
+              <% for (const t of g.terms) { %><label class="chip"><input type="checkbox" name="<%= param %>" value="<%= t.id %>" <%= selected(param, t.id) ? 'checked' : '' %>><span><%= t.name %></span></label><% } %>
+            </div>
+          <% } %>
+        </details>
+      <% } %>
+      <details <%= q.family || q.tradition || q.constituent || q.class ? 'open' : '' %>>
+        <summary><strong>Family, tradition, constituents</strong></summary>
+        <label class="field"><span>Plant family</span><select name="family"><option value="">Any</option><% for (const f of families) { %><option value="<%= f.id %>" <%= q.family === f.id ? 'selected' : '' %>><%= f.name %> (<%= f.n %>)</option><% } %></select></label>
+        <label class="field"><span>Tradition</span><select name="tradition"><option value="">Any</option><% for (const t of traditions) { %><option value="<%= t.id %>" <%= q.tradition === t.id ? 'selected' : '' %>><%= t.name %></option><% } %></select></label>
+        <label class="field"><span>Contains constituent</span><input name="constituent" value="<%= q.constituent %>" placeholder="e.g. glycyrrhizin"></label>
+        <label class="field"><span>Phytochemical class</span><select name="class"><option value="">Any</option><% for (const t of allTerms.constituent_class) { %><option value="<%= t.id %>" <%= q.class === t.id ? 'selected' : '' %>><%= t.name %></option><% } %></select></label>
+      </details>
+      <label class="check small"><input type="checkbox" name="favorites" value="1" <%= q.favorites ? 'checked' : '' %>> My favourites only</label>
+      <% if (canManageHerbs) { %><label class="field"><span>Status</span><select name="status"><% for (const [k, l] of [['published', 'Published'], ['draft', 'Drafts'], ['all', 'All']]) { %><option value="<%= k %>" <%= q.status === k ? 'selected' : '' %>><%= l %></option><% } %></select></label><% } %>
+      <button class="btn btn-primary btn-block">Apply filters</button>
+    </aside>
+
+    <div class="herb-main">
+      <div class="card herb-searchbar">
+        <div class="suggest-wrap" data-herb-suggest>
+          <input name="q" value="<%= q.q %>" placeholder="Search by common or Latin name, synonym, family, action, constituent, condition…" aria-label="Search herbs" autocomplete="off" class="grow">
+          <ul class="suggest-list" role="listbox" hidden></ul>
+        </div>
+        <select name="sort" aria-label="Sort"><option value="common" <%= q.sort === 'common' ? 'selected' : '' %>>Common name</option><option value="latin" <%= q.sort === 'latin' ? 'selected' : '' %>>Latin name</option></select>
+        <button class="btn">Search</button>
+      </div>
+      <nav class="letters" aria-label="Browse alphabetically">
+        <% for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') { %><a href="?letter=<%= l %>" class="<%= q.letter === l ? 'active' : '' %>"><%= l %></a><% } %>
+      </nav>
+      <div class="row-between">
+        <p class="small"><strong><%= total %></strong> herb<%= total === 1 ? '' : 's' %><%= empty ? '' : ` matching ${label}` %></p>
+        <% if (!empty) { %>
+          <details class="save-search"><summary class="small">Save this search</summary>
+            <div class="inline-fields"><input name="save_name" form="save-search" placeholder="Name" aria-label="Saved search name"><button class="btn btn-sm" form="save-search">Save</button></div>
+          </details>
+        <% } %>
+      </div>
+
+      <% if (!rows.length) { %>
+        <div class="card">
+          <% if (!totalHerbs) { %>
+            <p><strong>The herbal database is empty.</strong></p>
+            <p class="muted">It comes with the standard categories (actions, energetics, tastes, body systems, plant parts, preparations and constituent classes for Western, Ayurvedic and Chinese traditions) but no herb entries, so nothing is invented. <% if (canManageHerbs) { %><a href="/admin/herbs/new">Add a herb</a> or <a href="/admin/herbs/import">import a spreadsheet</a>.<% } %></p>
+          <% } else { %><p class="muted">No herbs match. Try removing a filter.</p><% } %>
+        </div>
+      <% } else { %>
+      <div class="card flush">
+        <div class="table-scroll"><table class="table">
+          <thead><tr><% if (canManageHerbs) { %><th class="check-col"><span class="visually-hidden">Select</span></th><% } %><th>Herb</th><th>Family</th><th>Actions</th></tr></thead>
+          <tbody>
+          <% for (const h of rows) { %>
+            <tr>
+              <% if (canManageHerbs) { %><td class="check-col"><input type="checkbox" name="ids" value="<%= h.id %>" form="bulk" aria-label="Select <%= h.common_name %>"></td><% } %>
+              <td><a href="/admin/herbs/<%= h.slug %>"><strong><%= h.common_name %></strong></a> <% if (h.status !== 'published') { %><span class="badge badge-default">Draft</span><% } %>
+                <div class="small"><em><%= h.latin_name %></em></div></td>
+              <td class="small"><%= h.family || '—' %></td>
+              <td class="small"><%= h.actions || '—' %></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table></div>
+      </div>
+      <%- include('../partials/pagination', { pager }) %>
+      <% } %>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2>Saved searches</h2>
+          <% if (!saved.length) { %><p class="muted small">Run a search, then choose “Save this search”.</p><% } %>
+          <% for (const s of saved) { %><div class="row-between small"><a href="/admin/herbs?<%= s.query %>"><%= s.name %></a>
+            <button class="link-plain small critical-text" form="del-saved-<%= s.id %>">Remove</button></div><% } %>
+        </div>
+        <div class="card">
+          <h2>Recent searches</h2>
+          <% if (!history.length) { %><p class="muted small">Nothing yet.</p><% } %>
+          <% for (const h of history) { %><div class="small"><a href="/admin/herbs?<%= h.query %>&exact=0"><%= h.label %></a></div><% } %>
+        </div>
+      </div>
+    </div>
+  </form>
+  <form id="save-search" method="post" action="/admin/herbs/saved"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="query" value="<%= queryString %>"></form>
+  <% for (const s of saved) { %><form id="del-saved-<%= s.id %>" method="post" action="/admin/herbs/saved/<%= s.id %>/delete"><input type="hidden" name="_csrf" value="<%= csrf %>"></form><% } %>
+  <% if (canManageHerbs && rows.length) { %>
+  <form id="bulk" method="post" action="/admin/herbs/bulk" class="card inline-fields bulk-herbs">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="query" value="<%= queryString %>">
+    <strong class="small">With selected:</strong>
+    <select name="action" aria-label="Bulk action"><option value="publish">Publish</option><option value="draft">Move to drafts</option><option value="add_term">Add category</option><option value="remove_term">Remove category</option></select>
+    <select name="term_id" aria-label="Category for bulk action"><option value="">(category)</option>
+      <% for (const [vocab, label] of VOCABULARIES) { if (vocab === 'constituent_class') continue; %><optgroup label="<%= label %>"><% for (const t of allTerms[vocab]) { %><option value="<%= t.id %>"><%= t.tradition_name ? `${t.tradition_name}: ` : '' %><%= t.name %></option><% } %></optgroup><% } %>
+    </select>
+    <button class="btn btn-sm">Apply</button>
+  </form>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

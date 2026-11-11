@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: `${product.title}: what’s in the bundle`, backHref: `/admin/products/${product.id}` }) %>
+  <p class="muted">A bundle has no stock of its own: it can be sold while every item in it is in stock, and selling one takes stock (and production lots) from those items. Its cost is theirs added up unless you set one.</p>
+  <% for (const v of product.variants) { const comps = components.get(v.id) || []; %>
+    <div class="card form-stack">
+      <h2><%= v.title === 'Default Title' ? product.title : v.title %> <span class="muted small">· <%= money(v.price) %><% if (comps.length) { %> · <%= v.track_inventory ? `${v.inventory_qty} can be made from stock` : 'not limited by stock' %><% } %></span></h2>
+      <% if (!comps.length) { %><p class="muted">Nothing in this bundle yet — it can’t be sold until you add something.</p><% } else { %>
+        <table class="table"><thead><tr><th>Item</th><th class="num">Quantity</th><th class="num">In stock</th><th></th></tr></thead><tbody>
+          <% for (const c of comps) { %><tr><td><%= c.title %><%= c.variant_title !== 'Default Title' ? ` — ${c.variant_title}` : '' %></td><td class="num"><%= c.quantity %></td><td class="num"><%= c.track_inventory ? c.inventory_qty : '—' %></td>
+            <td class="num"><form method="post" action="/admin/products/<%= product.id %>/bundle" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="variant_id" value="<%= v.id %>"><button class="link-plain small critical-text" name="remove" value="<%= c.variant_id %>">Remove</button></form></td></tr><% } %>
+        </tbody></table>
+      <% } %>
+      <form method="post" action="/admin/products/<%= product.id %>/bundle" class="grid-3 align-end">
+        <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="variant_id" value="<%= v.id %>">
+        <label class="field"><span>Add an item</span><select name="component_id" required><option value="">Choose…</option><% for (const c of choices) { %><option value="<%= c.id %>"><%= c.product_title %><%= c.title !== 'Default Title' ? ` — ${c.title}` : '' %> (<%= money(c.price) %>)</option><% } %></select></label>
+        <label class="field"><span>Quantity</span><input type="number" name="quantity" min="1" value="1" required></label>
+        <div><button class="btn">Add</button></div>
+      </form>
+    </div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,13 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: `${f.name} — version ${v.version}`, backHref: `/admin/formulas/${f.id}` }) %>
+  <div class="card">
+    <p class="muted small">Saved <%= formatDate(v.created_at, true) %> by <%= v.saved_by %> · <%= v.note %></p>
+    <p>Yield: <%= snap.yield_qty %> <%= UNITS[snap.yield_unit] ? UNITS[snap.yield_unit].label : snap.yield_unit %> · entered as <%= snap.entry_mode %></p>
+    <table class="table small"><thead><tr><th>Ingredient</th><th class="num">Quantity</th><th>Unit</th><th>Notes</th></tr></thead><tbody>
+      <% for (const i of snap.ingredients) { %><tr><td><%= names.get(i.material_id) || `Material #${i.material_id}` %></td><td class="num"><%= Number(i.quantity) %></td><td><%= i.unit %></td><td><%= i.notes %></td></tr><% } %>
+    </tbody></table>
+    <% if (snap.instructions) { %><h3>Instructions</h3><p class="prewrap small"><%= snap.instructions %></p><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,7 @@
+<%- include('_top') %>
+<div class="card">
+  <h2>Community</h2>
+  <% if (!list.length) { %><p class="muted">You’re not in any groups yet. If you join a group program, your practitioner will invite you here.</p><% } %>
+  <% for (const c of list) { %><p><a href="/account/clinic/community/<%= c.id %>"><strong><%= c.name %></strong></a> <span class="muted small"><%= c.accepted_at ? (c.new_posts ? `${c.new_posts} new` : '') : 'invitation waiting' %></span></p><% } %>
+</div>
+<%- include('_bottom') %>

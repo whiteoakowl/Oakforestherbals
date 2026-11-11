@@ -1,0 +1,35 @@
+<%- include('_top') %>
+<% const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`; const base = `/account/clinic/community/${community.id}`; %>
+<div class="card">
+  <h2><%= community.name %></h2>
+  <% if (community.description) { %><p><%= community.description %></p><% } %>
+</div>
+<% if (!m.accepted_at) { %>
+  <form method="post" action="<%= base %>/join" class="card form-stack"><%- csrfField %>
+    <h3>Before you join</h3>
+    <div class="prewrap guidelines"><%= community.guidelines %></div>
+    <label class="field"><span>Your name in this group</span><input name="display_name" value="<%= m.display_name %>" maxlength="60"><small class="muted">Other members see this name. A first name and initial is enough.</small></label>
+    <label class="check"><input type="checkbox" name="accept" value="1" required> I’ve read the guidelines and agree to them</label>
+    <button class="btn">Join the group</button>
+  </form>
+<% } else { %>
+  <% if (community.status === 'active' && !m.muted) { %>
+  <form method="post" action="<%= base %>/posts" class="card form-stack"><%- csrfField %>
+    <label class="field"><span>Share with the group</span><textarea name="body" rows="3" required></textarea></label>
+    <p class="muted small">Posting as <strong><%= m.display_name %></strong>. Questions about your own care? <a href="/account/clinic/messages">Message your practitioner privately</a>.</p>
+    <button class="btn">Post</button>
+  </form>
+  <% } else { %><p class="muted"><%= community.status === 'read_only' ? 'This group has finished — you can still read it.' : 'Posting is paused for you in this group.' %></p><% } %>
+  <% if (!threads.length) { %><div class="card"><p class="muted">No posts yet.</p></div><% } %>
+  <% for (const t of threads) { %>
+    <article class="card community-post" id="post-<%= t.id %>">
+      <div class="row-between"><strong><%= t.author_name %></strong><span class="muted small"><%= t.pinned ? '📌 ' : '' %><%= formatDate(t.created_at, true) %></span></div>
+      <p class="prewrap"><%= t.body %></p>
+      <% for (const r of t.replies) { %><div class="community-reply"><strong class="small"><%= r.author_name %></strong> <span class="muted small"><%= formatDate(r.created_at, true) %></span><p class="prewrap small"><%= r.body %></p></div><% } %>
+      <% if (community.status === 'active' && !m.muted) { %><form method="post" action="<%= base %>/posts" class="inline-form"><%- csrfField %><input type="hidden" name="parent_id" value="<%= t.id %>"><input name="body" placeholder="Reply" aria-label="Reply" required><button class="btn btn-secondary btn-sm">Reply</button></form><% } %>
+      <form method="post" action="<%= base %>/posts/<%= t.id %>/report" class="inline" data-confirm="Report this post to the facilitator?"><%- csrfField %><button class="link-btn small muted">Report</button></form>
+    </article>
+  <% } %>
+  <form method="post" action="<%= base %>/leave" class="inline" data-confirm="Leave this group?"><%- csrfField %><button class="link-btn small">Leave the group</button></form>
+<% } %>
+<%- include('_bottom') %>

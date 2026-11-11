@@ -1,9 +1,11 @@
 <%- include('partials/header') %>
 <div class="page">
-  <div class="page-header">
-    <div class="page-title-row"><h1>Good <%= new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening' %>, <%= staff.name.split(' ')[0] %></h1></div>
-    <div class="page-actions"><%- include('partials/range') %></div>
-  </div>
+<div class="today-hero">
+  <div><p class="muted small" style="margin:0"><%= new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %></p><h1>Good <%= new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening' %>, <%= staff.name.split(' ')[0] %></h1></div>
+  <% if (typeof quickCreate !== 'undefined' && quickCreate.length) { %><div class="quick-actions"><% for (const [href, label] of quickCreate.slice(0, 4)) { %><a class="btn btn-secondary btn-sm" href="<%= href %>">+ <%= label %></a><% } %></div><% } %>
+</div>
+  <div class="page-header" style="margin-bottom:12px"><h2 style="margin:0">Store at a glance</h2><div class="page-actions"><%- include('partials/range') %></div></div>
+  <%- include('partials/widgets') %>
 
   <div class="stat-row">
     <div class="card stat"><div class="stat-label">Total sales</div><div class="stat-value"><%= money(m.totalSales) %></div></div>

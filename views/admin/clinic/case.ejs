@@ -1,0 +1,65 @@
+<%- include('../partials/header') %>
+<% const base = `/admin/clinic/patients/${patient.id}`; const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`;
+   const kindLabel = (k) => (NOTE_KINDS.find(([x]) => x === k) || [, 'Note'])[1]; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: c.title, backHref: `${base}?tab=cases`, badges: [[c.status, c.status === 'open' ? 'success' : 'default']] }) %>
+  <p class="muted small"><a href="<%= base %>"><%= patient.name %></a> · opened <%= ymd(c.opened_on) %><%= c.closed_on ? ` · closed ${ymd(c.closed_on)}${c.closed_reason ? ` (${c.closed_reason})` : ''}` : '' %><%= c.practitioner_name ? ` · ${c.practitioner_name}` : '' %></p>
+  <% if (canManage && c.status === 'open') { %>
+  <div class="quick-actions" style="margin-bottom:16px">
+    <a class="btn btn-secondary btn-sm" href="<%= base %>?tab=notes&case=<%= c.id %>">+ Note</a>
+    <% if (can('scheduling.manage') || can('scheduling.own')) { %><a class="btn btn-secondary btn-sm" href="/admin/schedule/appointments/new?patient=<%= patient.id %>&case=<%= c.id %>">+ Appointment</a><% } %>
+    <a class="btn btn-secondary btn-sm" href="<%= base %>?tab=plans&case=<%= c.id %>">+ Care plan</a>
+    <% if (can('invoices.manage')) { %><a class="btn btn-secondary btn-sm" href="/admin/invoices/new?customer=<%= patient.customer_id %>&case=<%= c.id %>">+ Invoice</a><% } %>
+    <a class="btn btn-sm" href="<%= base %>/cases/<%= c.id %>/report">Referral report</a>
+  </div>
+  <% } %>
+  <div class="layout-2">
+    <div>
+      <div class="card">
+        <h2>Notes (<%= c.notes.length %>)</h2>
+        <% if (!c.notes.length) { %><p class="muted">No notes in this case yet.</p><% } %>
+        <% for (const n of c.notes) { %>
+          <div class="case-note"><div class="row-between"><strong><%= kindLabel(n.kind) %> · <%= ymd(n.visit_date) %></strong><span class="badge badge-<%= n.signed_at ? 'success' : 'attention' %>"><%= n.signed_at ? 'Signed' : 'Draft' %></span></div>
+            <p class="note-text small"><%= (n.body.text || ['subjective', 'objective', 'assessment', 'plan'].map((k) => n.body[k]).filter(Boolean).join(' · ')).slice(0, 400) %></p>
+            <a class="small" href="<%= base %>?tab=notes#note-<%= n.id %>">Open note</a></div>
+        <% } %>
+      </div>
+      <div class="card flush">
+        <h2 class="pad" style="padding-bottom:0">Appointments (<%= c.appointments.length %>)</h2>
+        <ul class="agenda pad"><% for (const a of c.appointments) { %><li><span class="time small"><%= formatDate(a.starts_at) %></span><span class="bar"><a href="/admin/schedule/appointments/<%= a.id %>"><strong><%= a.type_name %></strong></a><br><span class="muted small"><%= when(a.starts_at) %><%= a.staff_name ? ` · ${a.staff_name}` : '' %></span></span><span class="badge"><%= a.status %></span></li><% } %></ul>
+        <% if (!c.appointments.length) { %><p class="muted pad" style="padding-top:0">None yet.</p><% } %>
+      </div>
+      <div class="layout-halves">
+        <div class="card"><h2>Care plans</h2><% if (!c.plans.length) { %><p class="muted small">None.</p><% } %><% for (const p of c.plans) { %><p class="small"><a href="<%= base %>?tab=plans&plan=<%= p.id %>"><%= p.content.title || 'Care plan' %></a> · <%= p.status %></p><% } %></div>
+        <div class="card"><h2>Invoices</h2><% if (!c.invoices.length) { %><p class="muted small">None.</p><% } %><% for (const i of c.invoices) { %><p class="small"><% if (can('invoices.manage')) { %><a href="/admin/invoices/<%= i.id %>">#<%= i.number %></a><% } else { %>#<%= i.number %><% } %> · <%= money(i.total) %> · <%= i.status %></p><% } %>
+          <% if (c.invoices.length) { %><p class="small"><strong>Total billed:</strong> <%= money(c.invoices.reduce((s, i) => s + i.total, 0)) %> · paid <%= money(c.invoices.reduce((s, i) => s + i.paid_total, 0)) %></p><% } %></div>
+      </div>
+    </div>
+    <div>
+      <% if (canManage) { %>
+      <form method="post" action="<%= base %>/cases/<%= c.id %>" class="card form-stack">
+        <%- csrfField %>
+        <h2>Case details</h2>
+        <label class="field"><span>Title</span><input name="title" value="<%= c.title %>" maxlength="200"></label>
+        <label class="field"><span>Referred by</span><select name="referrer_id"><option value="">No referrer</option><% for (const r of referrers) { %><option value="<%= r.id %>" <%= r.id === c.referrer_id ? 'selected' : '' %>><%= r.name %></option><% } %></select></label>
+        <label class="field"><span>Referral date</span><input type="date" name="referral_date" value="<%= c.referral_date ? ymd(c.referral_date) : '' %>"></label>
+        <label class="field"><span>Reason for seeking care</span><textarea name="reason" rows="3"><%= c.details.reason || '' %></textarea></label>
+        <label class="field"><span>Goals</span><textarea name="goals" rows="3"><%= c.details.goals || '' %></textarea></label>
+        <button class="btn">Save</button>
+      </form>
+      <% if (c.referrer_name) { %><div class="card"><h2>Referrer</h2><p><strong><%= c.referrer_name %></strong><%= c.referrer_org ? `, ${c.referrer_org}` : '' %></p><p class="small muted"><%= c.referrer_email %> <%= c.referrer_phone %></p></div><% } %>
+      <form method="post" action="<%= base %>/cases/<%= c.id %>" class="card form-stack">
+        <%- csrfField %>
+        <% if (c.status === 'open') { %>
+          <h2>Close the case</h2>
+          <label class="field"><span>Outcome</span><input name="closed_reason" placeholder="e.g. Goals met, Moved away"></label>
+          <button class="btn" name="action" value="close">Close case</button>
+        <% } else { %><button class="btn" name="action" value="reopen">Reopen case</button><% } %>
+      </form>
+      <% } else { %>
+        <div class="card"><h2>Reason</h2><p class="note-text"><%= c.details.reason || '—' %></p><h2>Goals</h2><p class="note-text"><%= c.details.goals || '—' %></p></div>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

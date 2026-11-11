@@ -2,13 +2,17 @@
 const express = require('express');
 const { get, all, run, insert, tx } = require('../../db');
 const catalog = require('../../catalog');
-const { upload, csvUpload, saveFiles } = require('../../storage');
+const { upload, csvUpload, saveFiles, digitalUpload, savePrivate, removePrivate, DIGITAL_TYPES } = require('../../storage');
+const path = require('node:path');
+const audit = require('../../audit');
+const { token } = require('../../utils');
 const { flash, verifyCsrf } = require('../../middleware');
 const { parseMoney, toInt, uniqueHandle, parseTags, paginate, csvRow, parseCsv, asBool, asList, idFromKey, centsToInput } = require('../../utils');
 
 const router = express.Router();
 
 const STATUSES = ['active', 'draft', 'archived'];
+const PRODUCT_KINDS = [['standard', 'Physical product'], ['bundle', 'Bundle of other products'], ['digital', 'Digital download'], ['gift_card', 'Gift card']];
 
 router.get('/', async (req, res) => {
   const { q = '', status = '', type = '', vendor = '' } = req.query;
@@ -137,7 +141,7 @@ async function formData(product) {
   const memberOf = product ? (await all('SELECT collection_id FROM collection_products WHERE product_id = ?', product.id)).map((r) => r.collection_id) : [];
   const types = (await all("SELECT DISTINCT product_type AS v FROM products WHERE product_type != '' ORDER BY v")).map((r) => r.v);
   const vendors = (await all("SELECT DISTINCT vendor AS v FROM products WHERE vendor != '' ORDER BY v")).map((r) => r.v);
-  return { collections, memberOf, types, vendors, STATUSES };
+  return { collections, memberOf, types, vendors, STATUSES, PRODUCT_KINDS };
 }
 
 router.get('/new', async (req, res) => {
@@ -172,6 +176,21 @@ function variantFields(src = {}, fallback = {}) {
 // A stored variant expressed the way the form posts it, used when a row was not submitted.
 const asInput = (v) => ({ ...v, price: centsToInput(v.price), compare_at_price: centsToInput(v.compare_at_price), cost: centsToInput(v.cost) });
 
+// datetime-local input (UTC) -> ISO timestamp, or null.
+function publishAt(input) {
+  const s = String(input || '').trim();
+  if (!s) return null;
+  const d = new Date(/Z|[+-]\d\d:?\d\d$/.test(s) ? s : `${s}Z`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+// Subscribe & save: only for physical products and downloads, not gift cards or bundles.
+async function saveSubscriptionFields(id, body, kind) {
+  const interval = ['week', 'month'].includes(body.subscription_interval) && ['standard', 'digital'].includes(kind) ? body.subscription_interval : '';
+  await run('UPDATE products SET subscription_interval = ?, subscription_interval_count = ?, subscription_discount = ? WHERE id = ?',
+    interval, Math.max(1, Math.min(12, toInt(body.subscription_interval_count, 1))), Math.max(0, Math.min(90, toInt(body.subscription_discount, 0))), id);
+}
+
 async function saveProduct(id, body, files) {
   const uploaded = await saveFiles(files); // upload before the transaction so it isn't held open
   const title = String(body.title || '').trim() || 'Untitled product';
@@ -180,24 +199,31 @@ async function saveProduct(id, body, files) {
     .map((o) => ({ name: String(o.name || '').trim(), values: parseTags(o.values) }))
     .filter((o) => o.name && o.values.length)
     .slice(0, 3);
+  const kind = PRODUCT_KINDS.some(([k]) => k === body.kind) ? body.kind : 'standard';
   const flags = {
     track_inventory: asBool(body.track_inventory) ? 1 : 0,
     continue_selling: asBool(body.continue_selling) ? 1 : 0,
     requires_shipping: asBool(body.requires_shipping) ? 1 : 0,
     taxable: asBool(body.taxable) ? 1 : 0,
   };
+  // Gift cards and downloads never ship and have no stock; a bundle's stock comes from its parts.
+  if (kind === 'gift_card' || kind === 'digital') Object.assign(flags, { requires_shipping: 0, track_inventory: 0 });
+  if (kind === 'gift_card') flags.taxable = 0;
+  if (kind === 'bundle') flags.track_inventory = 0;
 
   return tx(async () => {
     const handle = await uniqueHandle('products', body.handle || title, id || 0);
     const values = [title, handle, String(body.description_html || ''), String(body.vendor || '').trim(),
       String(body.product_type || '').trim(), parseTags(body.tags).join(', '), status,
-      JSON.stringify(options.map((o) => o.name)), String(body.seo_title || ''), String(body.seo_description || '')];
+      JSON.stringify(options.map((o) => o.name)), String(body.seo_title || ''), String(body.seo_description || ''),
+      String(body.ingredients || ''), String(body.directions || ''), String(body.warnings || ''), publishAt(body.publish_at)];
     if (id) {
       await run(`UPDATE products SET title = ?, handle = ?, description_html = ?, vendor = ?, product_type = ?, tags = ?, status = ?,
-        options = ?, seo_title = ?, seo_description = ?, updated_at = now() WHERE id = ?`, ...values, id);
+        options = ?, seo_title = ?, seo_description = ?, ingredients = ?, directions = ?, warnings = ?, publish_at = ?, kind = ?, updated_at = now() WHERE id = ?`, ...values, kind, id);
     } else {
-      id = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...values);
+      id = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description,
+        ingredients, directions, warnings, publish_at, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...values, kind);
+      await saveSubscriptionFields(id, body, kind);
     }
 
     // Variants: one per option combination, keeping existing rows whose values still match.
@@ -268,13 +294,75 @@ router.post('/:id', upload.array('images', 20), verifyCsrf, async (req, res, nex
   res.redirect(`/admin/products/${id}`);
 });
 
+/* ---------- Bundles: what each bundle variant is made of ---------- */
+
+router.get('/:id/bundle', async (req, res, next) => {
+  const product = await catalog.productById(toInt(req.params.id));
+  if (!product) return next();
+  const components = await require('../../bundles').componentsFor(product.variants.map((v) => v.id));
+  const choices = await all(`SELECT v.id, v.title, v.price, p.title AS product_title FROM variants v JOIN products p ON p.id = v.product_id
+    WHERE p.id != ? AND p.kind NOT IN ('bundle', 'gift_card') AND p.status != 'archived' ORDER BY p.title, v.position`, product.id);
+  res.render('admin/products/bundle', { title: `${product.title} — bundle`, product, components, choices });
+});
+
+router.post('/:id/bundle', async (req, res, next) => {
+  const product = await catalog.productById(toInt(req.params.id));
+  if (!product) return next();
+  const variantId = toInt(req.body.variant_id);
+  if (!product.variants.some((v) => v.id === variantId)) return next();
+  if (req.body.remove) {
+    await run('DELETE FROM bundle_components WHERE bundle_variant_id = ? AND component_variant_id = ?', variantId, toInt(req.body.remove));
+  } else {
+    const component = await get(`SELECT v.id FROM variants v JOIN products p ON p.id = v.product_id WHERE v.id = ? AND p.id != ? AND p.kind NOT IN ('bundle', 'gift_card')`, toInt(req.body.component_id), product.id);
+    const qty = Math.max(1, toInt(req.body.quantity, 1));
+    if (!component) flash(req, 'error', 'Choose a product to include (bundles and gift cards can’t go inside a bundle).');
+    else await run(`INSERT INTO bundle_components (bundle_variant_id, component_variant_id, quantity) VALUES (?, ?, ?)
+      ON CONFLICT (bundle_variant_id, component_variant_id) DO UPDATE SET quantity = EXCLUDED.quantity`, variantId, component.id, qty);
+  }
+  res.redirect(`/admin/products/${product.id}/bundle`);
+});
+
+/* ---------- Digital download files ---------- */
+
+router.get('/:id/files', async (req, res, next) => {
+  const product = await catalog.productById(toInt(req.params.id));
+  if (!product) return next();
+  const files = await all('SELECT f.*, v.title AS variant_title FROM digital_files f LEFT JOIN variants v ON v.id = f.variant_id WHERE f.product_id = ? ORDER BY f.id', product.id);
+  res.render('admin/products/files', { title: `${product.title} — files`, product, files, types: [...DIGITAL_TYPES.keys()].join(', ') });
+});
+
+router.post('/:id/files', digitalUpload.single('file'), verifyCsrf, async (req, res, next) => {
+  const product = await catalog.productById(toInt(req.params.id));
+  if (!product) return next();
+  if (!req.file) { flash(req, 'error', 'Choose a file of an allowed type and size.'); return res.redirect(`/admin/products/${product.id}/files`); }
+  const variantId = product.variants.some((v) => v.id === toInt(req.body.variant_id)) ? toInt(req.body.variant_id) : null;
+  const ext = path.extname(req.file.originalname).toLowerCase();
+  const key = `downloads/${product.id}/${token(16)}`;
+  await savePrivate(key, req.file.buffer);
+  const filename = path.basename(req.file.originalname).replace(/[^\w.\- ]+/g, '_').slice(0, 150) || `file${ext}`;
+  await insert('INSERT INTO digital_files (product_id, variant_id, filename, storage_key, mime, size_bytes) VALUES (?, ?, ?, ?, ?, ?)', product.id, variantId, filename, key, DIGITAL_TYPES.get(ext), req.file.size);
+  await audit.record(req, 'digital_file.added', { entityType: 'product', entityId: product.id, details: { filename } });
+  flash(req, 'success', 'File added. Customers who buy this from now on get a download link.');
+  res.redirect(`/admin/products/${product.id}/files`);
+});
+
+router.post('/:id/files/:fileId/delete', async (req, res) => {
+  const f = await get('SELECT * FROM digital_files WHERE id = ? AND product_id = ?', toInt(req.params.fileId), toInt(req.params.id));
+  if (f) {
+    await run('DELETE FROM digital_files WHERE id = ?', f.id);
+    await removePrivate(f.storage_key).catch(() => {});
+    await audit.record(req, 'digital_file.removed', { entityType: 'product', entityId: f.product_id, details: { filename: f.filename } });
+  }
+  res.redirect(`/admin/products/${toInt(req.params.id)}/files`);
+});
+
 router.post('/:id/duplicate', async (req, res, next) => {
   const p = await catalog.productById(toInt(req.params.id));
   if (!p) return next();
   const id = await tx(async () => {
-    const newId = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description)
-      VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?)`, `Copy of ${p.title}`, await uniqueHandle('products', `${p.handle}-copy`),
-    p.description_html, p.vendor, p.product_type, p.tags, JSON.stringify(p.options), p.seo_title, p.seo_description);
+    const newId = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description,
+      ingredients, directions, warnings) VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`, `Copy of ${p.title}`, await uniqueHandle('products', `${p.handle}-copy`),
+    p.description_html, p.vendor, p.product_type, p.tags, JSON.stringify(p.options), p.seo_title, p.seo_description, p.ingredients || '', p.directions || '', p.warnings || '');
     for (const v of p.variants) {
       await run(`INSERT INTO variants (product_id, title, option1, option2, option3, sku, barcode, price, compare_at_price, cost, inventory_qty,
         track_inventory, continue_selling, weight_grams, requires_shipping, taxable, position) VALUES (?, ?, ?, ?, ?, '', '', ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)`,

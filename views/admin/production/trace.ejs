@@ -1,0 +1,45 @@
+<%- include('../partials/header') %>
+<% const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`;
+   const tree = (inputs, depth = 0) => inputs.map((i) => `<li><a href="/admin/inventory/materials/${i.material_id}">${String(i.name).replace(/</g, '&lt;')}</a> · lot ${String(i.lot_code || '?').replace(/</g, '&lt;')}${i.supplier ? ` · ${String(i.supplier).replace(/</g, '&lt;')}` : ''}${i.supplier_lot ? ` (supplier lot ${String(i.supplier_lot).replace(/</g, '&lt;')})` : ''} · ${fmtQty(Number(i.used_qty), i)} <a class="small" href="/admin/production/trace?lot=${i.lot_id}">trace</a>${i.sub ? `<ul>${tree(i.sub, depth + 1)}</ul>` : ''}</li>`).join(''); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Batch tracing', backHref: '/admin/production' }) %>
+  <form method="get" class="card inline-fields" role="search"><input name="q" value="<%= q %>" placeholder="Lot number, supplier lot or batch code" class="grow" aria-label="Lot or batch"><button class="btn">Trace</button></form>
+  <% if (q && !matches.length && !lot && !batch) { %><div class="card"><p class="muted">Nothing found for “<%= q %>”.</p></div><% } %>
+  <% if (matches.length > 1) { %><div class="card"><% for (const m of matches) { %><p class="small"><a href="?lot=<%= m.id %>"><%= m.name %> · <%= m.lot_code %></a> <span class="muted"><%= m.supplier_lot %></span></p><% } %></div><% } %>
+
+  <% if (lot) { %>
+    <div class="card">
+      <h2><%= lot.name %> · lot <%= lot.lot_code %> <span class="badge badge-<%= lot.status === 'recalled' ? 'critical' : 'default' %>"><%= lot.status %></span></h2>
+      <p class="small muted"><%= lot.supplier ? `${lot.supplier} · ` : '' %><%= lot.supplier_lot ? `supplier lot ${lot.supplier_lot} · ` : '' %>received <%= ymd(lot.received_at) %><%= lot.expires_at ? ` · expires ${ymd(lot.expires_at)}` : '' %></p>
+      <% if (lot.production_batch_id) { %><p class="small">Made in batch <a href="?batch=<%= lot.production_batch_id %>">see what went into it</a>.</p><% } %>
+    </div>
+    <div class="grid-3">
+      <div class="card"><h2>Batches that used it (<%= forward.batches.length %>)</h2><% for (const b of forward.batches) { %><p class="small"><a href="/admin/production/<%= b.id %>"><%= b.code %></a> · <%= b.name %></p><% } %></div>
+      <div class="card"><h2>Finished products (<%= forward.finished.length %>)</h2><% for (const f of forward.finished) { %><p class="small"><%= f.product_title %> · batch <%= f.code %> · <%= f.qty_made %> made, <%= f.qty_remaining %> unsold <span class="badge badge-default"><%= f.status %></span></p><% } %></div>
+      <div class="card"><h2>Orders (<%= forward.orders.length %>)</h2><% for (const o of forward.orders) { %><p class="small"><a href="/admin/orders/<%= o.id %>">#<%= o.number %></a> · <%= o.email || 'walk-in' %> · <%= o.qty %> × <%= o.title %> (<%= o.code %>)</p><% } %></div>
+    </div>
+    <% if (lot.status !== 'recalled' && canApproveBatches) { %>
+      <form method="post" action="/admin/production/trace/lot/<%= lot.id %>/recall" class="card form-stack">
+        <%- csrfField %>
+        <h2>Recall this lot</h2>
+        <p class="small">Marks this lot and every component lot and finished product made from it as recalled, and removes unsold recalled products from sellable stock. Orders already sent are listed above so you can contact those customers.</p>
+        <input name="reason" required placeholder="Reason (e.g. supplier notice, failed test)" aria-label="Recall reason">
+        <label class="check small"><input type="checkbox" name="confirm" value="1" required> I understand this affects every batch and product listed above.</label>
+        <div class="right"><button class="btn btn-critical">Recall</button></div>
+      </form>
+    <% } %>
+  <% } %>
+
+  <% if (batch) { %>
+    <div class="card"><h2>Batch <a href="/admin/production/<%= batch.id %>"><%= batch.code %></a> · <%= batch.name %></h2></div>
+    <div class="layout-2">
+      <div class="card"><h2>Made from</h2><% if (!back.length) { %><p class="muted small">Nothing used yet (the batch isn't complete).</p><% } %><ul class="trace-tree small"><%- tree(back) %></ul></div>
+      <div class="card"><h2>Went into</h2>
+        <% for (const f of batchForward.finished) { %><p class="small"><%= f.product_title || 'Finished product' %> · <%= f.qty_made %> made, <%= f.qty_remaining %> unsold</p><% } %>
+        <% for (const o of batchForward.orders) { %><p class="small"><a href="/admin/orders/<%= o.id %>">Order #<%= o.number %></a> · <%= o.email || 'walk-in' %> · <%= o.qty %> × <%= o.title %></p><% } %>
+        <% if (!batchForward.finished.length && !batchForward.orders.length) { %><p class="muted small">Not used or sold yet.</p><% } %>
+      </div>
+    </div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

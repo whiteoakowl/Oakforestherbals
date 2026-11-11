@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%= title %></title>
+<style>body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;max-width:800px;margin:24px auto;padding:0 16px;font-size:14px}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{text-align:left;padding:6px;border:1px solid #bbb;vertical-align:top}.num{text-align:right}h1{margin:0}.muted{color:#555}.sig{display:flex;gap:24px;margin-top:24px}.sig div{flex:1;border-top:1px solid #111;padding-top:4px}@media print{.noprint{display:none}}</style></head>
+<body>
+  <p class="noprint"><button onclick="window.print()">Print</button></p>
+  <h1>Batch manufacturing record</h1>
+  <p class="muted"><%= store.name %></p>
+  <table><tr><th>Batch</th><td><%= b.code %></td><th>Product / preparation</th><td><%= b.name %><%= b.formula_version ? ` (formula v${b.formula_version})` : '' %></td></tr>
+    <tr><th>Planned</th><td><%= Number(b.planned_qty) %> <%= b.variant_id ? 'units' : UNITS[b.output_unit].label %></td><th>Actual yield</th><td><%= b.actual_qty === null ? '' : Number(b.actual_qty) %> <%= b.waste_qty !== null && b.waste_qty !== undefined ? `(waste ${Number(b.waste_qty)})` : '' %></td></tr>
+    <tr><th>Made by</th><td><%= b.made_by %></td><th>Best before</th><td><%= b.best_before ? ymd(b.best_before) : '' %></td></tr>
+    <tr><th>Started</th><td><%= b.started_at ? formatDate(b.started_at, true) : '' %></td><th>Completed</th><td><%= b.completed_at ? `${formatDate(b.completed_at, true)} by ${b.completed_by}` : '' %></td></tr>
+    <tr><th>Status</th><td><%= b.status %></td><th>Released</th><td><%= b.released_at ? `${formatDate(b.released_at, true)} by ${b.released_by}` : '' %></td></tr></table>
+  <h2>Ingredients and lots</h2>
+  <table><thead><tr><th>Material</th><th>Lot</th><th>Supplier / supplier lot</th><th>Expiry</th><th class="num">Planned</th><th class="num">Used</th><th class="num">Cost</th></tr></thead><tbody>
+    <% for (const i of b.inputs) { const t = back.find((x) => x.id === i.id) || {}; %><tr><td><%= i.name %></td><td><%= i.lot_code || '' %></td><td><%= t.supplier || '' %> <%= i.supplier_lot || '' %></td><td><%= i.lot_expires ? ymd(i.lot_expires) : '' %></td>
+      <td class="num"><%= Number(i.planned_qty) ? fmtQty(Number(i.planned_qty), i) : '' %></td><td class="num"><%= i.used_qty === null ? '' : fmtQty(Number(i.used_qty), i) %></td><td class="num"><%= i.cost === null ? '' : money(i.cost) %></td></tr><% } %>
+  </tbody></table>
+  <p><strong>Estimated cost:</strong> <%= b.estimated_cost === null ? '' : money(b.estimated_cost) %> · <strong>Actual cost:</strong> <%= b.actual_cost === null ? '' : money(b.actual_cost) %> · <strong>Labour:</strong> <%= Number(b.labour_minutes) %> min</p>
+  <h2>Quality control</h2>
+  <table><thead><tr><th>Check</th><th>Result</th><th>Notes</th><th>By</th></tr></thead><tbody>
+    <% for (const c of b.checks) { %><tr><td><%= c.label %></td><td><%= c.result %></td><td><%= c.notes %></td><td><%= c.checked_by %></td></tr><% } %>
+  </tbody></table>
+  <% if (b.notes) { %><h2>Notes</h2><p style="white-space:pre-wrap"><%= b.notes %></p><% } %>
+  <div class="sig"><div>Made by</div><div>Checked by</div><div>Released by</div></div>
+</body></html>

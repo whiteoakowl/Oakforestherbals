@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%= title %></title>
+<style>body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;max-width:760px;margin:32px auto;padding:0 16px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{text-align:left;padding:8px;border-bottom:1px solid #ddd}.num{text-align:right}.head{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:12px}@media print{.noprint{display:none}}</style></head>
+<body>
+  <p class="noprint"><button onclick="window.print()">Print</button></p>
+  <div class="head"><div><strong><%= store.name %></strong><br><%= store.address %><br><%= store.email %></div><div><strong>Purchase order #<%= po.number %></strong><br><%= formatDate(po.created_at) %><%= po.expected_at ? `<br>Expected ${ymd(po.expected_at)}` : '' %></div></div>
+  <% if (supplier) { %><p><strong>To:</strong> <%= supplier.name %><br><%= supplier.contact_name %> <%= supplier.email %> <%= supplier.phone %><br><%= supplier.address %></p><% } %>
+  <table><thead><tr><th>Item</th><th class="num">Packs</th><th>Pack size</th><th class="num">Price</th><th class="num">Total</th></tr></thead><tbody>
+    <% for (const i of items) { %><tr><td><%= i.name %></td><td class="num"><%= Number(i.packs) %></td><td><%= Number(i.pack_size) %> <%= UNITS[i.pack_unit].label %></td><td class="num"><%= money(i.pack_cost) %></td><td class="num"><%= money(i.line_total) %></td></tr><% } %>
+    <tr><td colspan="4">Shipping</td><td class="num"><%= money(po.shipping_cost) %></td></tr><tr><td colspan="4">Tax / duties</td><td class="num"><%= money(po.tax_cost) %></td></tr>
+    <tr><td colspan="4"><strong>Total</strong></td><td class="num"><strong><%= money(total) %></strong></td></tr>
+  </tbody></table>
+  <% if (po.notes) { %><p><%= po.notes %></p><% } %>
+</body></html>

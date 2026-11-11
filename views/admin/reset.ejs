@@ -1,0 +1,12 @@
+<%- include('auth-layout') %>
+  <h1>Choose a new password</h1>
+  <p class="muted">For <%= email %></p>
+  <form action="<%= action %>" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>New password</span><input type="password" name="password" minlength="8" required autocomplete="new-password" autofocus></label>
+    <label class="field"><span>Type it again</span><input type="password" name="confirm" minlength="8" required autocomplete="new-password"></label>
+    <button class="btn btn-primary btn-block">Save password</button>
+  </form>
+</main>
+</body>
+</html>

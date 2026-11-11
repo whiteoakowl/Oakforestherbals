@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+<div class="page">
+  <%- include('partials/page-header', { heading: 'Reviews' }) %>
+  <nav class="tabs" aria-label="Filter reviews">
+    <a href="/admin/reviews" class="<%= !status ? 'active' : '' %>">All</a>
+    <a href="/admin/reviews?status=pending" class="<%= status === 'pending' ? 'active' : '' %>">Waiting (<%= counts.pending || 0 %>)</a>
+    <a href="/admin/reviews?status=published" class="<%= status === 'published' ? 'active' : '' %>">Published (<%= counts.published || 0 %>)</a>
+    <a href="/admin/reviews?status=hidden" class="<%= status === 'hidden' ? 'active' : '' %>">Hidden (<%= counts.hidden || 0 %>)</a>
+  </nav>
+  <% if (!reviews.length) { %><div class="card pad muted">No reviews here.</div><% } %>
+  <% for (const r of reviews) { %>
+    <div class="card form-stack">
+      <div><strong><%= '★'.repeat(r.rating) %><%= '☆'.repeat(5 - r.rating) %></strong> <%= r.title %> <span class="badge badge-<%= r.status === 'published' ? 'success' : r.status === 'pending' ? 'attention' : 'default' %>"><%= r.status %></span></div>
+      <div class="muted small"><a href="/products/<%= r.handle %>#reviews"><%= r.product_title %></a> · <%= r.author_name %><%= r.email ? ` (${r.email})` : '' %><%= r.verified ? ' · verified buyer' : '' %> · <%= formatDate(r.created_at, true) %></div>
+      <% if (r.body) { %><p><%= r.body %></p><% } %>
+      <form method="post" action="/admin/reviews/<%= r.id %>" class="form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="<%= originalPath %><%= status ? `?status=${status}` : '' %>">
+        <label class="field"><span>Public reply (optional)</span><textarea name="reply" rows="2" maxlength="2000"><%= r.reply %></textarea></label>
+        <div class="row-gap">
+          <% if (r.status !== 'published') { %><button class="btn btn-primary" name="status" value="published">Publish</button><% } %>
+          <% if (r.status !== 'hidden') { %><button class="btn" name="status" value="hidden">Hide</button><% } %>
+          <button class="btn" name="status" value="<%= r.status %>">Save reply</button>
+          <button class="btn critical" name="delete" value="1" data-confirm-click="Delete this review?">Delete</button>
+        </div>
+      </form>
+    </div>
+  <% } %>
+  <%- include('partials/pagination', { pager }) %>
+</div>
+<%- include('partials/footer') %>

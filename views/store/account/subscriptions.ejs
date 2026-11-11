@@ -1,0 +1,24 @@
+<%- include('../partials/header') %>
+<div class="container section">
+  <h1 class="page-title">Subscriptions</h1>
+  <%- include('nav') %>
+  <% if (started) { %><p class="flash flash-success">Thank you! Your subscription has started. It may take a moment to appear here.</p><% } %>
+  <% if (!list.length) { %><p class="muted">You don’t have any subscriptions. Look for “Subscribe &amp; save” on product pages.</p><% } %>
+  <% for (const s of list) { %>
+    <div class="card form-stack">
+      <h2 class="h4"><%= s.quantity %> × <%= s.title %></h2>
+      <p><%= money(s.price * s.quantity + s.shipping_price) %> <%= every(s) %> ·
+        <% if (s.status === 'canceled') { %>Cancelled<% } else if (s.cancel_at_period_end) { %>Ends <%= s.current_period_end ? formatDate(s.current_period_end) : 'after this period' %><% } else if (s.status === 'past_due' || s.status === 'unpaid') { %><strong>Payment problem — please update your card</strong><% } else { %>Next delivery around <%= s.current_period_end ? formatDate(s.current_period_end) : '—' %><% } %></p>
+      <% if (s.status !== 'canceled') { %>
+        <div class="row-gap">
+          <form method="post" action="/account/subscriptions/<%= s.id %>/cancel" class="inline" <%= s.cancel_at_period_end ? '' : 'data-confirm="Cancel this subscription? You’ll still get the delivery you’ve paid for."' %>>
+            <input type="hidden" name="_csrf" value="<%= csrf %>"><% if (s.cancel_at_period_end) { %><input type="hidden" name="resume" value="1"><% } %>
+            <button class="btn btn-secondary"><%= s.cancel_at_period_end ? 'Keep my subscription' : 'Cancel subscription' %></button>
+          </form>
+          <form method="post" action="/account/subscriptions/<%= s.id %>/billing" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-secondary">Update card or address</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

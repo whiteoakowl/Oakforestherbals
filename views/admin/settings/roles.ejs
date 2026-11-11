@@ -1,0 +1,26 @@
+<%- include('_top') %>
+<div class="card flush">
+  <table class="table">
+    <thead><tr><th>Role</th><th>Permissions</th><th class="num">Staff</th></tr></thead>
+    <tbody>
+    <% for (const r of roles) { %>
+      <tr>
+        <td><a href="/admin/settings/roles/<%= r.id %>"><strong><%= r.name %></strong></a><% if (r.is_system) { %> <span class="badge badge-default">Built-in</span><% } %>
+          <div class="muted small"><%= r.description %></div></td>
+        <td class="muted small"><%= r.key === 'owner' ? 'All' : r.permissions.length || 'None yet' %></td>
+        <td class="num"><%= r.member_count %></td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table>
+</div>
+<form action="/admin/settings/roles" method="post" class="card form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h2>Create a custom role</h2>
+  <div class="grid-2">
+    <label class="field"><span>Name</span><input name="name" required maxlength="60"></label>
+    <label class="field"><span>Description</span><input name="description" maxlength="200"></label>
+  </div>
+  <div class="right"><button class="btn btn-primary">Create role</button></div>
+</form>
+<%- include('_bottom') %>

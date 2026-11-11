@@ -1,0 +1,15 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Purchase orders', actions: '<a class="btn btn-primary" href="/admin/inventory/purchase-orders/new">New purchase order</a>' }) %>
+  <%- include('_tabs') %>
+  <div class="card flush">
+    <div class="tabs pad-x"><% for (const [k, l] of [['', 'All'], ['draft', 'Drafts'], ['ordered', 'Ordered'], ['partial', 'Partly received'], ['received', 'Received'], ['cancelled', 'Cancelled']]) { %><a class="tab <%= status === k ? 'active' : '' %>" href="?status=<%= k %>"><%= l %></a><% } %></div>
+    <% if (!orders.length) { %><p class="pad muted">No purchase orders.</p><% } else { %>
+    <div class="table-scroll"><table class="table"><thead><tr><th>Order</th><th>Supplier</th><th>Status</th><th class="num">Lines</th><th class="num">Total</th><th>Expected</th></tr></thead><tbody>
+      <% for (const o of orders) { %><tr><td><a href="/admin/inventory/purchase-orders/<%= o.id %>"><strong>PO #<%= o.number %></strong></a><div class="muted small"><%= formatDate(o.created_at) %></div></td><td><%= o.supplier || '—' %></td>
+        <td><span class="badge badge-<%= o.status === 'received' ? 'success' : o.status === 'cancelled' ? 'default' : 'attention' %>"><%= o.status %></span></td><td class="num"><%= o.lines %></td>
+        <td class="num"><%= money(Math.round(Number(o.subtotal)) + o.shipping_cost + o.tax_cost) %></td><td class="small"><%= o.expected_at ? ymd(o.expected_at) : '—' %></td></tr><% } %>
+    </tbody></table></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,36 @@
+<%- include('_top') %>
+<% const locked = role.key === 'owner'; %>
+<form action="/admin/settings/roles/<%= role.id %>" method="post" class="form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="card form-stack">
+    <div class="grid-2">
+      <label class="field"><span>Name</span><input name="name" value="<%= role.name %>" required maxlength="60" <%= locked ? 'disabled' : '' %>></label>
+      <label class="field"><span>Description</span><input name="description" value="<%= role.description %>" maxlength="200" <%= locked ? 'disabled' : '' %>></label>
+    </div>
+    <% if (locked) { %><p class="muted small">The owner role always has every permission, including ones added in future updates. It cannot be edited.</p><% } %>
+  </div>
+  <% for (const [i, g] of groups.entries()) { %>
+    <div class="card form-stack" role="group" aria-labelledby="perm-group-<%= i %>">
+      <h2 id="perm-group-<%= i %>"><%= g.module %></h2>
+      <% for (const p of g.items) { %>
+        <label class="check">
+          <input type="checkbox" name="permissions" value="<%= p.key %>" <%= role.permissions.includes(p.key) ? 'checked' : '' %> <%= locked || (!staff.permissions.has(p.key) && !role.permissions.includes(p.key)) ? 'disabled' : '' %>>
+          <span><%= p.label %><% if (p.sensitive) { %> <span class="badge badge-warning">Sensitive</span><% } %></span>
+        </label>
+      <% } %>
+    </div>
+  <% } %>
+  <div class="card">
+    <h2>Staff with this role (<%= members.length %>)</h2>
+    <% if (members.length) { %><ul class="plain-list"><% for (const m of members) { %><li><%= m.name %> <span class="muted small"><%= m.email %></span></li><% } %></ul>
+    <% } else { %><p class="muted">Nobody has this role yet. Assign it under <a href="/admin/settings/staff">Users</a>.</p><% } %>
+  </div>
+  <% if (!locked) { %><div class="right"><button class="btn btn-primary">Save role</button></div><% } %>
+</form>
+<% if (!role.is_system) { %>
+  <form action="/admin/settings/roles/<%= role.id %>/delete" method="post" class="right" data-confirm="Delete the role <%= role.name %>?">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-critical">Delete role</button>
+  </form>
+<% } %>
+<p><a href="/admin/settings/roles">← All roles</a></p>
+<%- include('_bottom') %>

@@ -1,0 +1,16 @@
+<% if (printOnly) { %><!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><%= title %></title><style>body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;max-width:760px;margin:24px auto;padding:0 16px}table{width:100%;border-collapse:collapse}th,td{padding:6px;border-bottom:1px solid #ddd;text-align:left}.num{text-align:right}@media print{.noprint{display:none}}</style></head><body><p class="noprint"><button onclick="window.print()">Print</button></p>
+<% } else { %><%- include('partials/header') %><div class="container section narrow"><% } %>
+  <h1 class="page-title">Invoice #<%= inv.number %></h1>
+  <p><strong><%= store.name %></strong><br><%= store.address %><br><%= store.email %></p>
+  <p>Billed to: <%= inv.name || inv.email %><br><span class="muted">Issued <%= ymd(inv.issued_on) %><%= inv.due_on ? ` · due ${ymd(inv.due_on)}` : '' %></span></p>
+  <table class="data-table"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr></thead><tbody>
+    <% for (const i of inv.items) { %><tr><td><%= i.description %></td><td class="num"><%= Number(i.quantity) %></td><td class="num"><%= money(i.unit_price) %></td><td class="num"><%= money(Math.round(Number(i.quantity) * i.unit_price)) %></td></tr><% } %>
+    <% if (inv.tax_total) { %><tr><td colspan="3">Tax</td><td class="num"><%= money(inv.tax_total) %></td></tr><% } %>
+    <tr><td colspan="3"><strong>Total</strong></td><td class="num"><strong><%= money(inv.total) %></strong></td></tr>
+    <tr><td colspan="3">Paid</td><td class="num"><%= money(inv.paid_total) %></td></tr>
+    <tr><td colspan="3"><strong>Balance due</strong></td><td class="num"><strong><%= money(inv.balance) %></strong></td></tr>
+  </tbody></table>
+  <% if (inv.status === 'void') { %><p><strong>This invoice was cancelled.</strong></p><% } else if (inv.balance <= 0) { %><p><strong>Paid in full — thank you.</strong></p><% } %>
+  <% if (canPay) { %><form method="post" action="/invoices/<%= inv.token %>/pay"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn">Pay <%= money(inv.balance) %> by card</button></form><% } %>
+  <% if (inv.notes) { %><p><%= inv.notes %></p><% } %>
+<% if (printOnly) { %></body></html><% } else { %></div><%- include('partials/footer') %><% } %>

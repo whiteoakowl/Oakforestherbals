@@ -1,0 +1,16 @@
+<%- include('_top') %>
+<div class="clinic-grid">
+  <section class="card"><h2>My documents</h2>
+    <% if (!docs.length) { %><p class="muted">Documents your practitioner shares, and files you upload, appear here.</p><% } %>
+    <% for (const d of docs) { %><p><a href="/account/clinic/documents/<%= d.id %>"><%= d.title %></a> <span class="muted small"><%= d.uploaded_by_patient ? 'uploaded by you' : 'shared by your practitioner' %> · <%= formatDate(d.created_at) %></span></p><% } %>
+  </section>
+  <aside>
+    <form method="post" action="/account/clinic/documents" enctype="multipart/form-data" class="card"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <h2>Upload</h2>
+      <label class="field"><span>What is it?</span><select name="kind"><option value="lab_result">Lab result</option><option value="photo">Photo</option><option value="document">Other document</option></select></label>
+      <label class="field"><span>Title</span><input name="title"></label>
+      <label class="field"><span>File (PDF, photo, Word or text, up to 4 MB)</span><input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.txt,.doc,.docx"></label>
+      <button class="btn">Upload securely</button></form>
+  </aside>
+</div>
+<%- include('_bottom') %>

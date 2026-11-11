@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: issued ? 'Gift card issued' : 'Issue a gift card', backHref: '/admin/gift-cards' }) %>
+  <% if (issued) { %>
+    <div class="card form-stack">
+      <p>Code for the <strong><%= money(issued.value) %></strong> card:</p>
+      <p class="mono" style="font-size:1.4rem"><strong><%= issued.code %></strong></p>
+      <p class="banner banner-critical">Copy it now — it won’t be shown again (only a scrambled version is stored).<% if (issued.sent) { %> It has also been emailed to <%= issued.email %>.<% } %></p>
+      <div class="row-gap"><a class="btn" href="/admin/gift-cards/<%= issued.id %>">View card</a><a class="btn" href="/admin/gift-cards/new">Issue another</a></div>
+    </div>
+  <% } else { %>
+    <form method="post" action="/admin/gift-cards/new" class="card form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="grid-2">
+        <label class="field"><span>Value</span><input name="value" inputmode="decimal" required placeholder="25.00"></label>
+        <label class="field"><span>Expires (optional)</span><input type="date" name="expires_on"></label>
+      </div>
+      <div class="grid-2">
+        <label class="field"><span>Recipient email (optional)</span><input type="email" name="recipient_email"></label>
+        <label class="field"><span>Recipient name</span><input name="recipient_name"></label>
+      </div>
+      <label class="field"><span>Message in the email</span><textarea name="message" rows="2"></textarea></label>
+      <label class="check"><input type="checkbox" name="send" value="1" checked> Email the code to the recipient</label>
+      <label class="field"><span>Internal note (e.g. why it was issued)</span><input name="note"></label>
+      <div><button class="btn btn-primary">Issue</button></div>
+    </form>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

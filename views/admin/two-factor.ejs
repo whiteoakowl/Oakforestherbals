@@ -1,0 +1,51 @@
+<%- include('partials/header') %>
+<div class="page narrow">
+  <%- include('partials/page-header', { heading: 'Two-step sign-in' }) %>
+  <% if (codes) { %>
+    <div class="card form-stack">
+      <h2>Save your recovery codes</h2>
+      <p>If you lose your phone, each of these codes lets you sign in once. Store them in a password manager or print them. <strong>They won’t be shown again.</strong></p>
+      <ul class="recovery-codes mono"><% for (const c of codes) { %><li><%= c %></li><% } %></ul>
+      <div><a class="btn btn-primary" href="/admin">I’ve saved them</a></div>
+    </div>
+  <% } else if (enabled) { %>
+    <div class="card form-stack">
+      <p><strong>Two-step sign-in is on.</strong> <%= remaining %> unused recovery code<%= remaining === 1 ? '' : 's' %> left.</p>
+      <form method="post" action="/admin/profile/two-factor/codes" class="form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h3>Make new recovery codes</h3>
+        <label class="field"><span>Current code from your app</span><input name="code" required autocomplete="one-time-code" inputmode="numeric" maxlength="7"></label>
+        <div><button class="btn">Make new codes</button></div>
+      </form>
+    </div>
+    <% if (!required) { %>
+      <form method="post" action="/admin/profile/two-factor/disable" class="card form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h3>Turn off</h3>
+        <div class="grid-2">
+          <label class="field"><span>Password</span><input type="password" name="password" required autocomplete="current-password"></label>
+          <label class="field"><span>Current code</span><input name="code" required autocomplete="one-time-code" maxlength="20"></label>
+        </div>
+        <div><button class="btn critical">Turn off two-step sign-in</button></div>
+      </form>
+    <% } %>
+  <% } else if (locals.unavailable) { %>
+    <div class="card pad"><p>Two-step sign-in needs the site encryption key (<code>CLINIC_ENCRYPTION_KEY</code>) to be set in Netlify, because it keeps your sign-in secret encrypted. Ask the store owner to add it.</p></div>
+  <% } else { %>
+    <div class="card form-stack">
+      <ol class="steps">
+        <li>Install an authenticator app on your phone — for example Google Authenticator, Microsoft Authenticator, 1Password or Authy.</li>
+        <li>In the app, add an account and scan this code:
+          <div class="qr" role="img" aria-label="QR code for your authenticator app"><%- qr %></div>
+          Can’t scan? Type this key instead: <code class="mono"><%= secret %></code></li>
+        <li>Enter the 6-digit code the app shows.</li>
+      </ol>
+      <form method="post" action="/admin/profile/two-factor/enable" class="form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <label class="field"><span>6-digit code</span><input name="code" required autocomplete="one-time-code" inputmode="numeric" pattern="[0-9 ]{6,7}" maxlength="7"></label>
+        <div><button class="btn btn-primary">Turn on</button></div>
+      </form>
+    </div>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

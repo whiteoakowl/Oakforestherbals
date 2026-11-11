@@ -79,8 +79,21 @@
           <tr><td>Tax</td><td></td><td class="num"><%= money(order.tax_total) %></td></tr>
           <tr class="strong"><td>Total</td><td></td><td class="num"><%= money(order.total) %></td></tr>
           <% if (order.refunded_total) { %><tr><td>Refunded</td><td></td><td class="num">−<%= money(order.refunded_total) %></td></tr><tr class="strong"><td>Net payment</td><td></td><td class="num"><%= money(order.total - order.refunded_total) %></td></tr><% } %>
+          <% if (order.gift_card_total) { %><tr><td>Gift card</td><td class="muted"><% if (order.gift_card_id && can('orders.manage')) { %><a href="/admin/gift-cards/<%= order.gift_card_id %>">view card</a><% } %></td><td class="num">−<%= money(order.gift_card_total) %></td></tr><tr class="strong"><td>Paid by other means</td><td></td><td class="num"><%= money(order.total - order.gift_card_total) %></td></tr><% } %>
           <tr><td>Payment method</td><td class="muted" colspan="2"><%= order.payment_method %><%= order.payment_ref ? ` · ref ${order.payment_ref}` : '' %></td></tr>
         </table>
+        <% if (extras.downloads.length) { %>
+          <h3 class="mt-sm">Download links</h3>
+          <ul class="small"><% for (const d of extras.downloads) { %><li><%= d.filename %> — <%= d.downloads %><%= d.max_downloads ? ` of ${d.max_downloads}` : '' %> downloads<%= d.expires_at ? `, until ${formatDate(d.expires_at)}` : '' %></li><% } %></ul>
+          <% if (can('orders.manage')) { %><form action="/admin/orders/<%= order.id %>/downloads/reset" method="post" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-small">Reset download limits</button></form><% } %>
+        <% } %>
+        <% if (extras.giftCards.length) { %>
+          <h3 class="mt-sm">Gift cards bought</h3>
+          <ul class="small"><% for (const g of extras.giftCards) { %><li><a href="/admin/gift-cards/<%= g.id %>">••••<%= g.last4 %></a> — <%= money(g.initial_value) %> for <%= g.recipient_email %> (<%= money(g.balance) %> left)</li><% } %></ul>
+        <% } %>
+        <% if (extras.missing) { %>
+          <form action="/admin/orders/<%= order.id %>/release" method="post" class="mt-sm"><input type="hidden" name="_csrf" value="<%= csrf %>"><p class="small">Paid, but gift cards or download links haven’t all been sent.</p><button class="btn btn-small">Send them now</button></form>
+        <% } %>
         <% if (order.financial_status === 'pending' && order.status !== 'cancelled') { %>
           <form action="/admin/orders/<%= order.id %>/paid" method="post" class="row-between mt-sm">
             <input type="hidden" name="_csrf" value="<%= csrf %>">

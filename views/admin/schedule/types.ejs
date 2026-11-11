@@ -1,0 +1,10 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Appointment types', actions: '<a class="btn btn-primary" href="/admin/schedule/types/new">New type</a>' }) %>
+  <div class="card flush"><% if (!types.length) { %><p class="pad muted">No appointment types yet: add initial and follow-up consultations, group sessions or workshops.</p><% } else { %>
+    <table class="table"><thead><tr><th>Type</th><th>Length</th><th class="num">Price</th><th>Practitioners</th><th>Online booking</th></tr></thead><tbody>
+      <% for (const t of types) { %><tr><td><a href="/admin/schedule/types/<%= t.id %>"><strong><%= t.name %></strong></a><%= t.active ? '' : ' (inactive)' %><div class="muted small"><%= (KINDS.find(([k]) => k === t.kind) || [, t.kind])[1] %><%= t.capacity > 1 ? ` · up to ${t.capacity} people` : '' %></div></td>
+        <td class="small"><%= t.duration_min %> min</td><td class="num"><%= money(t.price) %><% if (t.deposit) { %><div class="muted small">deposit <%= money(t.deposit) %></div><% } %></td><td class="small"><%= t.staff_names || '—' %></td><td class="small"><%= t.online_booking ? 'Yes' : 'No' %></td></tr><% } %>
+    </tbody></table><% } %></div>
+</div>
+<%- include('../partials/footer') %>

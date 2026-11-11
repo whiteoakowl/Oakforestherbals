@@ -1,0 +1,52 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Packages and memberships', backHref: '/admin/schedule' }) %>
+  <p class="muted">Prepaid bundles of sessions. When a client with a package books, a session is used instead of charging them; cancelling gives it back. A package sold on an invoice starts when the invoice is paid.</p>
+  <div class="layout-2">
+    <div>
+      <div class="card flush">
+        <table class="table"><thead><tr><th>Package</th><th class="num">Sessions</th><th class="num">Price</th><th>Valid</th><th class="num">Sold / active</th><th></th></tr></thead><tbody>
+          <% for (const p of list) { const t = typesOf(p); %><tr class="<%= p.active ? '' : 'muted' %>"><td><strong><%= p.name %></strong><div class="muted small"><%= t.length ? types.filter((x) => t.includes(x.id)).map((x) => x.name).join(', ') : 'Any appointment type' %><%= p.online_sale ? ' · sold online' : '' %></div></td>
+            <td class="num"><%= p.sessions %></td><td class="num"><%= money(p.price) %></td><td class="small"><%= p.valid_days ? `${p.valid_days} days` : 'No expiry' %></td><td class="num"><%= p.sold %> / <%= p.active_count %></td>
+            <td><% if (can('scheduling.manage')) { %><a class="small" href="?edit=<%= p.id %>">Edit</a><% } %></td></tr><% } %>
+          <% if (!list.length) { %><tr><td colspan="6" class="muted">No packages yet.</td></tr><% } %>
+        </tbody></table>
+      </div>
+      <div class="card flush">
+        <h2 class="pad" style="padding-bottom:0">Recently sold</h2>
+        <table class="table"><thead><tr><th>Client</th><th>Package</th><th class="num">Used</th><th>Expires</th><th>Status</th></tr></thead><tbody>
+          <% for (const r of recent) { %><tr><td><%= `${r.first_name} ${r.last_name}`.trim() || r.email %></td><td><%= r.name %></td><td class="num"><%= r.sessions_used %> / <%= r.sessions_total %></td><td class="small"><%= r.expires_on ? formatDate(r.expires_on) : '—' %></td><td><span class="badge"><%= r.status === 'pending' ? 'awaiting payment' : r.status %></span></td></tr><% } %>
+          <% if (!recent.length) { %><tr><td colspan="5" class="muted">None yet.</td></tr><% } %>
+        </tbody></table>
+      </div>
+    </div>
+    <div>
+      <% if (list.some((p) => p.active)) { %>
+      <form method="post" action="/admin/schedule/packages/sell" class="card form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h2>Sell a package</h2>
+        <label class="field"><span>Client email</span><input type="email" name="email" required></label>
+        <label class="field"><span>Package</span><select name="package_id"><% for (const p of list.filter((x) => x.active)) { %><option value="<%= p.id %>"><%= p.name %> — <%= money(p.price) %></option><% } %></select></label>
+        <label class="check"><input type="checkbox" name="paid_now" value="1"> Paid now</label>
+        <label class="field"><span>Paid by</span><select name="method"><option>Card</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label>
+        <button class="btn btn-primary">Sell</button>
+      </form>
+      <% } %>
+      <% if (can('scheduling.manage')) { const e = list.find((p) => p.id === edit) || {}; const et = e.id ? typesOf(e) : []; %>
+      <form method="post" action="/admin/schedule/packages" class="card form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>"><% if (e.id) { %><input type="hidden" name="id" value="<%= e.id %>"><% } %>
+        <h2><%= e.id ? 'Edit package' : 'New package' %></h2>
+        <label class="field"><span>Name</span><input name="name" required value="<%= e.name || '' %>" placeholder="e.g. 5 follow-ups, Monthly membership"></label>
+        <div class="grid-2"><label class="field"><span>Sessions</span><input type="number" name="sessions" min="1" required value="<%= e.sessions || 5 %>"></label><label class="field"><span>Price</span><input name="price" inputmode="decimal" value="<%= e.id ? centsToInput(e.price) : '' %>"></label></div>
+        <label class="field"><span>Valid for (days, blank = no expiry)</span><input type="number" name="valid_days" min="1" value="<%= e.valid_days || '' %>"></label>
+        <fieldset class="form-stack"><legend class="small">Can be used for (none ticked = any type)</legend><% for (const t of types) { %><label class="check small"><input type="checkbox" name="type_ids" value="<%= t.id %>" <%= et.includes(t.id) ? 'checked' : '' %>> <%= t.name %></label><% } %></fieldset>
+        <label class="field"><span>Description</span><textarea name="description" rows="2"><%= e.description || '' %></textarea></label>
+        <label class="check"><input type="checkbox" name="online_sale" value="1" <%= e.online_sale ? 'checked' : '' %>> Clients can buy it online</label>
+        <% if (e.id) { %><label class="check"><input type="checkbox" name="active" value="0" <%= e.active ? '' : 'checked' %>> No longer offered</label><% } %>
+        <button class="btn"><%= e.id ? 'Save' : 'Create package' %></button>
+      </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

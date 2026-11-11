@@ -1,0 +1,20 @@
+<%- include('_top') %>
+<div class="card">
+  <h2>My supplements</h2>
+  <p class="muted small">Professional-grade supplements your practitioner recommends are ordered from our Fullscript dispensary, which ships them to you and handles payment.<%= cfg.note ? ` ${cfg.note}` : '' %></p>
+  <% if (!recs.items.length && !recs.plans.length) { %><p class="muted">No supplements recommended yet.</p><% } %>
+  <% for (const p of recs.plans) { %>
+    <p><a class="btn" href="/account/clinic/fullscript?plan=<%= p.id %>" target="_blank" rel="noopener">Order everything in “<%= p.content.title || 'my plan' %>” on Fullscript</a></p>
+  <% } %>
+  <% for (const i of recs.items) { %>
+    <div class="plan-item">
+      <strong><%= i.name %></strong><% if (i.brand) { %> <span class="muted small">· <%= i.brand %></span><% } %>
+      <div class="small"><%= [i.content.dose || i.default_dose, i.content.timing, i.content.duration].filter(Boolean).join(' · ') %></div>
+      <% if (i.content.cautions) { %><p class="caution small"><em>Cautions:</em> <%= i.content.cautions %></p><% } %>
+      <a class="btn btn-secondary btn-sm" href="/account/clinic/fullscript?item=<%= i.id %>" target="_blank" rel="noopener">Order on Fullscript</a>
+    </div>
+  <% } %>
+  <% if (dispensary) { %><p class="small"><a href="/account/clinic/fullscript" target="_blank" rel="noopener"><%= cfg.label %> →</a></p><% } %>
+</div>
+<p class="muted small">Tell your practitioner before starting anything new, and about any medicines you take.</p>
+<%- include('_bottom') %>

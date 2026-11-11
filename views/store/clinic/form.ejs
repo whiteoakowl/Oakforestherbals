@@ -1,0 +1,26 @@
+<%- include('_top') %>
+<div class="card narrow-card">
+  <h2><%= a.name %></h2>
+  <% if (a.description) { %><p><%= a.description %></p><% } %>
+  <form method="post" action="/account/clinic/forms/<%= a.id %>" enctype="multipart/form-data" class="clinic-form" data-conditional-form>
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% for (const f of a.fieldList) { %><%- include('../../admin/clinic/_field', { f, value: answers[f.id] ?? '', disabled: false }) %><% } %>
+    <p class="muted small">Questions marked * are required. Your answers are sent securely and stored encrypted.</p>
+    <button class="btn">Send to the clinic</button>
+  </form>
+</div>
+<script>
+// Shows a conditional question only when the earlier answer matches. Without JavaScript every
+// question shows, and unanswered conditional questions are simply not required.
+(() => {
+  const form = document.querySelector('[data-conditional-form]');
+  if (!form) return;
+  const update = () => form.querySelectorAll('[data-show-if]').forEach((el) => {
+    const inputs = [...form.querySelectorAll(`[name="f_${el.dataset.showIf}"]`)];
+    const values = inputs.filter((i) => (i.type === 'radio' || i.type === 'checkbox' ? i.checked : true)).map((i) => i.value);
+    el.hidden = !values.includes(el.dataset.showValue);
+  });
+  form.addEventListener('change', update); update();
+})();
+</script>
+<%- include('_bottom') %>

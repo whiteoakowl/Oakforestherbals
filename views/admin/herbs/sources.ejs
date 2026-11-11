@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'References', actions: canManageHerbs ? '<a class="btn btn-primary" href="/admin/herbs/sources/new">Add reference</a>' : '' }) %>
+  <div class="card flush">
+    <form class="filter-bar" method="get" role="search"><input name="q" value="<%= q %>" placeholder="Search title or author" class="grow" aria-label="Search references"><button class="btn">Search</button></form>
+    <% if (!sources.length) { %><p class="pad muted">No references yet. Safety, dosage and research entries must cite one, so add the books, monographs and papers you rely on.</p><% } else { %>
+    <div class="table-scroll"><table class="table">
+      <thead><tr><th>Reference</th><th>Type</th><th class="num">Citations</th></tr></thead>
+      <tbody><% for (const s of sources) { %>
+        <tr><td><% if (canManageHerbs) { %><a href="/admin/herbs/sources/<%= s.id %>"><% } %><strong><%= s.title %></strong><% if (canManageHerbs) { %></a><% } %>
+          <div class="muted small"><%= [s.authors, s.year, s.publisher].filter(Boolean).join(' · ') %></div></td>
+          <td class="small"><%= (SOURCE_KINDS.find(([k]) => k === s.kind) || [, s.kind])[1] %></td><td class="num"><%= s.citations %></td></tr>
+      <% } %></tbody>
+    </table></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

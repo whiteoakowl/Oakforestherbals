@@ -1,0 +1,13 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Notifications' }) %>
+  <form method="post" action="/admin/communications/notifications/read" class="right"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm">Mark all as read</button></form>
+  <div class="card flush">
+    <% if (!list.length) { %><p class="pad muted">No notifications.</p><% } %>
+    <% for (const n of list) { %>
+      <form method="post" action="/admin/communications/notifications/read" class="notif-item <%= n.read_at ? 'read' : '' %>"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="id" value="<%= n.id %>"><input type="hidden" name="go" value="<%= n.link %>">
+        <button class="link-plain"><%= n.title %></button><span class="muted small"><%= n.kind %> · <%= formatDate(n.created_at, true) %></span></form>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

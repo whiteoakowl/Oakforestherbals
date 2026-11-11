@@ -1,0 +1,31 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Referrers', backHref: '/admin/clinic/patients' }) %>
+  <p class="muted">Doctors, practitioners and others who send clients to you. Choose them when you open a case to see where your clients come from.</p>
+  <div class="layout-2">
+    <div class="card flush">
+      <table class="table"><thead><tr><th>Name</th><th>Type</th><th>Contact</th><th class="num">Cases</th><th>Last referral</th><th></th></tr></thead><tbody>
+        <% for (const r of list) { %><tr class="<%= r.archived ? 'muted' : '' %>"><td><strong><%= r.name %></strong><% if (r.organisation) { %><br><span class="small muted"><%= r.organisation %></span><% } %></td>
+          <td class="small"><%= (KINDS.find(([k]) => k === r.kind) || [, r.kind])[1] %></td><td class="small"><%= r.email %><br><%= r.phone %></td><td class="num"><%= r.cases %></td>
+          <td class="small"><%= r.last_referral ? formatDate(r.last_referral) : '—' %></td><td><% if (canManage) { %><a class="small" href="?edit=<%= r.id %>">Edit</a><% } %></td></tr><% } %>
+        <% if (!list.length) { %><tr><td colspan="6" class="muted">No referrers yet.</td></tr><% } %>
+      </tbody></table>
+    </div>
+    <% if (canManage) { const e = list.find((r) => r.id === edit) || {}; %>
+    <form method="post" action="/admin/clinic/referrers" class="card form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>"><% if (e.id) { %><input type="hidden" name="id" value="<%= e.id %>"><% } %>
+      <h2><%= e.id ? 'Edit referrer' : 'Add a referrer' %></h2>
+      <label class="field"><span>Name</span><input name="name" required value="<%= e.name || '' %>"></label>
+      <label class="field"><span>Practice or organisation</span><input name="organisation" value="<%= e.organisation || '' %>"></label>
+      <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of KINDS) { %><option value="<%= k %>" <%= (e.kind || 'practitioner') === k ? 'selected' : '' %>><%= l %></option><% } %></select></label>
+      <label class="field"><span>Email</span><input type="email" name="email" value="<%= e.email || '' %>"></label>
+      <label class="field"><span>Phone</span><input name="phone" value="<%= e.phone || '' %>"></label>
+      <label class="field"><span>Address (for letters)</span><textarea name="address" rows="2"><%= e.address || '' %></textarea></label>
+      <label class="field"><span>Notes</span><textarea name="notes" rows="2"><%= e.notes || '' %></textarea></label>
+      <% if (e.id) { %><label class="check"><input type="checkbox" name="archived" value="1" <%= e.archived ? 'checked' : '' %>> Archived (hidden from lists)</label><% } %>
+      <div class="row-gap"><button class="btn btn-primary">Save</button><% if (e.id) { %><a class="btn" href="/admin/clinic/referrers">Cancel</a><% } %></div>
+    </form>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

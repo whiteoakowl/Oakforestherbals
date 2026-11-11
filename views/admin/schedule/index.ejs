@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<% const statusBadge = { booked: 'attention', confirmed: 'success', completed: 'default', no_show: 'critical', cancelled: 'default' }; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Schedule', actions: '<a class="btn btn-primary" href="/admin/schedule/appointments/new">New appointment</a>' }) %>
+  <form class="card inline-fields" method="get">
+    <a class="btn btn-sm" href="?week=<%= prev %><%= staffId ? `&staff=${staffId}` : '' %>">‹ Previous</a>
+    <strong class="small">Week of <%= start %></strong>
+    <a class="btn btn-sm" href="?week=<%= next %><%= staffId ? `&staff=${staffId}` : '' %>">Next ›</a>
+    <a class="small" href="?week=<%= todayLocal %><%= staffId ? `&staff=${staffId}` : '' %>">Today</a>
+    <% if (seesAllCalendars) { %><select name="staff" aria-label="Practitioner"><option value="">Everyone</option><% for (const p of people) { %><option value="<%= p.id %>" <%= p.id === staffId ? 'selected' : '' %>><%= p.name %></option><% } %></select><input type="hidden" name="week" value="<%= start %>"><button class="btn btn-sm">Show</button><% } %>
+    <span class="muted small">Times in <%= tz %></span>
+  </form>
+  <div class="week-grid">
+    <% for (const d of days) { %>
+      <div class="card day-col <%= d.day === todayLocal ? 'today' : '' %>">
+        <h3><%= new Date(`${d.day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) %></h3>
+        <% if (!d.items.length) { %><p class="muted small">—</p><% } %>
+        <% for (const a of d.items) { %>
+          <a class="appt appt-<%= a.status %>" href="/admin/schedule/appointments/<%= a.id %>">
+            <strong><%= localTime(a.starts_at) %></strong> <%= a.type_name %>
+            <span class="small"><%= `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email || '' %></span>
+            <span class="muted small"><%= seesAllCalendars ? a.staff_name : '' %><%= a.mode === 'virtual' ? ' · online' : '' %></span>
+            <span class="badge badge-<%= statusBadge[a.status] %>"><%= a.status.replace('_', ' ') %></span>
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+  <% if (waitlist.length) { %>
+    <div class="card"><h2>Waitlist</h2><% for (const w of waitlist) { %><p class="small"><%= `${w.first_name} ${w.last_name}`.trim() || w.email %> · <%= w.type_name %><%= w.preferences ? ` · “${w.preferences}”` : '' %><%= w.notified_at ? ' · notified' : '' %>
+      <% if (seesAllCalendars) { %><form method="post" action="/admin/schedule/waitlist/<%= w.id %>/remove" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small">Remove</button></form><% } %></p><% } %></div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

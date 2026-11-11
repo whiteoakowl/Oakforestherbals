@@ -1,0 +1,19 @@
+<%- include('partials/header') %>
+<div class="container section narrow-page">
+  <h1>Gift card balance</h1>
+  <% if (result && result.error) { %><p class="flash flash-error"><%= result.error %></p><% } %>
+  <% if (result && !result.error) { %>
+    <div class="box">
+      <p>Gift card ending <strong><%= result.last4 %></strong>: <strong><%= money(result.balance) %></strong> left.</p>
+      <% if (result.expires) { %><p class="small muted">Expires <%= formatDate(result.expires) %>.</p><% } %>
+      <% if (result.note) { %><p class="small"><%= result.note %></p><% } %>
+    </div>
+  <% } %>
+  <form action="/gift-cards/balance" method="post" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field">Gift card code <input name="code" required autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX"></label>
+    <button class="btn">Check balance</button>
+  </form>
+  <p class="muted small">Use your gift card at checkout, on the payment step.</p>
+</div>
+<%- include('partials/footer') %>

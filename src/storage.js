@@ -95,3 +95,94 @@ async function removeFile(name) {
 }
 
 module.exports = { upload, csvUpload, saveFile, saveFiles, listFiles, removeFile, useSupabase, UPLOAD_DIR, MAX_BYTES };
+
+/* ---------- Private files (clinic) ----------
+ * Never public: a private Supabase bucket (read with the service key, server-side only), or a local
+ * folder that is not served over HTTP. Callers encrypt the bytes before saving (see vault.js). */
+const PRIVATE_BUCKET = process.env.SUPABASE_PRIVATE_BUCKET || 'clinic-private';
+const PRIVATE_DIR = process.env.PRIVATE_UPLOAD_DIR || path.join(__dirname, '..', 'data', 'private-uploads');
+const PRIVATE_TYPES = new Map([
+  ['.pdf', 'application/pdf'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'], ['.png', 'image/png'], ['.webp', 'image/webp'],
+  ['.heic', 'image/heic'], ['.txt', 'text/plain'], ['.csv', 'text/csv'],
+  ['.doc', 'application/msword'], ['.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+]);
+
+const privateUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES, files: 1 },
+  fileFilter: (req, file, cb) => cb(null, PRIVATE_TYPES.has(path.extname(file.originalname).toLowerCase())),
+});
+
+let privateBucketReady;
+function ensurePrivateBucket() {
+  privateBucketReady = privateBucketReady || (async () => {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/bucket/${PRIVATE_BUCKET}`, { headers: supabaseHeaders() });
+    if (res.ok) {
+      const bucket = await res.json();
+      if (bucket.public) throw new Error(`Storage bucket "${PRIVATE_BUCKET}" is public. Make it private in Supabase before storing clinic files.`);
+      return;
+    }
+    await supabase('POST', 'bucket', JSON.stringify({ id: PRIVATE_BUCKET, name: PRIVATE_BUCKET, public: false }), { 'Content-Type': 'application/json' });
+  })().catch((err) => { privateBucketReady = null; throw err; });
+  return privateBucketReady;
+}
+
+const safeKey = (key) => {
+  if (!/^[a-z0-9/_-]+$/i.test(key) || key.includes('..')) throw new Error('Invalid private file key.');
+  return key;
+};
+
+async function savePrivate(key, buffer, { overwrite = false } = {}) {
+  safeKey(key);
+  if (useSupabase) {
+    await ensurePrivateBucket();
+    await supabase('POST', `object/${PRIVATE_BUCKET}/${key}`, buffer, { 'Content-Type': 'application/octet-stream', ...(overwrite ? { 'x-upsert': 'true' } : {}) });
+    return;
+  }
+  const file = path.join(PRIVATE_DIR, key);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, buffer, { mode: 0o600 });
+}
+
+async function readPrivate(key) {
+  safeKey(key);
+  if (useSupabase) {
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/authenticated/${PRIVATE_BUCKET}/${key}`, { headers: supabaseHeaders() });
+    if (!res.ok) throw new Error(`Private file read failed: ${res.status}`);
+    return Buffer.from(await res.arrayBuffer());
+  }
+  return fs.readFileSync(path.join(PRIVATE_DIR, key));
+}
+
+async function removePrivate(key) {
+  safeKey(key);
+  if (useSupabase) {
+    await supabase('DELETE', `object/${PRIVATE_BUCKET}`, JSON.stringify({ prefixes: [key] }), { 'Content-Type': 'application/json' });
+  } else if (fs.existsSync(path.join(PRIVATE_DIR, key))) {
+    fs.unlinkSync(path.join(PRIVATE_DIR, key));
+  }
+}
+
+// A short-lived link straight to a private file (Supabase only), so large downloads don't pass
+// through the serverless function. Returns null when files are stored locally.
+async function signedPrivateUrl(key, seconds = 60) {
+  safeKey(key);
+  if (!useSupabase) return null;
+  const json = await supabase('POST', `object/sign/${PRIVATE_BUCKET}/${key}`, JSON.stringify({ expiresIn: seconds }), { 'Content-Type': 'application/json' });
+  const signed = json.signedURL || json.signedUrl;
+  return signed.startsWith('http') ? signed : `${SUPABASE_URL}/storage/v1${signed}`;
+}
+
+// Files sold as digital products (kept in private storage, given out through download links).
+const DIGITAL_TYPES = new Map([
+  ['.pdf', 'application/pdf'], ['.epub', 'application/epub+zip'], ['.zip', 'application/zip'], ['.mp3', 'audio/mpeg'], ['.m4a', 'audio/mp4'],
+  ['.mp4', 'video/mp4'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'], ['.png', 'image/png'], ['.txt', 'text/plain'],
+  ['.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+]);
+const digitalUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES, files: 1 },
+  fileFilter: (req, file, cb) => cb(null, DIGITAL_TYPES.has(path.extname(file.originalname).toLowerCase())),
+});
+
+Object.assign(module.exports, { privateUpload, savePrivate, readPrivate, removePrivate, signedPrivateUrl, digitalUpload, DIGITAL_TYPES, PRIVATE_TYPES });

@@ -1,0 +1,18 @@
+<% /* Renders one form field for preview or for the patient. vars: f, value, disabled */ const v = typeof value === 'undefined' ? '' : value; const dis = typeof disabled !== 'undefined' && disabled ? 'disabled' : ''; const nm = `f_${f.id}`; %>
+<% if (f.type === 'heading') { %><h3 class="form-heading"><%= f.label %></h3>
+<% } else { %>
+<div class="field form-q" <%- f.condition ? `data-show-if="${f.condition.field}" data-show-value="${String(f.condition.equals).replace(/"/g, '&quot;')}"` : '' %>>
+  <span><%= f.label %><%= f.required ? ' *' : '' %></span>
+  <% if (f.help) { %><small class="muted"><%= f.help %></small><% } %>
+  <% if (f.type === 'text') { %><input name="<%= nm %>" value="<%= v %>" <%= dis %> aria-label="<%= f.label %>">
+  <% } else if (f.type === 'textarea') { %><textarea name="<%= nm %>" rows="3" <%= dis %> aria-label="<%= f.label %>"><%= v %></textarea>
+  <% } else if (f.type === 'date') { %><input type="date" name="<%= nm %>" value="<%= v %>" <%= dis %> aria-label="<%= f.label %>">
+  <% } else if (f.type === 'scale') { %><input type="number" min="0" max="10" name="<%= nm %>" value="<%= v %>" <%= dis %> aria-label="<%= f.label %>">
+  <% } else if (f.type === 'select') { %><select name="<%= nm %>" <%= dis %> aria-label="<%= f.label %>"><option value="">Choose…</option><% for (const o of f.options) { %><option <%= v === o ? 'selected' : '' %>><%= o %></option><% } %></select>
+  <% } else if (f.type === 'choice') { %><div role="radiogroup" aria-label="<%= f.label %>"><% for (const o of f.options) { %><label class="check small"><input type="radio" name="<%= nm %>" value="<%= o %>" <%= v === o ? 'checked' : '' %> <%= dis %>> <%= o %></label><% } %></div>
+  <% } else if (f.type === 'checkboxes') { %><div role="group" aria-label="<%= f.label %>"><% for (const o of f.options) { %><label class="check small"><input type="checkbox" name="<%= nm %>" value="<%= o %>" <%= [].concat(v || []).includes(o) ? 'checked' : '' %> <%= dis %>> <%= o %></label><% } %></div>
+  <% } else if (f.type === 'file') { %><input type="file" name="<%= nm %>" <%= dis %> aria-label="<%= f.label %>" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.txt,.doc,.docx">
+  <% } else if (f.type === 'signature') { %><input name="<%= nm %>" value="<%= v %>" placeholder="Type your full name" <%= dis %> aria-label="<%= f.label %>">
+  <% } %>
+</div>
+<% } %>

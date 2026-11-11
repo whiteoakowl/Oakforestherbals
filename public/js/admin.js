@@ -8,8 +8,28 @@
     if (el) fn(e, el);
   });
 
-  // Sidebar on small screens
-  on('[data-sidebar-toggle]', 'click', () => $('[data-sidebar]').classList.toggle('open'));
+  // Sidebar: slides in on small screens; collapses to icons on desktop (remembered per browser).
+  const collapse = () => {
+    const c = document.documentElement.classList.toggle('nav-collapsed');
+    try { localStorage.setItem('sidebar', c ? 'collapsed' : 'open'); } catch (e) { /* private mode */ }
+  };
+  on('[data-sidebar-toggle]', 'click', () => (window.innerWidth > 900 ? collapse() : $('[data-sidebar]').classList.toggle('open')));
+  on('[data-nav-collapse]', 'click', collapse);
+  // Light / dark switch (remembered); otherwise follows the device.
+  try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* ignore */ }
+  on('[data-theme-toggle]', 'click', () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('theme', root.dataset.theme); } catch (e) { /* ignore */ }
+  });
+  // "/" jumps to search; Escape or a click elsewhere closes open menus.
+  const closeMenus = (except) => $$('details.quick-create[open], details.user-menu[open]').forEach((d) => { if (d !== except) d.open = false; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !e.target.closest('input, textarea, select, [contenteditable]')) { const s = $('[data-global-search]'); if (s) { e.preventDefault(); s.focus(); } }
+    if (e.key === 'Escape') closeMenus();
+  });
+  document.addEventListener('click', (e) => closeMenus(e.target.closest('details')));
   on('[data-open-store]', 'click', (e) => { e.preventDefault(); e.stopPropagation(); window.open('/', '_blank', 'noopener'); });
 
   // Clickable rows (ignore clicks on inputs/links inside them)
@@ -266,3 +286,111 @@
   // Toasts fade out
   $$('.toast').forEach((t) => setTimeout(() => t.remove(), 5000));
 })();
+
+// Herb search autocomplete: names, synonyms, families and categories as you type.
+(() => {
+  const wrap = document.querySelector('[data-herb-suggest]');
+  if (!wrap) return;
+  const input = wrap.querySelector('input');
+  const listEl = wrap.querySelector('.suggest-list');
+  let timer;
+  let items = [];
+  let active = -1;
+  const render = () => {
+    listEl.innerHTML = '';
+    items.forEach((it, i) => {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = it.url; a.textContent = it.label; a.setAttribute('role', 'option');
+      if (i === active) a.classList.add('active');
+      li.appendChild(a); listEl.appendChild(li);
+    });
+    listEl.hidden = !items.length;
+  };
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { items = []; render(); return; }
+    timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/admin/herbs/suggest.json?q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } });
+        items = res.ok ? await res.json() : [];
+      } catch { items = []; }
+      active = -1; render();
+    }, 150);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (listEl.hidden) return;
+    if (e.key === 'ArrowDown') { active = Math.min(items.length - 1, active + 1); render(); e.preventDefault(); }
+    if (e.key === 'ArrowUp') { active = Math.max(-1, active - 1); render(); e.preventDefault(); }
+    if (e.key === 'Enter' && active >= 0) { window.location = items[active].url; e.preventDefault(); }
+    if (e.key === 'Escape') { items = []; render(); }
+  });
+  document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) { items = []; render(); } });
+})();
+
+// Body chart: click the figure to add a numbered marker; each marker gets a description field.
+(function () {
+  'use strict';
+  document.querySelectorAll('[data-body-chart]').forEach((svg) => {
+    const box = svg.closest('.charting');
+    const input = box.querySelector('[data-chart-input]');
+    const list = box.querySelector('[data-marker-list]');
+    const layer = svg.querySelector('[data-markers]');
+    let marks = [];
+    try { marks = JSON.parse(input.value || '[]'); } catch (e) { marks = []; }
+    const ns = 'http://www.w3.org/2000/svg';
+    function save() {
+      [...list.querySelectorAll('[data-marker-label]')].forEach((el, i) => { if (marks[i]) marks[i].label = el.value; });
+      input.value = JSON.stringify(marks);
+    }
+    function draw() {
+      layer.replaceChildren();
+      list.replaceChildren();
+      marks.forEach((m, i) => {
+        const g = document.createElementNS(ns, 'g'); g.setAttribute('class', 'marker');
+        const c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', m.x * 2); c.setAttribute('cy', m.y * 2.1); c.setAttribute('r', 5);
+        const t = document.createElementNS(ns, 'text'); t.setAttribute('x', m.x * 2); t.setAttribute('y', m.y * 2.1 + 2.5); t.setAttribute('text-anchor', 'middle'); t.textContent = i + 1;
+        g.append(c, t); layer.append(g);
+        const li = document.createElement('li');
+        const field = document.createElement('input');
+        field.value = m.label || ''; field.placeholder = `Marker ${i + 1}: e.g. aching, 6/10`; field.setAttribute('aria-label', `Marker ${i + 1} description`); field.dataset.markerLabel = '';
+        field.addEventListener('input', save);
+        li.append(field); list.append(li);
+      });
+      input.value = JSON.stringify(marks);
+    }
+    svg.addEventListener('click', (e) => {
+      const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      if (p.y > 200 || marks.length >= 40) return;
+      save();
+      marks.push({ view: p.x < 100 ? 'front' : 'back', x: Math.round(p.x / 2 * 10) / 10, y: Math.round(p.y / 2.1 * 10) / 10, label: '' });
+      draw();
+      list.lastElementChild.querySelector('input').focus();
+    });
+    box.querySelector('[data-chart-undo]').addEventListener('click', () => { save(); marks.pop(); draw(); });
+    draw();
+  });
+}());
+
+// Leads board: drag a card to another column to change its stage (the menu on each card does the same).
+(function () {
+  'use strict';
+  const board = document.querySelector('[data-kanban]');
+  if (!board) return;
+  let dragged = null;
+  board.addEventListener('dragstart', (e) => { dragged = e.target.closest('[data-lead]'); if (dragged) dragged.classList.add('dragging'); });
+  board.addEventListener('dragend', () => { if (dragged) dragged.classList.remove('dragging'); board.querySelectorAll('.drag-over').forEach((c) => c.classList.remove('drag-over')); });
+  board.addEventListener('dragover', (e) => { const col = e.target.closest('[data-stage]'); if (col && dragged) { e.preventDefault(); col.classList.add('drag-over'); } });
+  board.addEventListener('dragleave', (e) => { const col = e.target.closest('[data-stage]'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('drag-over'); });
+  board.addEventListener('drop', (e) => {
+    const col = e.target.closest('[data-stage]');
+    if (!col || !dragged) return;
+    e.preventDefault();
+    const select = dragged.querySelector('select[name=stage]');
+    if (select.value === col.dataset.stage) return;
+    select.value = col.dataset.stage;
+    select.form.submit();
+  });
+}());

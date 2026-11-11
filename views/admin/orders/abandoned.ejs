@@ -1,0 +1,19 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Abandoned checkouts', backHref: '/admin/orders' }) %>
+  <p class="muted">Checkouts where the shopper gave their email but didn’t finish, from the last 60 days. Reminder emails are <strong><%= cfg.enabled ? `on (after ${cfg.delay_hours} hours${cfg.require_consent ? ', only to shoppers who agreed to marketing' : ''})` : 'off' %></strong><% if (can('settings.manage')) { %> — <a href="/admin/settings/store-features">change</a><% } %>.</p>
+  <div class="stat-row">
+    <div class="card pad"><div class="muted small">Not finished</div><strong><%= stats.open %></strong></div>
+    <div class="card pad"><div class="muted small">Reminded</div><strong><%= stats.reminded %></strong></div>
+    <div class="card pad"><div class="muted small">Finished after a reminder</div><strong><%= stats.recovered %></strong> · <%= money(stats.recovered_value) %></div>
+  </div>
+  <div class="card flush">
+    <table class="table"><thead><tr><th>Email</th><th>Cart</th><th class="num">Subtotal</th><th>Last active</th><th>Status</th></tr></thead><tbody>
+      <% for (const r of rows) { %><tr><td><%= r.email %><%= r.consent ? '' : ' ·' %><% if (!r.consent) { %> <span class="muted small">no marketing consent</span><% } %></td>
+        <td class="small"><%= r.items.map((i) => `${i.quantity} × ${i.title}`).join(', ') %></td><td class="num"><%= money(r.subtotal) %></td><td class="small"><%= formatDate(r.updated_at, true) %></td>
+        <td class="small"><%= r.completed_at ? (r.order_number ? `Ordered (#${r.order_number})` : 'Ordered') : r.reminded_at ? `Reminded ${formatDate(r.reminded_at)}${r.recovered_at ? ', link opened' : ''}` : 'Waiting' %></td></tr><% } %>
+      <% if (!rows.length) { %><tr><td colspan="5" class="muted">None in the last 60 days.</td></tr><% } %>
+    </tbody></table>
+  </div>
+</div>
+<%- include('../partials/footer') %>

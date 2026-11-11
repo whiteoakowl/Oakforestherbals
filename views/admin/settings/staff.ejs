@@ -2,13 +2,27 @@
 <div class="card flush">
   <div class="card-head pad"><h2>Staff (<%= members.length %>)</h2></div>
   <table class="table">
-    <thead><tr><th>Name</th><th>Role</th><th>Last login</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Role</th><th>Two-step</th><th>Last login</th><th></th></tr></thead>
     <tbody>
     <% for (const m of members) { %>
       <tr><td><strong><%= m.name %></strong><div class="muted small"><%= m.email %></div></td>
-        <td><span class="badge badge-<%= m.role === 'owner' ? 'info' : 'default' %>"><%= m.role === 'owner' ? 'Store owner' : 'Staff' %></span></td>
+        <td>
+          <% if (m.id === staff.id || (m.role === 'owner' && staff.role !== 'owner')) { %>
+            <span class="badge badge-<%= m.role === 'owner' ? 'info' : 'default' %>"><%= m.role_name %></span>
+          <% } else { %>
+            <form action="/admin/settings/staff/<%= m.id %>/role" method="post" class="inline role-form">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <label class="visually-hidden" for="role-<%= m.id %>">Role for <%= m.name %></label>
+              <select id="role-<%= m.id %>" name="role">
+                <% for (const r of roles) { if (r.key === 'owner' && staff.role !== 'owner') continue; %><option value="<%= r.key %>" <%= r.key === m.role ? 'selected' : '' %>><%= r.name %></option><% } %>
+              </select>
+              <button class="btn btn-small">Change</button>
+            </form>
+          <% } %>
+        </td>
+        <td class="small"><% if (m.totp_enabled_at) { %>On<% if (m.id !== staff.id && (m.role !== 'owner' || staff.role === 'owner')) { %> <form action="/admin/settings/staff/<%= m.id %>/reset-two-factor" method="post" class="inline" data-confirm="Reset two-step sign-in for <%= m.name %>? Do this only after confirming who they are."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small">Reset</button></form><% } %><% } else { %><span class="muted">Off</span><% } %></td>
         <td class="muted small"><%= m.last_login_at ? formatDate(m.last_login_at, true) : 'Never' %></td>
-        <td class="num"><% if (m.id !== staff.id) { %><form action="/admin/settings/staff/<%= m.id %>/delete" method="post" class="inline" data-confirm="Remove <%= m.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Remove</button></form><% } %></td></tr>
+        <td class="num"><% if (m.id !== staff.id && (m.role !== 'owner' || staff.role === 'owner')) { %><details class="inline-details"><summary class="link-plain small">Password</summary><form action="/admin/settings/staff/<%= m.id %>/password" method="post" class="inline-fields"><input type="hidden" name="_csrf" value="<%= csrf %>"><label class="visually-hidden" for="pw-<%= m.id %>">Temporary password for <%= m.name %></label><input id="pw-<%= m.id %>" name="password" minlength="8" required autocomplete="off" placeholder="Temporary password"><button class="btn btn-sm">Set</button></form></details> · <% } %><% if (m.id !== staff.id) { %><form action="/admin/settings/staff/<%= m.id %>/delete" method="post" class="inline" data-confirm="Remove <%= m.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Remove</button></form><% } %></td></tr>
     <% } %>
     </tbody>
   </table>
@@ -22,8 +36,11 @@
   </div>
   <div class="grid-2">
     <label class="field"><span>Temporary password</span><input type="text" name="password" minlength="8" required autocomplete="off"></label>
-    <label class="field"><span>Permissions</span><select name="role"><option value="staff">Staff — everything except settings</option><option value="owner">Owner — full access</option></select></label>
+    <label class="field"><span>Role</span><select name="role">
+      <% for (const r of roles) { if (r.key === 'owner' && staff.role !== 'owner') continue; %><option value="<%= r.key %>" <%= r.key === 'staff' ? 'selected' : '' %>><%= r.name %></option><% } %>
+    </select></label>
   </div>
+  <p class="muted small">See what each role can do under <a href="/admin/settings/roles">Roles and permissions</a>.</p>
   <div class="right"><button class="btn btn-primary">Add staff</button></div>
 </form>
 <%- include('_bottom') %>

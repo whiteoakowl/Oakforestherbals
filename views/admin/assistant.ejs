@@ -1,0 +1,31 @@
+<%- include('partials/header') %>
+<div class="page narrow">
+  <%- include('partials/page-header', { heading: 'Assistant' }) %>
+  <p class="muted">Ask about herbs, formulas, stock or sales. The assistant only reads what your role can already see, cannot change anything, and cites only references stored in the herbal database. It supports your judgement — it does not diagnose or prescribe. Check anything important against the record itself.</p>
+  <% if (!configured) { %>
+    <div class="card pad"><p><strong>The assistant isn’t set up yet.</strong> The site owner needs to add an <code>ANTHROPIC_API_KEY</code> environment variable in Netlify (Site configuration → Environment variables) and redeploy.</p></div>
+  <% } else { %>
+    <% if (result) { %>
+      <div class="card pad assistant-answer">
+        <p class="muted small">You asked: <%= question %></p>
+        <div class="assistant-text"><%= result.answer %></div>
+        <% if (result.truncated) { %><p class="muted small">The answer was cut short. Ask a narrower question for the rest.</p><% } %>
+        <% if (result.tools && result.tools.length) { %><p class="muted small">Looked up: <%= [...new Set(result.tools)].join(', ').replace(/_/g, ' ') %></p><% } %>
+        <p class="muted small">AI-generated. Review before acting on it.</p>
+      </div>
+    <% } %>
+    <% if (error) { %><div class="banner banner-critical" role="alert"><%= error %></div><% } %>
+    <form method="post" action="/admin/assistant" class="card pad">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label for="assistant-q">Your question</label>
+      <textarea id="assistant-q" name="question" rows="3" required maxlength="2000" placeholder="e.g. What safety entries do we have for the herbs in our sleep tea?"></textarea>
+      <% if (result) { %>
+        <input type="hidden" name="prev_question" value="<%= question %>"><input type="hidden" name="prev_answer" value="<%= result.answer %>">
+        <label class="checkbox"><input type="checkbox" name="follow_up" value="1" checked> Follow up on the answer above</label>
+      <% } %>
+      <div class="actions"><button class="btn btn-primary">Ask</button></div>
+      <p class="muted small">It can look up: <%= tools.length ? tools.join(', ').replace(/_/g, ' ') : 'nothing — your role has no information it can read' %>.<% if (!tools.includes('patient_summary')) { %> Patient records are not available to it for your role.<% } else { %> Patient summaries are sent to Anthropic to answer; only ask about a patient when you need to.<% } %></p>
+    </form>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<% const param = Object.fromEntries(Object.entries(FILTER_PARAMS).map(([k, v]) => [v, k])); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Browse herbs', backHref: '/admin/herbs' }) %>
+  <div class="card"><h2>A–Z</h2>
+    <nav class="letters" aria-label="Browse alphabetically"><% for (const l of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') { const n = (letters.find((x) => x.l === l) || {}).n || 0; %><a href="/admin/herbs?letter=<%= l %>" class="<%= n ? '' : 'muted' %>" title="<%= n %> herb(s)"><%= l %></a><% } %></nav>
+  </div>
+  <div class="grid-2">
+    <% for (const [vocab, label] of VOCABULARIES) { if (vocab === 'constituent_class') continue; %>
+      <div class="card"><h2><%= label %></h2>
+        <% for (const g of grouped(allTerms[vocab])) { %>
+          <% if (g.label) { %><div class="muted small filter-group"><%= g.label %></div><% } %>
+          <div class="chip-list"><% for (const t of g.terms) { %><a class="tag" href="/admin/herbs?<%= param[vocab] %>=<%= t.id %>"><%= t.name %> <span class="muted"><%= t.herb_count %></span></a><% } %></div>
+        <% } %>
+      </div>
+    <% } %>
+    <div class="card"><h2>Plant families</h2>
+      <% if (!families.length) { %><p class="muted small">Families appear here once published herbs have one.</p><% } %>
+      <div class="chip-list"><% for (const f of families) { %><a class="tag" href="/admin/herbs?family=<%= f.id %>"><%= f.name %> <span class="muted"><%= f.n %></span></a><% } %></div>
+    </div>
+    <div class="card"><h2>Traditions</h2>
+      <% for (const t of traditions) { %><p class="small"><a href="/admin/herbs?tradition=<%= t.id %>"><strong><%= t.name %></strong></a> <span class="muted"><%= t.n %> herb(s) with a description · <%= t.description %></span></p><% } %>
+    </div>
+    <div class="card"><h2>Phytochemical classes</h2>
+      <div class="chip-list"><% for (const t of allTerms.constituent_class) { %><a class="tag" href="/admin/herbs?class=<%= t.id %>"><%= t.name %></a><% } %></div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

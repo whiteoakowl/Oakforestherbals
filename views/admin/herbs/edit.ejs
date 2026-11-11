@@ -1,0 +1,77 @@
+<%- include('../partials/header') %>
+<% const d = typeof draft !== 'undefined' && draft ? draft : null; const h = herb || {};
+   const val = (k) => (d ? d[k] || '' : h[k] || '');
+   const linked = new Set(d ? [].concat(d.terms || []).map(Number) : (h.links || []).map((l) => l.term_id));
+   const namesOf = (kind) => (h.names || []).filter((n) => n.kind === kind);
+   const action = herb ? `/admin/herbs/${herb.slug}/edit` : '/admin/herbs/new'; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: herb ? `Edit ${herb.common_name}` : 'Add herb', backHref: herb ? `/admin/herbs/${herb.slug}` : '/admin/herbs' }) %>
+  <form method="post" action="<%= action %>" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% if (dupes.length) { %>
+      <div class="banner banner-critical form-stack">
+        <p><strong>Possible duplicate.</strong> These herbs share a name with this entry:</p>
+        <ul><% for (const x of dupes) { %><li><a href="/admin/herbs/<%= x.slug %>" target="_blank" rel="noopener"><%= x.common_name %> (<em><%= x.latin_name %></em>)</a></li><% } %></ul>
+        <label class="check"><input type="checkbox" name="confirm_duplicate" value="1"> This is a different plant — add it anyway</label>
+      </div>
+    <% } %>
+    <div class="layout-2">
+      <div>
+        <div class="card form-stack">
+          <h2>Identification</h2>
+          <div class="grid-2">
+            <label class="field"><span>Common name</span><input name="common_name" value="<%= val('common_name') %>" required></label>
+            <label class="field"><span>Latin botanical name</span><input name="latin_name" value="<%= val('latin_name') %>" required placeholder="Genus species"></label>
+          </div>
+          <div class="grid-3">
+            <label class="field"><span>Plant family</span><input name="family" list="families" value="<%= d ? d.family || '' : h.family || '' %>" placeholder="e.g. Lamiaceae"></label>
+            <label class="field"><span>Genus</span><input name="genus" value="<%= val('genus') %>"></label>
+            <label class="field"><span>Species</span><input name="species" value="<%= val('species') %>"></label>
+          </div>
+          <datalist id="families"><% for (const f of families) { %><option value="<%= f.name %>"><% } %></datalist>
+          <label class="field"><span>Summary</span><textarea name="summary" rows="3"><%= val('summary') %></textarea></label>
+        </div>
+        <div class="card form-stack">
+          <h2>Names and synonyms</h2>
+          <div class="grid-3">
+            <label class="field"><span>Other common names (one per line)</span><textarea name="other_names" rows="4"><%= d ? d.other_names || '' : namesOf('common').map((n) => n.name).join('\n') %></textarea></label>
+            <label class="field"><span>Botanical synonyms (one per line)</span><textarea name="synonyms" rows="4"><%= d ? d.synonyms || '' : namesOf('synonym').map((n) => n.name).join('\n') %></textarea></label>
+            <label class="field"><span>Names within a tradition</span><textarea name="tradition_names" rows="4" placeholder="ayurveda: Yashtimadhu&#10;tcm: Gan Cao"><%= d ? d.tradition_names || '' : namesOf('tradition').map((n) => `${n.tradition ? (traditions.find((t) => t.name === n.tradition) || {}).key + ': ' : ''}${n.name}`).join('\n') %></textarea></label>
+          </div>
+          <p class="muted small">All names and synonyms are searchable. Tradition names start with the tradition key: <%= traditions.map((t) => t.key).join(', ') %>.</p>
+        </div>
+        <% for (const [vocab, label] of VOCABULARIES) { if (vocab === 'constituent_class') continue; %>
+          <fieldset class="card form-stack term-picker">
+            <legend class="visually-hidden"><%= label %></legend>
+            <h2><%= label %></h2>
+            <% for (const g of grouped(allTerms[vocab])) { %>
+              <% if (g.label) { %><div class="muted small filter-group"><%= g.label %></div><% } %>
+              <div class="chip-list"><% for (const t of g.terms) { %><label class="chip"><input type="checkbox" name="terms" value="<%= t.id %>" <%= linked.has(t.id) ? 'checked' : '' %>><span><%= t.name %></span></label><% } %></div>
+            <% } %>
+          </fieldset>
+        <% } %>
+        <div class="card form-stack">
+          <h2>Constituents</h2>
+          <label class="field"><span>One per line, optionally with its class after a bar: <code>glycyrrhizin | saponins</code></span>
+            <textarea name="constituents" rows="5"><%= d ? d.constituents || '' : (h.constituents || []).map((c) => `${c.name}${c.class_name ? ` | ${c.class_name}` : ''}`).join('\n') %></textarea></label>
+          <p class="muted small">Classes: <%= allTerms.constituent_class.map((t) => t.name).join(', ') %>.</p>
+        </div>
+        <div class="card form-stack">
+          <h2>Botany and history</h2>
+          <% for (const [k, l] of [['identification', 'Identification'], ['native_region', 'Native region'], ['distribution', 'Geographic distribution'], ['habitat', 'Habitat'], ['cultivation', 'Growing conditions'], ['harvesting', 'Harvesting'], ['traditional_use', 'Traditional applications'], ['history', 'Historical references']]) { %>
+            <label class="field"><span><%= l %></span><textarea name="<%= k %>" rows="2"><%= val(k) %></textarea></label>
+          <% } %>
+        </div>
+      </div>
+      <div>
+        <div class="card form-stack">
+          <h2>Status</h2>
+          <select name="status" aria-label="Status"><% for (const [k, l] of [['draft', 'Draft (only editors can see it)'], ['published', 'Published']]) { %><option value="<%= k %>" <%= (d ? d.status : h.status) === k ? 'selected' : '' %>><%= l %></option><% } %></select>
+          <p class="muted small">Safety information, uses, research, tradition descriptions, preparations and photos are added on the herb's page after saving, each with its reference.</p>
+          <button class="btn btn-primary"><%= herb ? 'Save' : 'Add herb' %></button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

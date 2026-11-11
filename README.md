@@ -33,6 +33,7 @@ In Netlify, open the site → **Site configuration → Environment variables** a
 | `DATABASE_URL` | the Transaction pooler connection string from step 1 |
 | `SUPABASE_URL` | your Supabase Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | your secret key (`sb_secret_...`) or legacy service_role key |
+| `CLINIC_ENCRYPTION_KEY` | needed before using Clinic → Patients. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` and keep a copy in a password manager |
 | `SETUP_KEY` | any password you make up — you'll type it once to create your admin account |
 | `BASE_URL` | optional — your store's address, e.g. `https://oakforestherbals.netlify.app`. Netlify fills this in automatically; set it if emails should link to a custom domain |
 
@@ -90,18 +91,23 @@ Without `DATABASE_URL`, the store uses a built-in copy of Postgres saved in `dat
 - **Products** — list with status tabs, filters and bulk actions; editor with rich-text description, media, pricing with profit margin, inventory, shipping weight, options/variants, SEO; duplicate; CSV import and export; inventory screen for bulk stock updates
 - **Collections** — manual (pick and order products) or automated (rules on tag, type, vendor, title, price or stock)
 - **Customers** — segments (subscribers, repeat customers, prospects, account holders), detail with order history and lifetime spend, notes and tags, CSV export
+- **Costing** — materials (herbs, ingredients, packaging) priced per pack, per-product recipes with labour, waste and overhead, automatic cost roll-up and price-change impact, profitability by product and category
+- **Herbal database** — searchable materia medica with combined filters (actions, energetics, tastes, body systems, parts, preparations, family, tradition, constituents), synonyms and autocomplete; profiles with evidence levels, sourced-only safety information and numbered references; Western, Ayurvedic and TCM vocabularies kept separate; CSV import/export. Ships with categories only, no herb entries
+- **Clinic** — patient records with consent, health history, signed clinical notes, encrypted documents, practitioner assignments and a timeline; clinical data is encrypted before storage and every access is audited (see `docs/PRIVACY.md`)
+- **Apothecary** — inventory by lot with landed cost, suppliers and purchase orders, formulas (parts/percent/amounts, scaling, safety review, versions, approval), components, production batches with QC and actual cost, finished-goods lots, traceability and recall
+- **Point of sale** — in-person sales with barcode search, cash/card/other, receipts and stock deduction
 - **Discounts** — percentage, fixed amount or free shipping; minimum subtotal, usage limits, one per customer, start/end dates
 - **Content** — pages, blog posts, file uploads, header/footer navigation menus with dropdowns
 - **Analytics** — sales breakdown, top products, top customers, discount usage
 - **Online Store → Themes** — live theme editor: colors, fonts, logo, favicon, button radius, announcement bar, home page sections, product card options, footer, social links, with desktop/mobile preview
-- **Settings** — store details and currency, payments, checkout options, shipping rates, taxes, email notifications (with outbox), policies, preferences (SEO, tracking code, store password) and staff accounts (owner vs staff permissions)
+- **Settings** — store details and currency, payments, checkout options, shipping rates, taxes, email notifications (with outbox), policies, preferences (SEO, tracking code, store password), staff accounts, **roles and permissions** (built-in and custom roles, enforced on the server) and an **audit log**
 
 ## Taking payments
 
 Under **Settings → Payments**:
 
 - **Manual methods** (bank transfer, cash on delivery, check) work immediately. Orders arrive as "Payment pending"; mark them paid from the order page.
-- **Card payments via Stripe**: paste your Stripe secret key and enable card payments. Shoppers are sent to Stripe Checkout and the order is marked paid when they return. For reliability, also add a webhook in Stripe pointing to `https://your-domain/webhooks/stripe` for the `checkout.session.completed` event and paste its signing secret.
+- **Card payments via Stripe**: paste your Stripe secret key and enable card payments. Shoppers are sent to Stripe Checkout and the order is marked paid when they return. For reliability, also add a webhook in Stripe pointing to `https://your-domain/webhooks/stripe` for the `checkout.session.completed` event (and, if you offer subscriptions, `invoice.paid`, `customer.subscription.updated` and `customer.subscription.deleted`) and paste its signing secret.
 
 ## Sending email
 
@@ -115,6 +121,15 @@ Order confirmations, shipping updates, cancellations, welcome and password-reset
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | — | Store uploaded images in Supabase Storage. Without them, images go to `uploads/` |
 | `SUPABASE_BUCKET` | `store-media` | Storage bucket name (created automatically, public) |
 | `SETUP_KEY` | — | Required to create the first admin account, when set |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Creates an owner account (full control) with this email if none exists yet. The password is temporary: it must be changed at first login. Existing accounts are never changed. Remove both once you've logged in |
+| `ADMIN_RECOVERY_KEY` | — | Only if the owner is locked out: set it, visit `/admin/recover`, reset the owner password, then remove it |
+| `CLINIC_ENCRYPTION_KEY` | — | **Required for clinic records.** 64 hex characters (32 random bytes). Encrypts clinical data before it is stored. Back it up; it cannot be recovered. See `docs/PRIVACY.md` |
+| `CLINIC_ENCRYPTION_KEY_PREVIOUS` | — | Only while rotating the key: the old key(s), comma-separated, so existing records can be re-encrypted. Remove when Settings → Security says everything is done |
+| `SUPABASE_PRIVATE_BUCKET` | `clinic-private` | Private bucket for encrypted clinic documents (created automatically, never public) |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Override the Stripe keys saved in Settings (recommended: keep secrets out of the database) |
+| `SMTP_PASS` | — | Overrides the SMTP password saved in Settings → Notifications |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | — | Send SMS reminders through Twilio. Without them, SMS are only logged |
+| `ANTHROPIC_API_KEY` | — | Turns on the AI assistant (Admin → Assistant). See `docs/PRIVACY.md` before granting it patient access |
 | `BASE_URL` | Netlify's `URL` | Public URL of the store, used for links in emails |
 | `SESSION_SECRET` | derived | Cookie signing secret; defaults to one derived from `DATABASE_URL` |
 | `PORT` | `3000` | HTTP port when running with `npm start` |
@@ -134,9 +149,16 @@ src/orders.js          placing, paying, fulfilling, refunding and cancelling ord
 src/routes/            storefront, checkout, account, webhooks, admin/*
 views/store, views/admin, views/emails   EJS templates
 public/                CSS, JS and images
+src/migrations.js      versioned schema migrations + Row Level Security lockdown
+src/permissions.js     permission catalog and built-in roles
+src/audit.js           append-only audit log
+src/admin-nav.js       admin sidebar sections
 test/                  end-to-end tests (node:test)
+docs/                  technical assessment, roadmap and database change notes
 ```
+
+The store is growing into a full herbal business system — see `docs/ROADMAP.md` and `CHANGELOG.md`.
 
 ## Not yet included
 
-Compared with Shopify, these are not built: gift cards, product reviews, abandoned-checkout recovery emails, multiple currencies/languages, multi-location inventory, shipping label purchase, automatic (code-less) discounts and an app marketplace. Refunds are recorded in the store; money goes back through your payment provider's dashboard.
+Compared with Shopify, these are not built yet: gift cards, product reviews, abandoned-checkout recovery emails, multiple currencies/languages, multi-location inventory, shipping label purchase, automatic (code-less) discounts and an app marketplace. Refunds are recorded in the store; money goes back through your payment provider's dashboard.

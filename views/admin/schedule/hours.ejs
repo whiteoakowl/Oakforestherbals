@@ -1,0 +1,52 @@
+<%- include('../partials/header') %>
+<% const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Hours and profile' }) %>
+  <% if (seesAllCalendars) { %><form method="get" class="card inline-fields"><select name="staff" aria-label="Practitioner"><% for (const p of people) { %><option value="<%= p.id %>" <%= p.id === staffId ? 'selected' : '' %>><%= p.name %></option><% } %></select><button class="btn btn-sm">Show</button></form><% } %>
+  <div class="layout-2">
+    <div>
+      <form method="post" action="/admin/schedule/hours" class="card form-stack"><%- csrfField %><input type="hidden" name="staff_id" value="<%= staffId %>">
+        <h2>Weekly hours (<%= tz %>)</h2>
+        <% days.forEach((name, d) => { const h = hours.filter((x) => x.weekday === d); %>
+          <div class="hours-row"><strong class="small"><%= name %></strong>
+            <% for (const slot of [0, 1]) { %><span class="inline-fields"><input type="time" name="d<%= d %>_<%= slot %>_start" value="<%= h[slot] ? h[slot].start_time : '' %>" aria-label="<%= name %> start <%= slot + 1 %>"> – <input type="time" name="d<%= d %>_<%= slot %>_end" value="<%= h[slot] ? h[slot].end_time : '' %>" aria-label="<%= name %> end <%= slot + 1 %>"></span><% } %></div>
+        <% }) %>
+        <p class="muted small">Two blocks per day (e.g. morning and afternoon). Leave blank for days off.</p>
+        <div class="right"><button class="btn btn-primary btn-sm">Save hours</button></div>
+      </form>
+      <div class="card form-stack"><h2>Time off</h2>
+        <% for (const o of timeOff) { %><p class="small"><%= ymd(o.starts_on) %> – <%= ymd(o.ends_on) %> <%= o.note %> <form method="post" action="/admin/schedule/time-off/<%= o.id %>/delete" class="inline"><%- csrfField %><button class="link-plain small critical-text">Remove</button></form></p><% } %>
+        <form method="post" action="/admin/schedule/time-off" class="inline-fields"><%- csrfField %><input type="hidden" name="staff_id" value="<%= staffId %>"><input type="date" name="starts_on" aria-label="First day off"><input type="date" name="ends_on" aria-label="Last day off"><input name="note" placeholder="Note" aria-label="Note"><button class="btn btn-sm">Add</button></form>
+      </div>
+    </div>
+    <div>
+      <form method="post" action="/admin/schedule/profile" class="card form-stack"><%- csrfField %><input type="hidden" name="staff_id" value="<%= staffId %>">
+        <h2>Practitioner profile</h2>
+        <div class="grid-2"><label class="field"><span>Name shown to clients</span><input name="display_name" value="<%= profile.display_name || '' %>"></label><label class="field"><span>Title</span><input name="title" value="<%= profile.title || '' %>" placeholder="e.g. Clinical herbalist"></label></div>
+        <label class="field"><span>Biography</span><textarea name="bio" rows="4"><%= profile.bio || '' %></textarea></label>
+        <label class="field"><span>Qualifications and certifications</span><textarea name="qualifications" rows="2"><%= profile.qualifications || '' %></textarea></label>
+        <label class="field"><span>Areas of practice</span><input name="areas" value="<%= profile.areas || '' %>"></label>
+        <label class="field"><span>Photo URL</span><input name="photo_url" value="<%= profile.photo_url || '' %>" placeholder="Upload under Content → Files and paste the link"></label>
+        <label class="check small"><input type="checkbox" name="public_profile" value="1" <%= profile.public_profile ? 'checked' : '' %>> Show on the booking page</label>
+        <label class="check small"><input type="checkbox" name="accepts_bookings" value="1" <%= profile.accepts_bookings ? 'checked' : '' %>> Accept online bookings</label>
+        <h3>Calendar feed</h3>
+        <% if (profile.calendar_token) { %><p class="small">Subscribe in Google, Apple or Outlook calendar:<br><code class="break"><%= base %>/calendar/<%= profile.calendar_token %>.ics</code></p><p class="muted small">Events show the appointment type only — never client names or health details. Keep this link private.</p><% } %>
+        <label class="check small"><input type="checkbox" name="new_calendar_token" value="1"> <%= profile.calendar_token ? 'Replace the link (the old one stops working)' : 'Create a private calendar link' %></label>
+        <div class="right"><button class="btn btn-primary btn-sm">Save profile</button></div>
+      </form>
+      <% if (seesAllCalendars) { %>
+      <form method="post" action="/admin/schedule/settings" class="card form-stack"><%- csrfField %>
+        <h2>Booking rules</h2>
+        <label class="field"><span>Clinic time zone</span><input name="timezone" value="<%= s.timezone %>" placeholder="America/New_York"></label>
+        <div class="grid-2"><label class="field"><span>Minimum notice (hours)</span><input type="number" min="0" name="min_notice_hours" value="<%= s.min_notice_hours %>"></label><label class="field"><span>Book up to (days ahead)</span><input type="number" min="1" name="max_days_ahead" value="<%= s.max_days_ahead %>"></label></div>
+        <div class="grid-2"><label class="field"><span>Clients can cancel or move until (hours before)</span><input type="number" min="0" name="cancel_hours" value="<%= s.cancel_hours %>"></label><label class="field"><span>Start times every (minutes)</span><input type="number" min="5" name="slot_step_min" value="<%= s.slot_step_min %>"></label></div>
+        <div class="grid-2"><label class="field"><span>Reminder (hours before)</span><input type="number" min="1" name="reminder_hours" value="<%= s.reminder_hours %>"></label><label class="field"><span>Clinic address</span><input name="location" value="<%= s.location %>"></label></div>
+        <label class="field"><span>Video for online appointments</span><select name="video_provider"><option value="none" <%= s.video_provider !== 'jitsi' ? 'selected' : '' %>>I add a link to each appointment</option><option value="jitsi" <%= s.video_provider === 'jitsi' ? 'selected' : '' %>>Create a private Jitsi Meet link automatically (free, no account)</option></select><small class="muted">Jitsi’s public service is not covered by a health-privacy agreement. Use your own video service if you need one.</small></label>
+        <label class="field"><span>Note in confirmation emails</span><input name="confirmation_note" value="<%= s.confirmation_note %>" placeholder="e.g. Please arrive 5 minutes early."></label>
+        <div class="right"><button class="btn btn-sm">Save rules</button></div>
+      </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

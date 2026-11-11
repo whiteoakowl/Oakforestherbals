@@ -1,0 +1,22 @@
+<%- include('../partials/header') %>
+<% const kindLabel = Object.fromEntries(LESSON_KINDS); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Education', actions: '<a class="btn btn-primary" href="/admin/education/lessons/new">New lesson</a>' }) %>
+  <div class="layout-2">
+    <div class="card flush">
+      <form class="filter-bar" method="get" role="search"><input name="q" value="<%= q %>" placeholder="Search lessons" class="grow" aria-label="Search lessons"><button class="btn">Search</button></form>
+      <% if (!lessons.length) { %><p class="pad muted">No lessons yet. Write lessons, information sheets, recipes and preparation instructions, upload guides or embed videos, then assign them to patients.</p><% } else { %>
+      <table class="table"><thead><tr><th>Lesson</th><th>Type</th><th>Status</th><th class="num">Patients</th></tr></thead><tbody>
+        <% for (const l of lessons) { %><tr><td><a href="/admin/education/lessons/<%= l.id %>"><strong><%= l.title %></strong></a><div class="muted small"><%= l.category %></div></td><td class="small"><%= kindLabel[l.kind] %></td>
+          <td><span class="badge badge-<%= l.status === 'published' ? 'success' : 'default' %>"><%= l.status %></span></td><td class="num"><%= l.assigned %></td></tr><% } %>
+      </tbody></table><% } %>
+    </div>
+    <div>
+      <div class="card"><h2>Courses</h2><% if (!courses.length) { %><p class="muted small">Group lessons into a course or learning path.</p><% } %>
+        <% for (const c of courses) { %><p class="small"><a href="/admin/education/courses/<%= c.id %>"><%= c.title %></a> <span class="muted"><%= c.lessons %> lessons · <%= c.status %></span></p><% } %></div>
+      <form method="post" action="/admin/education/courses" class="card form-stack"><input type="hidden" name="_csrf" value="<%= csrf %>"><h2>New course</h2>
+        <input name="title" placeholder="Title" required aria-label="Course title"><input name="category" placeholder="Category" aria-label="Category"><textarea name="description" rows="2" placeholder="Description" aria-label="Description"></textarea><button class="btn btn-sm">Create</button></form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

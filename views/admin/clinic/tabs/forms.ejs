@@ -1,0 +1,31 @@
+<div class="layout-2">
+  <div>
+    <% if (!submissionsList.length) { %><div class="card"><p class="muted">No forms completed yet.</p></div><% } %>
+    <% for (const s of submissionsList) { %>
+      <div class="card form-stack">
+        <div class="row-between"><h2><%= s.form_name %></h2><span class="badge badge-<%= s.reviewed_at ? 'success' : 'attention' %>"><%= s.reviewed_at ? 'Reviewed' : 'New' %></span></div>
+        <p class="muted small">Submitted <%= formatDate(s.submitted_at, true) %> by <%= s.submitted_by %> · form v<%= s.form_version %><%= s.reviewed_at ? ` · reviewed by ${s.reviewed_by}` : '' %></p>
+        <dl class="kv small">
+          <% for (const f of s.fields) { if (f.type === 'heading') { %><dt class="kv-heading"><strong><%= f.label %></strong></dt><dd></dd><% continue; } if (!visibleField(f, s.answers)) continue; const a = s.answers[f.id]; %>
+            <dt><%= f.label %></dt><dd><% if (f.type === 'file' && a) { %><a href="<%= base %>/documents/<%= a %>?view=1" target="_blank" rel="noopener">View uploaded file</a><% } else { %><%= Array.isArray(a) ? a.join(', ') : (a === '' || a === undefined ? '—' : a) %><% } %></dd>
+          <% } %>
+        </dl>
+        <% if (!s.reviewed_at && canManage) { %><form method="post" action="<%= base %>/forms/<%= s.id %>/review" class="right"><%- csrfField %><button class="btn btn-sm">Mark reviewed</button></form><% } %>
+      </div>
+    <% } %>
+  </div>
+  <div>
+    <% if (canManage) { %>
+    <form method="post" action="<%= base %>/forms" class="card form-stack"><%- csrfField %>
+      <h2>Send a form</h2>
+      <% if (!publishedForms.length) { %><p class="muted small">Publish a form under Clinic → Forms first.</p><% } else { %>
+      <select name="form_id" aria-label="Form"><% for (const f of publishedForms) { %><option value="<%= f.id %>"><%= f.name %></option><% } %></select>
+      <label class="field"><span>Due</span><input type="date" name="due_at"></label>
+      <button class="btn btn-sm">Send to patient</button><p class="muted small">They're emailed a sign-in link; no health details are in the email.</p><% } %>
+    </form>
+    <% } %>
+    <div class="card"><h2>Sent forms</h2><% if (!assignments.length) { %><p class="muted small">None.</p><% } %>
+      <% for (const a of assignments) { %><p class="small"><%= a.name %> · <span class="badge badge-default"><%= a.status %></span> <span class="muted"><%= formatDate(a.assigned_at) %><%= a.due_at ? ` · due ${ymd(a.due_at)}` : '' %></span>
+        <% if (a.status === 'assigned' && canManage) { %><form method="post" action="<%= base %>/forms/<%= a.id %>/cancel" class="inline"><%- csrfField %><button class="link-plain small">Cancel</button></form><% } %></p><% } %></div>
+  </div>
+</div>

@@ -1,0 +1,17 @@
+<%- include('_top') %>
+<article class="card lesson">
+  <h2><%= lesson.title %></h2>
+  <% if (lesson.summary) { %><p class="muted"><%= lesson.summary %></p><% } %>
+  <% if (lesson.video_url) { %><div class="video"><iframe src="<%= lesson.video_url %>" title="<%= lesson.title %> video" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div><% } %>
+  <div class="rte"><%- lesson.body_html %></div>
+  <% if (lesson.file_url) { %><p><a class="btn btn-secondary" href="<%= lesson.file_url %>" target="_blank" rel="noopener">Download <%= lesson.file_name || 'the guide' %></a></p><% } %>
+</article>
+<form method="post" action="/account/clinic/learning/<%= lesson.id %>/complete" class="card">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (questions.length) { %><h3>Quick quiz</h3>
+    <% for (const q of questions) { %><fieldset class="quiz-q"><legend><%= q.question %></legend><% q.options.forEach((o, i) => { %><label class="check"><input type="radio" name="q_<%= q.id %>" value="<%= i %>" required> <%= o %></label><% }) %></fieldset><% } %>
+  <% } %>
+  <% if (progress && progress.completed_at) { %><p class="small">Completed <%= formatDate(progress.completed_at) %><%= progress.quiz_total ? ` · ${progress.quiz_score}/${progress.quiz_total}` : '' %>.</p><% } %>
+  <button class="btn"><%= questions.length ? 'Submit answers' : 'Mark as complete' %></button>
+</form>
+<%- include('_bottom') %>

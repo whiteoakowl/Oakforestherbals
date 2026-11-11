@@ -1,0 +1,29 @@
+<%- include('_top') %>
+<% const kindLabel = Object.fromEntries(ITEM_KINDS); %>
+<div class="card">
+  <h2><%= plan.content.title || 'My care plan' %></h2>
+  <p class="muted small">From your practitioner<%= plan.start_date ? ` · starting ${ymd(plan.start_date)}` : '' %><%= plan.review_date ? ` · next review ${ymd(plan.review_date)}` : '' %></p>
+  <% if (progress) { %><p>Task completion, last two weeks: <strong><%= progress.percent %>%</strong></p><% } %>
+  <% if (plan.content.goals) { %><h3>Goals</h3><p class="prewrap"><%= plan.content.goals %></p><% } %>
+  <% if (plan.content.summary) { %><p class="prewrap"><%= plan.content.summary %></p><% } %>
+  <% if (plan.content.fullscript_url) { %><p><a class="btn" href="/account/clinic/fullscript?plan=<%= plan.id %>" target="_blank" rel="noopener">Order my supplements on Fullscript</a></p><% } %>
+</div>
+<% for (const i of plan.items) { %>
+  <div class="card plan-item">
+    <div class="plan-item-head">
+      <% if (i.is_task) { %><form method="post" action="/account/clinic/plans/<%= plan.id %>/items/<%= i.id %>/done"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="task-check <%= i.doneToday ? 'done' : '' %>" aria-pressed="<%= i.doneToday %>" aria-label="<%= i.doneToday ? 'Mark not done today' : 'Mark done today' %>"><%= i.doneToday ? '✓' : '' %></button></form><% } %>
+      <div><strong><%= i.content.title %></strong> <span class="muted small"><%= kindLabel[i.kind] %></span>
+        <% const meta = ['dose', 'frequency', 'timing', 'duration'].map((k) => i.content[k]).filter(Boolean).map((m) => m.replace('as_needed', 'as needed')); if (meta.length) { %><div class="small"><%= meta.join(' · ') %></div><% } %></div>
+    </div>
+    <% if (i.content.details) { %><p class="prewrap"><%= i.content.details %></p><% } %>
+    <% if (i.content.preparation) { %><p><em>How to prepare:</em> <%= i.content.preparation %></p><% } %>
+    <% if (i.content.cautions) { %><p class="caution"><em>Cautions:</em> <%= i.content.cautions %></p><% } %>
+    <% if (i.lesson_id) { %><p><a href="/account/clinic/learning/<%= i.lesson_id %>">Read: <%= i.lesson_title %></a></p><% } %>
+    <% if (i.fs_url && i.fs_active) { %><p><a class="btn btn-secondary" href="/account/clinic/fullscript?item=<%= i.id %>" target="_blank" rel="noopener">Order <%= i.fs_name %> on Fullscript</a></p><% } %>
+    <% if (i.variant_id && i.product_status === 'active') { %>
+      <form method="post" action="/account/clinic/plans/<%= plan.id %>/items/<%= i.id %>/cart"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-secondary">Add <%= i.product_title %> to cart · <%= money(i.price) %></button></form>
+    <% } %>
+  </div>
+<% } %>
+<p class="muted small">These recommendations are for you only and support, not replace, advice from your doctor. Tell your practitioner about any new medicines or reactions.</p>
+<%- include('_bottom') %>

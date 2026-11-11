@@ -1,0 +1,34 @@
+<%- include('auth-layout') %>
+  <h1>Recover the owner account</h1>
+  <% if (!enabled) { %>
+    <p>To prove you run this site, add a recovery key in your hosting settings:</p>
+    <ol class="small">
+      <li>In Netlify, open the site → <strong>Site configuration → Environment variables</strong>.</li>
+      <li>Add <code>ADMIN_RECOVERY_KEY</code> with a long password you make up (at least 20 characters).</li>
+      <li>Redeploy (Deploys → Trigger deploy), then come back to this page.</li>
+    </ol>
+    <p class="small muted">Remove the variable again once you’re back in.</p>
+  <% } else if (!owners) { %>
+    <p class="muted">Enter the <code>ADMIN_RECOVERY_KEY</code> you set in Netlify.</p>
+    <form action="/admin/recover" method="post" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Recovery key</span><input type="password" name="key" required autocomplete="off" autofocus></label>
+      <button class="btn btn-primary btn-block">Continue</button>
+    </form>
+  <% } else { %>
+    <form action="/admin/recover/reset" method="post" class="form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <fieldset class="form-stack"><legend class="small"><strong>Owner account</strong></legend>
+        <% owners.forEach((o, i) => { %><label class="check"><input type="radio" name="staff_id" value="<%= o.id %>" <%= i === 0 ? 'checked' : '' %>> <%= o.name %> — <strong><%= o.email %></strong></label><% }) %>
+      </fieldset>
+      <label class="field"><span>New password</span><input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
+      <label class="field"><span>Type it again</span><input type="password" name="confirm" minlength="8" required autocomplete="new-password"></label>
+      <% if (owners.some((o) => o.two_factor)) { %><label class="check small"><input type="checkbox" name="disable_two_factor" value="1"> Also turn off two-step sign-in (if you’ve lost your phone)</label><% } %>
+      <button class="btn btn-primary btn-block">Set password</button>
+      <p class="small muted">This page stays open for 10 minutes. Everything here is recorded in the audit log.</p>
+    </form>
+  <% } %>
+  <p class="small"><a href="/admin/login">Back to log in</a></p>
+</main>
+</body>
+</html>

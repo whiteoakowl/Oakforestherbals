@@ -346,6 +346,7 @@ const ready = (async () => {
   await driver.transaction(async (t) => {
     await t.query('SELECT pg_advisory_xact_lock(72000)', []);
     await t.exec(SCHEMA);
+    await require('./migrations').migrate(t);
   });
 })();
 

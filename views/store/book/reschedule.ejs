@@ -1,0 +1,12 @@
+<%- include('../partials/header') %>
+<div class="container section">
+  <p><a href="/account/appointments">← My appointments</a></p>
+  <h1 class="page-title">Choose a new time</h1>
+  <p class="muted"><%= a.type_name %> with <%= a.staff_name %> · currently <%= when(a.starts_at) %></p>
+  <div class="week-nav"><% if (prev) { %><a href="?from=<%= prev %>">← Earlier</a><% } %><a href="?from=<%= next %>">Later →</a></div>
+  <form method="post" action="/account/appointments/<%= a.id %>/reschedule"><input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="slot-days"><% for (const d of days) { %><fieldset class="slot-day"><legend><%= new Date(`${d.day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) %></legend>
+      <% if (!d.slots.length) { %><p class="muted small">No times</p><% } %><% for (const s of d.slots) { %><label class="slot"><input type="radio" name="start" value="<%= s.start.toISOString() %>" required><span><%= s.time %></span></label><% } %></fieldset><% } %></div>
+    <button class="btn">Move my appointment</button></form>
+</div>
+<%- include('../partials/footer') %>

@@ -30,6 +30,7 @@ test('every admin screen renders', async () => {
   const page = (await get('SELECT id FROM pages LIMIT 1')).id;
   const article = (await get('SELECT id FROM articles LIMIT 1')).id;
   const menu = (await get('SELECT id FROM menus LIMIT 1')).id;
+  const role = (await get("SELECT id FROM roles WHERE key = 'staff'")).id;
   const urls = ['/admin', '/admin?range=7', '/admin?range=365', '/admin/analytics', '/admin/orders', '/admin/orders?tab=unfulfilled', '/admin/orders/new',
     `/admin/orders/${order}`, `/admin/orders/${order}/packing-slip`, '/admin/orders/export.csv',
     '/admin/products', '/admin/products/new', `/admin/products/${product}`, '/admin/products/inventory', '/admin/products/export.csv',
@@ -41,7 +42,14 @@ test('every admin screen renders', async () => {
     '/admin/content/navigation', `/admin/content/navigation/${menu}`, '/admin/content/files',
     '/admin/themes', '/admin/themes/customize', '/admin/profile',
     '/admin/settings', '/admin/settings/general', '/admin/settings/payments', '/admin/settings/checkout', '/admin/settings/shipping',
-    '/admin/settings/taxes', '/admin/settings/notifications', '/admin/settings/policies', '/admin/settings/preferences', '/admin/settings/staff'];
+    '/admin/settings/taxes', '/admin/settings/notifications', '/admin/settings/policies', '/admin/settings/preferences', '/admin/settings/staff',
+    '/admin/settings/roles', `/admin/settings/roles/${role}`, '/admin/settings/audit',
+    '/admin/costing', '/admin/costing/materials/new', `/admin/costing/products/${product}`, '/admin/analytics/profitability', '/admin/pos',
+    '/admin/clinic/patients', '/admin/clinic/patients/new',
+    '/admin/assistant', '/admin/fullscript', '/admin/communities', '/admin/schedule/rooms', '/admin/schedule/packages', '/admin/clinic/referrers', '/admin/search?q=te', '/admin/search', '/admin/pos/readers', '/admin/subscriptions', '/admin/orders/abandoned', '/admin/reviews', '/admin/gift-cards', '/admin/gift-cards/new', '/admin/settings/store-features', '/admin/settings/security', '/admin/profile/two-factor', '/admin/communications', '/admin/communications/notifications', '/admin/communications/templates/appointment_reminder', '/admin/herbs', '/admin/herbs/browse', '/admin/herbs/sources', '/admin/herbs/sources/new', '/admin/herbs/terms', '/admin/herbs/import', '/admin/herbs/new',
+    '/admin/inventory', '/admin/inventory/purchase-orders', '/admin/inventory/purchase-orders/new', '/admin/inventory/suppliers', '/admin/inventory/suppliers/new', '/admin/inventory/locations',
+    '/admin/formulas', '/admin/formulas/new', '/admin/production', '/admin/production/new', '/admin/production/trace',
+    '/admin/clinic/inbox', '/admin/clinic/forms', '/admin/clinic/forms/new', '/admin/clinic/forms/new?starter=intake', '/admin/education', '/admin/education/lessons/new'];
   for (const url of urls) {
     const res = await admin.get(url);
     assert.equal(res.status, 200, `${url} -> ${res.status} ${res.text.slice(0, 200)}`);

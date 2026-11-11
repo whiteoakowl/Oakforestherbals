@@ -45,6 +45,16 @@
             </div>
           </fieldset>
         <% }) %>
+        <% if (product.kind === 'gift_card') { %>
+          <fieldset class="gift-card-fields form-stack">
+            <legend>Who is it for?</legend>
+            <p class="muted small">We’ll email the gift card code to them as soon as your payment goes through. Leave the email blank to receive it yourself.</p>
+            <label class="field">Recipient email <input type="email" name="recipient_email" autocomplete="off"></label>
+            <label class="field">Recipient name <input name="recipient_name" maxlength="100"></label>
+            <label class="field">Your name <input name="sender_name" maxlength="100" value="<%= customer ? `${customer.first_name} ${customer.last_name}`.trim() : '' %>"></label>
+            <label class="field">Message (optional) <textarea name="gift_message" rows="3" maxlength="500"></textarea></label>
+          </fieldset>
+        <% } %>
         <div class="qty-row">
           <label class="qty">
             <span class="visually-hidden">Quantity</span>
@@ -57,9 +67,27 @@
           </button>
         </div>
         <p class="stock-note small" data-stock-note></p>
+        <% if (subscription) { %>
+          <div class="subscribe-box">
+            <p><strong>Subscribe &amp; save<%= product.subscription_discount ? ` ${product.subscription_discount}%` : '' %></strong> — delivered <%= subscription.every %><%= subscription.shipping ? `, plus ${money(subscription.shipping)} delivery` : '' %>. Skip or cancel any time from your account.</p>
+            <button class="btn btn-secondary btn-block" formaction="/subscriptions/start">Subscribe · <%= money(subscription.price) %> each</button>
+          </div>
+        <% } %>
       </form>
 
+      <% if (product.kind === 'digital') { %><p class="small muted">Digital product — download links are emailed and shown on your order page once payment is received.</p><% } %>
+      <% if (selected.bundle_components) { %>
+        <div class="bundle-contents"><h2 class="h4">What’s included</h2><ul><% for (const c of selected.bundle_components) { %><li><%= c.quantity %> × <%= c.title %><%= c.variant_title && c.variant_title !== 'Default Title' ? ` (${c.variant_title})` : '' %></li><% } %></ul>
+        <% const separate = selected.bundle_components.reduce((s, c) => s + c.price * c.quantity, 0); if (separate > selected.price) { %><p class="small">Bought separately: <s><%= money(separate) %></s> — you save <%= money(separate - selected.price) %>.</p><% } %></div>
+      <% } %>
       <div class="rte product-description"><%- product.description_html %></div>
+      <% for (const [field, label] of [['ingredients', 'Ingredients'], ['directions', 'Directions for use'], ['warnings', 'Cautions']]) { if (!product[field]) continue; %>
+        <details class="accordion" <%= field === 'warnings' ? 'open' : '' %>>
+          <summary><%= label %></summary>
+          <div class="rte product-<%= field %>"><% for (const para of product[field].split(/\n\s*\n/)) { %><p><%= para %></p><% } %></div>
+        </details>
+      <% } %>
+      <% if (customer && customer.customer_group === 'wholesale') { %><p class="small muted">Your wholesale prices are applied in your cart.</p><% } %>
       <details class="accordion">
         <summary>Shipping &amp; returns</summary>
         <div class="rte">
@@ -73,6 +101,42 @@
   </div>
 </div>
 
+<% if (reviews.enabled) { %>
+<section class="section container reviews" id="reviews">
+  <div class="section-head"><h2>Reviews</h2></div>
+  <% if (reviews.summary.count) { %>
+    <p class="review-summary"><span class="stars" aria-hidden="true"><%= '★'.repeat(Math.round(reviews.summary.average)) %><%= '☆'.repeat(5 - Math.round(reviews.summary.average)) %></span> <strong><%= reviews.summary.average %></strong> out of 5 · <%= reviews.summary.count %> review<%= reviews.summary.count === 1 ? '' : 's' %></p>
+  <% } else { %><p class="muted">No reviews yet.</p><% } %>
+  <ul class="review-list">
+    <% for (const r of reviews.list) { %>
+      <li class="review">
+        <div><span class="stars" aria-label="<%= r.rating %> out of 5 stars"><%= '★'.repeat(r.rating) %><%= '☆'.repeat(5 - r.rating) %></span> <% if (r.title) { %><strong><%= r.title %></strong><% } %></div>
+        <div class="muted small"><%= r.author_name %><%= r.verified ? ' · Verified buyer' : '' %> · <%= formatDate(r.created_at) %></div>
+        <% if (r.body) { %><p><%= r.body %></p><% } %>
+        <% if (r.reply) { %><blockquote class="review-reply"><strong><%= store.name %>:</strong> <%= r.reply %></blockquote><% } %>
+      </li>
+    <% } %>
+  </ul>
+  <% if (reviews.eligibility.allowed) { %>
+    <form action="/products/<%= product.handle %>/reviews" method="post" class="stack-form review-form">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <h3><%= reviews.eligibility.existing ? 'Update your review' : 'Write a review' %></h3>
+      <fieldset class="rating-input"><legend>Rating</legend>
+        <% for (let i = 5; i >= 1; i--) { %><label><input type="radio" name="rating" value="<%= i %>" required <%= reviews.eligibility.existing && reviews.eligibility.existing.rating === i ? 'checked' : '' %>> <%= i %> star<%= i === 1 ? '' : 's' %></label><% } %>
+      </fieldset>
+      <label class="field">Title <input name="title" maxlength="150" value="<%= reviews.eligibility.existing ? reviews.eligibility.existing.title : '' %>"></label>
+      <label class="field">Review <textarea name="body" rows="4" maxlength="5000"><%= reviews.eligibility.existing ? reviews.eligibility.existing.body : '' %></textarea></label>
+      <p class="muted small">Please don’t include health details. Reviews describe your experience and aren’t medical advice.</p>
+      <button class="btn">Submit review</button>
+    </form>
+  <% } else if (reviews.eligibility.reason === 'login') { %>
+    <p><a href="/account/login?next=/products/<%= product.handle %>%23reviews">Log in</a> to write a review.</p>
+  <% } else if (reviews.eligibility.reason === 'purchase') { %>
+    <p class="muted small">Only customers who bought this product can review it.</p>
+  <% } %>
+</section>
+<% } %>
+
 <% if (related.length) { %>
 <section class="section container">
   <div class="section-head"><h2>You may also like</h2></div>
@@ -84,6 +148,7 @@
 <script type="application/ld+json"><%- JSON.stringify({
   '@context': 'https://schema.org', '@type': 'Product', name: product.title, image: product.images.map((i) => i.url),
   description: stripHtml(product.description_html), sku: selected.sku || undefined, brand: product.vendor || undefined,
+  aggregateRating: reviews.summary.count ? { '@type': 'AggregateRating', ratingValue: reviews.summary.average, reviewCount: reviews.summary.count } : undefined,
   offers: product.variants.map((v) => ({ '@type': 'Offer', price: (v.price / 100).toFixed(2), priceCurrency: store.currency,
     availability: (!v.track_inventory || v.continue_selling || v.inventory_qty > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' })),
 }).replace(/</g, '\\u003c') %></script>

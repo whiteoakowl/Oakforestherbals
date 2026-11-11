@@ -1,0 +1,32 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'New appointment', backHref: '/admin/schedule' }) %>
+  <% if (!types.length) { %><div class="card"><p>Create an appointment type first. <a href="/admin/schedule/types/new">Add one</a>.</p></div><% } else { %>
+  <form method="post" action="/admin/schedule/appointments/new" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="grid-2">
+      <label class="field"><span>Type</span><select name="type_id" required><% for (const t of types) { %><option value="<%= t.id %>"><%= t.name %> (<%= t.duration_min %> min<%= t.price ? `, ${money(t.price)}` : '' %>)</option><% } %></select></label>
+      <label class="field"><span>Practitioner</span><select name="staff_id"><% for (const p of people) { %><option value="<%= p.id %>" <%= p.id === staffId ? 'selected' : '' %>><%= p.name %></option><% } %></select></label>
+    </div>
+    <% if (rooms.length) { %><label class="field"><span>Room</span><select name="room_id"><option value="">Choose automatically</option><% for (const r of rooms) { %><option value="<%= r.id %>"><%= r.name %></option><% } %></select></label><% } %>
+    <% if (pkgs.length) { %><label class="check"><input type="checkbox" name="use_package" value="1" checked> Use a session from <%= pkgs.map((p) => `${p.name} (${p.sessions_total - p.sessions_used} left)`).join(', ') %></label><% } %>
+    <% if (customer) { %><input type="hidden" name="customer_id" value="<%= customer.id %>"><% if (caseRow) { %><input type="hidden" name="case_id" value="<%= caseRow.id %>"><p class="small">Case: <strong><%= caseRow.title %></strong></p><% } %><p>Client: <strong><%= `${customer.first_name} ${customer.last_name}`.trim() || customer.email %></strong> <span class="muted small"><%= customer.email %></span></p>
+    <% } else { %>
+      <div class="grid-2"><label class="field"><span>Client email</span><input type="email" name="email" required></label><label class="field"><span>Phone</span><input name="phone"></label></div>
+      <div class="grid-2"><label class="field"><span>First name</span><input name="first_name"></label><label class="field"><span>Last name</span><input name="last_name"></label></div>
+    <% } %>
+    <div class="grid-3">
+      <label class="field"><span>Date</span><input type="date" name="day" required></label>
+      <label class="field"><span>Start (<%= tz %>)</span><input type="time" name="time" required step="300"></label>
+      <label class="field"><span>Where</span><select name="mode"><option value="in_person">In person</option><option value="virtual">Online</option></select></label>
+    </div>
+    <label class="field"><span>Repeat weekly (number of appointments)</span><input type="number" name="repeat_weeks" min="1" max="26" value="1"></label>
+    <label class="field"><span>Internal note (encrypted)</span><textarea name="notes" rows="2"></textarea></label>
+    <label class="check small"><input type="checkbox" name="override" value="1"> Book outside published hours</label>
+    <label class="check small"><input type="checkbox" name="invoice" value="1" checked> Create an invoice for the appointment price</label>
+    <label class="check small"><input type="checkbox" name="notify" value="1" checked> Email the client a confirmation</label>
+    <div class="right"><button class="btn btn-primary">Book</button></div>
+  </form>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

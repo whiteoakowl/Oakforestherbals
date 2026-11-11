@@ -14,9 +14,9 @@ const router = express.Router();
 
 // New session id on login (prevents fixation) while keeping the shopper's cart.
 function signIn(req, customerId, done) {
-  const { cart, cartNote } = req.session;
+  const { cart, cartNote, pendingBooking } = req.session;
   req.session.regenerate(() => {
-    Object.assign(req.session, { cart, cartNote, customerId });
+    Object.assign(req.session, { cart, cartNote, customerId, pendingBooking });
     done();
   });
 }
@@ -72,7 +72,7 @@ router.post('/register', throttle('register'), async (req, res) => {
       email, first, last, hash, marketing);
   }
   await mailer.notify('customer_welcome', email, `Welcome to ${res.locals.store.name}`, 'welcome', { first_name: first });
-  signIn(req, id, () => res.redirect('/account'));
+  signIn(req, id, () => res.redirect(req.session.pendingBooking ? `/book/${req.session.pendingBooking.typeId}/confirm` : '/account'));
 });
 
 router.post('/logout', async (req, res) => {
@@ -174,6 +174,62 @@ router.post('/addresses/:id/delete', async (req, res) => {
   await run('DELETE FROM addresses WHERE id = ? AND customer_id = ?', toInt(req.params.id), res.locals.customer.id);
   flash(req, 'success', 'Address removed.');
   res.redirect('/account/addresses');
+});
+
+/* ---------- Subscriptions ---------- */
+
+router.get('/subscriptions', async (req, res) => {
+  const subs = require('../subscriptions');
+  const list = await subs.forCustomer(res.locals.customer.id);
+  res.render('store/account/subscriptions', { title: 'Subscriptions', list, every: subs.every, started: req.query.started === '1' });
+});
+
+async function mySubscription(req, res) {
+  const sub = await get('SELECT * FROM subscriptions WHERE id = ? AND customer_id = ?', toInt(req.params.id), res.locals.customer.id);
+  if (!sub || !sub.stripe_subscription_id) { res.status(404).render('store/404', { title: 'Not found' }); return null; }
+  return sub;
+}
+
+router.post('/subscriptions/:id/cancel', async (req, res) => {
+  const sub = await mySubscription(req, res);
+  if (!sub) return;
+  const stripe = require('../stripe');
+  try {
+    // Ends after the period already paid for, so the last delivery still arrives.
+    await require('../subscriptions').upsert(await stripe.updateSubscription(sub.stripe_subscription_id, { cancel_at_period_end: req.body.resume === '1' ? 'false' : 'true' }));
+    flash(req, 'success', req.body.resume === '1' ? 'Your subscription will carry on.' : 'Your subscription will end after the current period.');
+  } catch (err) {
+    console.error('[stripe]', err.message);
+    flash(req, 'error', 'We couldn’t change your subscription just now. Please try again or contact us.');
+  }
+  res.redirect('/account/subscriptions');
+});
+
+router.post('/subscriptions/:id/billing', async (req, res) => {
+  const sub = await mySubscription(req, res);
+  if (!sub) return;
+  try {
+    res.redirect(303, await require('../stripe').billingPortal(sub.stripe_customer_id, `${req.protocol}://${req.get('host')}/account/subscriptions`));
+  } catch (err) {
+    console.error('[stripe]', err.message);
+    flash(req, 'error', 'Card details can’t be changed online right now. Please contact us.');
+    res.redirect('/account/subscriptions');
+  }
+});
+
+router.post('/preferences', requireCustomer, async (req, res) => {
+  const { normalizePhone } = require('../comms');
+  const wantsSms = req.body.sms_opt_in === '1';
+  const phone = normalizePhone(req.body.sms_phone);
+  if (wantsSms && !phone) {
+    flash(req, 'error', 'Enter your mobile number with the country code, like +15551234567.');
+    return res.redirect('/account');
+  }
+  const c = res.locals.customer;
+  await run(`UPDATE customers SET email_reminders = ?, sms_opt_in = ?, sms_opt_in_at = CASE WHEN ? = 1 AND sms_opt_in = 0 THEN now() ELSE sms_opt_in_at END, phone = COALESCE(?, phone) WHERE id = ?`,
+    req.body.email_reminders === '1' ? 1 : 0, wantsSms ? 1 : 0, wantsSms ? 1 : 0, phone, c.id);
+  flash(req, 'success', 'Reminder preferences saved.');
+  res.redirect('/account');
 });
 
 module.exports = router;

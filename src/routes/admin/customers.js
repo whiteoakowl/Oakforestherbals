@@ -5,8 +5,17 @@ const orders = require('../../orders');
 const { flash } = require('../../middleware');
 const { toInt, paginate, csvRow, parseTags, centsToInput } = require('../../utils');
 const { COUNTRIES } = require('../../countries');
+const { CUSTOMER_GROUPS } = require('../../pricing');
+
+const GROUP_KEYS = CUSTOMER_GROUPS.map(([k]) => k);
+const groupOf = (v) => (GROUP_KEYS.includes(v) ? v : 'retail');
 
 const router = express.Router();
+
+router.use((req, res, next) => {
+  res.locals.CUSTOMER_GROUPS = CUSTOMER_GROUPS;
+  next();
+});
 
 const STATS = `SELECT c.*, COUNT(o.id) AS order_count, COALESCE(SUM(o.total - o.refunded_total), 0) AS spent, MAX(o.created_at) AS last_order
   FROM customers c LEFT JOIN orders o ON o.customer_id = c.id AND o.status != 'cancelled'`;
@@ -18,6 +27,7 @@ function filters(req) {
   if (q) { where.push("(c.email ILIKE ? OR (c.first_name || ' ' || c.last_name) ILIKE ? OR c.tags ILIKE ?)"); params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
   if (req.query.segment === 'subscribers') where.push('c.accepts_marketing = 1');
   if (req.query.segment === 'accounts') where.push('c.password_hash IS NOT NULL');
+  if (req.query.segment === 'wholesale' || req.query.segment === 'practitioner') { where.push('c.customer_group = ?'); params.push(req.query.segment); }
   return { q, segment: req.query.segment || '', where: where.join(' AND '), params };
 }
 
@@ -33,9 +43,9 @@ router.get('/', async (req, res) => {
 });
 
 router.get('/export.csv', async (req, res) => {
-  const lines = [csvRow(['First Name', 'Last Name', 'Email', 'Phone', 'Accepts Marketing', 'Total Orders', 'Total Spent', 'Tags', 'Note', 'Created At'])];
+  const lines = [csvRow(['First Name', 'Last Name', 'Email', 'Phone', 'Accepts Marketing', 'Total Orders', 'Total Spent', 'Tags', 'Note', 'Customer Group', 'Created At'])];
   for (const c of await all(`${STATS} GROUP BY c.id ORDER BY c.id`)) {
-    lines.push(csvRow([c.first_name, c.last_name, c.email, c.phone, c.accepts_marketing ? 'yes' : 'no', c.order_count, centsToInput(c.spent), c.tags, c.note, new Date(c.created_at).toISOString()]));
+    lines.push(csvRow([c.first_name, c.last_name, c.email, c.phone, c.accepts_marketing ? 'yes' : 'no', c.order_count, centsToInput(c.spent), c.tags, c.note, c.customer_group, new Date(c.created_at).toISOString()]));
   }
   res.attachment('customers.csv').type('text/csv').send(lines.join('\n'));
 });
@@ -52,9 +62,9 @@ router.post('/new', async (req, res) => {
     flash(req, 'error', 'A customer with this email already exists.');
     return res.redirect('/admin/customers/new');
   }
-  const id = await insert('INSERT INTO customers (email, first_name, last_name, phone, accepts_marketing, tags, note) VALUES (?, ?, ?, ?, ?, ?, ?)',
+  const id = await insert('INSERT INTO customers (email, first_name, last_name, phone, accepts_marketing, tags, note, customer_group) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     email, String(req.body.first_name || ''), String(req.body.last_name || ''), String(req.body.phone || ''),
-    req.body.accepts_marketing ? 1 : 0, parseTags(req.body.tags).join(', '), String(req.body.note || ''));
+    req.body.accepts_marketing ? 1 : 0, parseTags(req.body.tags).join(', '), String(req.body.note || ''), groupOf(req.body.customer_group));
   if (req.body.address1) {
     await run(`INSERT INTO addresses (customer_id, first_name, last_name, address1, address2, city, province, zip, country, phone, is_default)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`, id, String(req.body.first_name || ''), String(req.body.last_name || ''),
@@ -75,14 +85,18 @@ router.get('/:id', async (req, res, next) => {
 
 router.post('/:id', async (req, res) => {
   const id = toInt(req.params.id);
-  await run('UPDATE customers SET first_name = ?, last_name = ?, phone = ?, accepts_marketing = ?, tags = ?, note = ? WHERE id = ?',
+  await run('UPDATE customers SET first_name = ?, last_name = ?, phone = ?, accepts_marketing = ?, tags = ?, note = ?, customer_group = ? WHERE id = ?',
     String(req.body.first_name || ''), String(req.body.last_name || ''), String(req.body.phone || ''),
-    req.body.accepts_marketing ? 1 : 0, parseTags(req.body.tags).join(', '), String(req.body.note || ''), id);
+    req.body.accepts_marketing ? 1 : 0, parseTags(req.body.tags).join(', '), String(req.body.note || ''), groupOf(req.body.customer_group), id);
   flash(req, 'success', 'Customer saved.');
   res.redirect(`/admin/customers/${id}`);
 });
 
 router.post('/:id/delete', async (req, res) => {
+  if (await get('SELECT 1 FROM patients WHERE customer_id = ?', toInt(req.params.id))) {
+    flash(req, 'error', 'This customer has a clinic record, so their account can\'t be deleted here. An owner can delete the clinic record first.');
+    return res.redirect(`/admin/customers/${toInt(req.params.id)}`);
+  }
   await run('DELETE FROM customers WHERE id = ?', toInt(req.params.id));
   flash(req, 'success', 'Customer deleted. Their past orders were kept.');
   res.redirect('/admin/customers');

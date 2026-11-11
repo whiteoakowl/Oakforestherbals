@@ -1,0 +1,14 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Suppliers', actions: '<a class="btn btn-primary" href="/admin/inventory/suppliers/new">Add supplier</a>' }) %>
+  <%- include('_tabs') %>
+  <div class="card flush">
+    <div class="tabs pad-x"><a class="tab <%= archived ? '' : 'active' %>" href="?">Active</a><a class="tab <%= archived ? 'active' : '' %>" href="?archived=1">Archived</a></div>
+    <% if (!suppliers.length) { %><p class="pad muted">No suppliers yet.</p><% } else { %>
+    <div class="table-scroll"><table class="table"><thead><tr><th>Supplier</th><th>Contact</th><th class="num">Materials</th><th class="num">Orders</th><th class="num">Bought</th><th>Lead time</th></tr></thead><tbody>
+      <% for (const s of suppliers) { %><tr><td><a href="/admin/inventory/suppliers/<%= s.id %>"><strong><%= s.name %></strong></a><% if (s.certifications) { %><div class="muted small"><%= s.certifications %></div><% } %></td>
+        <td class="small"><%= s.contact_name %><div class="muted"><%= s.email %> <%= s.phone %></div></td><td class="num"><%= s.materials %></td><td class="num"><%= s.orders %></td><td class="num"><%= money(Math.round(Number(s.spent))) %></td><td class="small"><%= s.lead_time_days ? `${s.lead_time_days} days` : '—' %></td></tr><% } %>
+    </tbody></table></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

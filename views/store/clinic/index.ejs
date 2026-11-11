@@ -1,0 +1,31 @@
+<%- include('_top') %>
+<div class="clinic-grid">
+  <section>
+    <% if (forms.length) { %>
+      <div class="card"><h2>Forms to complete</h2>
+        <% for (const f of forms) { %><p><a class="btn btn-secondary" href="/account/clinic/forms/<%= f.id %>"><%= f.name %></a><% if (f.due_at) { %> <span class="muted small">due <%= ymd(f.due_at) %></span><% } %></p><% } %></div>
+    <% } %>
+    <% if (plan) { const tasks = plan.items.filter((i) => i.is_task); %>
+      <div class="card">
+        <h2><a href="/account/clinic/plans/<%= plan.id %>"><%= plan.content.title || 'My care plan' %></a></h2>
+        <% if (progress) { %><p class="small">You've completed <strong><%= progress.percent %>%</strong> of your tasks in the last two weeks.</p><% } %>
+        <% if (tasks.length) { %><h3>Today</h3>
+          <% for (const t of tasks) { %>
+            <form method="post" action="/account/clinic/plans/<%= plan.id %>/items/<%= t.id %>/done" class="task-row"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="/account/clinic">
+              <button class="task-check <%= t.doneToday ? 'done' : '' %>" aria-pressed="<%= t.doneToday %>" aria-label="<%= t.doneToday ? 'Mark not done' : 'Mark done' %>: <%= t.content.title %>"><%= t.doneToday ? '✓' : '' %></button>
+              <span><%= t.content.title %><% if (t.content.timing) { %> <span class="muted small">· <%= t.content.timing %></span><% } %></span></form>
+          <% } %>
+        <% } %>
+        <p><a href="/account/clinic/plans/<%= plan.id %>">See your full plan →</a></p>
+      </div>
+    <% } else if (!plans.length) { %><div class="card"><p class="muted">Your practitioner hasn't shared a care plan yet.</p></div><% } %>
+    <% if (plans.length > 1) { %><div class="card"><h2>All plans</h2><% for (const p of plans) { %><p><a href="/account/clinic/plans/<%= p.id %>"><%= p.content.title || 'Care plan' %></a> <span class="muted small"><%= p.status %></span></p><% } %></div><% } %>
+  </section>
+  <aside>
+    <div class="card"><h2>Messages</h2><p><%= unread ? `${unread} new message${unread === 1 ? '' : 's'}` : 'No new messages' %></p><a href="/account/clinic/messages">Open messages</a></div>
+    <div class="card"><h2>Learning</h2><% const todo = lessons.filter((l) => !l.completed_at && !l.locked); %><p><%= todo.length ? `${todo.length} lesson${todo.length === 1 ? '' : 's'} to read` : 'All caught up' %></p><a href="/account/clinic/learning">Open learning</a></div>
+    <div class="card"><h2>My wellness</h2><p class="small">Track symptoms, sleep, energy and mood between visits.</p><a href="/account/clinic/journal">Add an entry</a></div>
+    <% if (docs.length) { %><div class="card"><h2>Documents</h2><% for (const d of docs) { %><p class="small"><a href="/account/clinic/documents/<%= d.id %>"><%= d.title %></a></p><% } %></div><% } %>
+  </aside>
+</div>
+<%- include('_bottom') %>

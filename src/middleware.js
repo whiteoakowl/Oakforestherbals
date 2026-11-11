@@ -5,6 +5,8 @@ const settings = require('./settings');
 const utils = require('./utils');
 const catalog = require('./catalog');
 const { themeColors } = require('./colors');
+const permissions = require('./permissions');
+const audit = require('./audit');
 
 // CSRF: one token per session, required on every non-GET request.
 function csrfToken(req) {
@@ -56,14 +58,19 @@ async function locals(req, res, next) {
   res.locals.toDateTimeInput = utils.toDateTimeInput;
   res.locals.stripHtml = utils.stripHtml;
   res.locals.path = req.path;
+  res.locals.originalPath = req.originalUrl.split('?')[0];
   res.locals.query = req.query;
   res.locals.cartCount = (req.session.cart || []).reduce((s, i) => s + i.quantity, 0);
   const [staff, customer, menus] = await Promise.all([
-    req.session.staffId ? get('SELECT id, email, name, role FROM staff WHERE id = ?', req.session.staffId) : null,
+    req.session.staffId ? get('SELECT id, email, name, role, totp_enabled_at IS NOT NULL AS two_factor, must_change_password FROM staff WHERE id = ?', req.session.staffId) : null,
     req.session.customerId ? get('SELECT * FROM customers WHERE id = ?', req.session.customerId) : null,
     catalog.menus(),
   ]);
+  if (staff) staff.permissions = await permissions.forRole(staff.role);
   Object.assign(res.locals, { staff: staff || null, customer: customer || null });
+  // Customers with a clinic record get a "My clinic" link in their account.
+  res.locals.isPatient = Boolean(customer && await get("SELECT 1 FROM patients WHERE customer_id = ? AND portal_enabled = 1 AND status != 'archived'", customer.id).catch(() => null));
+  res.locals.can = (perm) => Boolean(staff && staff.permissions.has(perm));
   res.locals.menu = (handle) => menus[handle] || [];
   next();
 }
@@ -77,10 +84,24 @@ async function requireStaff(req, res, next) {
 }
 
 function requireOwner(req, res, next) {
-  if (res.locals.staff.role !== 'owner') {
-    return res.status(403).render('admin/error', { title: 'Permission required', message: 'Only the store owner can manage these settings.' });
-  }
+  if (res.locals.staff.role !== 'owner') return denied(req, res, 'owner');
   next();
+}
+
+function denied(req, res, perm) {
+  audit.record(req, 'access.denied', { details: { permission: perm, method: req.method, path: req.originalUrl.split('?')[0] } });
+  return res.status(403).render('admin/error', { title: 'Permission required', message: 'Your role does not include access to this area. Ask the store owner if you need it.' });
+}
+
+// Gates a router: reads (GET/HEAD) need viewPerm or managePerm; everything else needs managePerm.
+// With one argument, that permission covers both.
+function requirePermission(viewPerm, managePerm = viewPerm) {
+  return (req, res, next) => {
+    const reading = req.method === 'GET' || req.method === 'HEAD';
+    const ok = reading ? (res.locals.can(viewPerm) || res.locals.can(managePerm)) : res.locals.can(managePerm);
+    if (!ok) return denied(req, res, reading ? viewPerm : managePerm);
+    next();
+  };
 }
 
 function requireCustomer(req, res, next) {
@@ -106,18 +127,31 @@ async function trackView(req, res, next) {
   next();
 }
 
-// Naive in-memory login throttle: 10 attempts per 15 minutes per IP + scope.
-const attempts = new Map();
+// Login/registration throttle: 10 attempts per 15 minutes per IP and scope. Stored in Postgres so
+// every serverless instance sees the same count. Fails open (with a log line) if the table is
+// unreachable, so a database hiccup can't lock everyone out.
+const THROTTLE_WINDOW = 15 * 60 * 1000;
+const THROTTLE_LIMIT = 10;
+async function hitThrottle(key, now = Date.now()) {
+  const row = await get(`INSERT INTO login_attempts (key, window_start, count) VALUES (?, ?, 1)
+    ON CONFLICT (key) DO UPDATE SET
+      count = CASE WHEN login_attempts.window_start < ? THEN 1 ELSE login_attempts.count + 1 END,
+      window_start = CASE WHEN login_attempts.window_start < ? THEN EXCLUDED.window_start ELSE login_attempts.window_start END
+    RETURNING count`, key, now, now - THROTTLE_WINDOW, now - THROTTLE_WINDOW);
+  if (Math.random() < 0.02) await run('DELETE FROM login_attempts WHERE window_start < ?', now - THROTTLE_WINDOW);
+  return row.count;
+}
+
 function throttle(scope) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (req.method !== 'POST') return next();
-    const key = `${scope}:${req.ip}`;
-    const now = Date.now();
-    const entry = attempts.get(key) || { count: 0, reset: now + 15 * 60 * 1000 };
-    if (now > entry.reset) { entry.count = 0; entry.reset = now + 15 * 60 * 1000; }
-    entry.count++;
-    attempts.set(key, entry);
-    if (entry.count > 10) return res.status(429).send('Too many attempts. Please wait a few minutes and try again.');
+    let count = 0;
+    try {
+      count = await hitThrottle(`${scope}:${req.ip}`);
+    } catch (err) {
+      console.error('throttle unavailable', err.message);
+    }
+    if (count > THROTTLE_LIMIT) return res.status(429).send('Too many attempts. Please wait a few minutes and try again.');
     next();
   };
 }
@@ -130,6 +164,6 @@ function securityHeaders(req, res, next) {
 }
 
 module.exports = {
-  csrfGuard, verifyCsrf, flash, loadSettings, locals, requireStaff, requireOwner, requireCustomer,
+  csrfGuard, verifyCsrf, flash, loadSettings, locals, requireStaff, requireOwner, requirePermission, requireCustomer,
   storefrontPassword, trackView, throttle, securityHeaders,
 };

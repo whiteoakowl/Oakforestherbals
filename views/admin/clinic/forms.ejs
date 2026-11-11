@@ -1,0 +1,12 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Forms', actions: '<a class="btn" href="/admin/clinic/forms/new?starter=intake">Start from intake template</a> <a class="btn btn-primary" href="/admin/clinic/forms/new">New form</a>' }) %>
+  <div class="card flush">
+    <% if (!forms.length) { %><p class="pad muted">No forms yet. Build intake, health history, lifestyle, consent and follow-up forms; patients complete them in their account.</p><% } else { %>
+    <table class="table"><thead><tr><th>Form</th><th>Type</th><th>Status</th><th class="num">Waiting</th><th class="num">Answers</th></tr></thead><tbody>
+      <% for (const f of forms) { %><tr><td><a href="/admin/clinic/forms/<%= f.id %>"><strong><%= f.name %></strong></a><div class="muted small">v<%= f.version %> · <%= JSON.parse(f.fields).length %> questions</div></td>
+        <td class="small"><%= (FORM_KINDS.find(([k]) => k === f.kind) || [, f.kind])[1] %></td><td><span class="badge badge-<%= f.status === 'published' ? 'success' : 'default' %>"><%= f.status %></span></td><td class="num"><%= f.open %></td><td class="num"><%= f.submissions %></td></tr><% } %>
+    </tbody></table><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

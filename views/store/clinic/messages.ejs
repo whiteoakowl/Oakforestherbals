@@ -1,0 +1,18 @@
+<%- include('_top') %>
+<div class="clinic-grid">
+  <section>
+    <% if (thread) { %>
+      <div class="card"><h2><%= thread.subject %></h2>
+        <% for (const m of thread.messages) { %><div class="msg msg-<%= m.sender_type %>"><div class="muted small"><%= m.sender_type === 'staff' ? m.sender_name : 'You' %> · <%= formatDate(m.created_at, true) %></div><p class="prewrap"><%= m.body %></p></div><% } %>
+        <form method="post" action="/account/clinic/messages"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="thread_id" value="<%= thread.id %>">
+          <label class="field"><span>Reply</span><textarea name="body" rows="3" required></textarea></label><button class="btn">Send</button></form>
+      </div>
+    <% } %>
+    <form method="post" action="/account/clinic/messages" class="card"><input type="hidden" name="_csrf" value="<%= csrf %>"><h2>New message</h2>
+      <label class="field"><span>Subject</span><input name="subject" required></label><label class="field"><span>Message</span><textarea name="body" rows="4" required></textarea></label>
+      <p class="muted small">For anything urgent, call your doctor or emergency services — messages aren't monitored around the clock.</p><button class="btn">Send securely</button></form>
+  </section>
+  <aside><div class="card"><h2>Conversations</h2><% if (!threads.length) { %><p class="muted small">None yet.</p><% } %>
+    <% for (const t of threads) { %><p class="small"><a href="?thread=<%= t.id %>"><%= t.subject %></a><%= Number(t.unread_patient) ? ` · ${t.unread_patient} new` : '' %></p><% } %></div></aside>
+</div>
+<%- include('_bottom') %>

@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<% const max = Math.max(1, ...months.map((m) => Math.max(m.revenue, m.expenses + m.cogs))); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Financials', actions: `<a class="btn" href="/admin/finance/export/summary.csv?from=${from}&to=${to}">Summary CSV</a> <a class="btn" href="/admin/finance/export/payments.csv?from=${from}&to=${to}">Payments CSV</a> <a class="btn" href="/admin/finance/export/invoices.csv?from=${from}&to=${to}">Invoices CSV</a> <a class="btn" href="/admin/finance/export/expenses.csv?from=${from}&to=${to}">Expenses CSV</a>` }) %>
+  <form class="card inline-fields" method="get"><label class="small">From <input type="date" name="from" value="<%= from %>"></label><label class="small">to (not including) <input type="date" name="to" value="<%= to %>"></label><button class="btn btn-sm">Show</button>
+    <a class="small" href="?year=<%= year - 1 %>"><%= year - 1 %></a> <a class="small" href="?year=<%= year %>"><%= year %></a></form>
+  <div class="grid-3 stat-row">
+    <div class="card"><div class="stat-label">Revenue</div><div class="stat-value"><%= money(totals.revenue || 0) %></div><div class="stat-sub muted small">products <%= money(totals.product_sales || 0) %> · services <%= money(totals.services || 0) %></div></div>
+    <div class="card"><div class="stat-label">Gross profit</div><div class="stat-value"><%= money(totals.gross || 0) %></div><div class="stat-sub muted small">after cost of goods <%= money(totals.cogs || 0) %></div></div>
+    <div class="card"><div class="stat-label">Net operating</div><div class="stat-value <%= (totals.net || 0) < 0 ? 'critical-text' : '' %>"><%= money(totals.net || 0) %></div><div class="stat-sub muted small">after expenses <%= money(totals.expenses || 0) %></div></div>
+  </div>
+  <div class="card">
+    <h2>By month</h2>
+    <div class="month-bars" role="img" aria-label="Revenue and costs by month">
+      <% for (const m of months) { %><div class="month-bar"><div class="bars"><span class="rev" style="height:<%= (m.revenue / max) * 100 %>%" title="Revenue <%= money(m.revenue) %>"></span><span class="cost" style="height:<%= ((m.cogs + m.expenses) / max) * 100 %>%" title="Costs <%= money(m.cogs + m.expenses) %>"></span></div><span class="small muted"><%= m.month.slice(5) %></span></div><% } %>
+    </div>
+    <p class="small muted"><span class="key rev"></span> Revenue <span class="key cost"></span> Cost of goods + expenses</p>
+    <div class="table-scroll"><table class="table small"><thead><tr><th>Month</th><th class="num">Products</th><th class="num">Services</th><th class="num">Cost of goods</th><th class="num">Gross</th><th class="num">Expenses</th><th class="num">Net</th><th class="num">Sales tax</th><th class="num">Inventory bought</th></tr></thead><tbody>
+      <% for (const m of months) { %><tr><td><%= m.month %></td><td class="num"><%= money(m.product_sales) %></td><td class="num"><%= money(m.services) %></td><td class="num"><%= money(m.cogs) %></td><td class="num"><%= money(m.gross) %></td><td class="num"><%= money(m.expenses) %></td><td class="num <%= m.net < 0 ? 'critical-text' : '' %>"><%= money(m.net) %></td><td class="num"><%= money(m.sales_tax) %></td><td class="num"><%= money(m.purchases) %></td></tr><% } %>
+    </tbody></table></div>
+  </div>
+  <div class="grid-3">
+    <div class="card"><h2>Outstanding invoices</h2><% if (!outstanding.length) { %><p class="muted small">None.</p><% } %><% for (const i of outstanding) { %><p class="small"><a href="/admin/invoices/<%= i.id %>">#<%= i.number %></a> <%= i.name || i.email %> · <%= money(i.total - i.paid_total) %><%= i.due_on && ymd(i.due_on) < new Date().toISOString().slice(0, 10) ? ' · overdue' : '' %></p><% } %></div>
+    <div class="card"><h2>Expenses by category</h2><% if (!byCategory.length) { %><p class="muted small">None recorded.</p><% } %><% for (const c of byCategory) { %><p class="small"><%= (EXPENSE_CATEGORIES.find(([k]) => k === c.category) || [, c.category])[1] %> · <%= money(c.total) %></p><% } %></div>
+    <div class="card"><h2>Practitioner revenue</h2><% if (!byPractitioner.length) { %><p class="muted small">From paid appointment invoices.</p><% } %><% for (const p of byPractitioner) { %><p class="small"><%= p.name %> · <%= money(p.paid) %> (<%= p.invoices %> invoices)</p><% } %><p class="small muted">Refunds in period: <%= money(refunds) %></p></div>
+  </div>
+  <p class="muted small">Product sales are paid orders net of refunds and excluding sales tax; cost of goods uses each item's recorded cost at sale. Services are invoice payments received. This is management reporting — confirm figures with your accountant for tax filings.</p>
+</div>
+<%- include('../partials/footer') %>

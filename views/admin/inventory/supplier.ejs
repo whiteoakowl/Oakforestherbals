@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+<% const s = supplier || {}; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: supplier ? supplier.name : 'Add supplier', backHref: '/admin/inventory/suppliers', actions: supplier ? `<a class="btn btn-primary" href="/admin/inventory/purchase-orders/new?supplier=${supplier.id}">New purchase order</a>` : '' }) %>
+  <div class="layout-2">
+    <form method="post" action="<%= supplier ? `/admin/inventory/suppliers/${supplier.id}` : '/admin/inventory/suppliers/new' %>" class="card form-stack">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <div class="grid-2"><label class="field"><span>Name</span><input name="name" value="<%= s.name || '' %>" required></label><label class="field"><span>Contact person</span><input name="contact_name" value="<%= s.contact_name || '' %>"></label></div>
+      <div class="grid-3"><label class="field"><span>Email</span><input type="email" name="email" value="<%= s.email || '' %>"></label><label class="field"><span>Phone</span><input name="phone" value="<%= s.phone || '' %>"></label><label class="field"><span>Website</span><input name="website" value="<%= s.website || '' %>"></label></div>
+      <label class="field"><span>Address</span><textarea name="address" rows="2"><%= s.address || '' %></textarea></label>
+      <div class="grid-3"><label class="field"><span>Certifications</span><input name="certifications" value="<%= s.certifications || '' %>" placeholder="e.g. USDA Organic"></label><label class="field"><span>Lead time (days)</span><input type="number" min="0" name="lead_time_days" value="<%= s.lead_time_days || '' %>"></label><label class="field"><span>Minimum order</span><input name="min_order" value="<%= s.min_order || '' %>"></label></div>
+      <label class="field"><span>Notes</span><textarea name="notes" rows="3"><%= s.notes || '' %></textarea></label>
+      <% if (supplier) { %><label class="check small"><input type="checkbox" name="archived" value="1" <%= s.archived ? 'checked' : '' %>> Archived</label><% } %>
+      <div class="right"><button class="btn btn-primary">Save</button></div>
+    </form>
+    <% if (supplier) { %>
+    <div>
+      <div class="card"><h2>Materials (product catalogue)</h2><% if (!materials.length) { %><p class="muted small">Choose this supplier on a material to list it here.</p><% } %>
+        <% for (const m of materials) { %><p class="small"><a href="/admin/inventory/materials/<%= m.id %>"><%= m.name %></a> <span class="muted"><%= money(m.pack_cost) %> / <%= Number(m.pack_size) %> <%= UNITS[m.pack_unit].label %><%= m.supplier_sku ? ` · ${m.supplier_sku}` : '' %></span></p><% } %></div>
+      <div class="card"><h2>Purchase orders</h2><% if (!orders.length) { %><p class="muted small">None yet.</p><% } %>
+        <% for (const o of orders) { %><p class="small"><a href="/admin/inventory/purchase-orders/<%= o.id %>">PO #<%= o.number %></a> <span class="badge badge-default"><%= o.status %></span> <span class="muted"><%= formatDate(o.created_at) %></span></p><% } %></div>
+      <div class="card"><h2>Recent lots</h2><% for (const l of lots) { %><p class="small"><%= l.name %> · <%= l.lot_code %> <span class="muted"><%= fmtQty(Number(l.qty_received), l) %> · <%= ymd(l.received_at) %></span></p><% } %></div>
+    </div>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

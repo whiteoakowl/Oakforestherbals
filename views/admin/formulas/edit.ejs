@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+<% const f = formula || { name: '', category: 'tea', description: '', entry_mode: 'parts', yield_qty: 100, yield_unit: 'g', intended_use: '', instructions: '', storage: '', shelf_life_days: '', labour_minutes: 0, practitioner_notes: '', safety_notes: '', visibility: 'shared' };
+   const rows = [...lines, {}, {}, {}, {}]; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: formula ? `Edit ${formula.name}` : 'New formula', backHref: formula ? `/admin/formulas/${formula.id}` : '/admin/formulas' }) %>
+  <% if (formula && formula.status === 'approved') { %><div class="banner">This formula is approved. Saving changes creates draft version <%= formula.version + 1 %>, which needs approval again before it's produced. Version <%= formula.version %> stays in the history.</div><% } %>
+  <form method="post" action="<%= formula ? `/admin/formulas/${formula.id}/edit` : '/admin/formulas/new' %>" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="layout-2">
+      <div>
+        <div class="card form-stack">
+          <div class="grid-2"><label class="field"><span>Name</span><input name="name" value="<%= f.name %>" required></label>
+            <label class="field"><span>Type</span><select name="category"><% for (const [k, l] of CATEGORIES) { %><option value="<%= k %>" <%= k === f.category ? 'selected' : '' %>><%= l %></option><% } %></select></label></div>
+          <label class="field"><span>Description</span><textarea name="description" rows="2"><%= f.description %></textarea></label>
+          <div class="grid-3">
+            <label class="field"><span>One batch makes</span><input name="yield_qty" inputmode="decimal" value="<%= Number(f.yield_qty) %>" required></label>
+            <label class="field"><span>Unit</span><select name="yield_unit"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= k === f.yield_unit ? 'selected' : '' %>><%= u.label %></option><% } %></select></label>
+            <label class="field"><span>Enter ingredients as</span><select name="entry_mode"><% for (const [k, l] of MODES) { %><option value="<%= k %>" <%= k === f.entry_mode ? 'selected' : '' %>><%= l %></option><% } %></select></label>
+          </div>
+          <p class="muted small"><strong>Parts</strong>: e.g. 2 parts chamomile, 1 part lemon balm — amounts are worked out from the yield. <strong>Percentages</strong> must add up to 100. <strong>Amounts</strong> are exact quantities per batch.</p>
+        </div>
+        <div class="card form-stack">
+          <h2>Ingredients</h2>
+          <div class="table-scroll"><table class="table small">
+            <thead><tr><th>Material</th><th>Amount / parts / %</th><th>Unit (amounts only)</th><th>Notes</th><th>Remove</th></tr></thead>
+            <tbody><% rows.forEach((l, i) => { %>
+              <tr>
+                <td><select name="lines[<%= i %>][material_id]" aria-label="Ingredient <%= i + 1 %>"><option value="">—</option><% for (const m of materials) { %><option value="<%= m.id %>" <%= m.id === l.material_id ? 'selected' : '' %>><%= m.name %><%= m.kind === 'component' ? ' (component)' : '' %></option><% } %></select></td>
+                <td><input class="cell-input" name="lines[<%= i %>][quantity]" value="<%= l.quantity ?? '' %>" inputmode="decimal" aria-label="Amount <%= i + 1 %>"></td>
+                <td><select name="lines[<%= i %>][unit]" aria-label="Unit <%= i + 1 %>"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= k === (l.unit || 'g') ? 'selected' : '' %>><%= u.label %></option><% } %></select></td>
+                <td><input class="cell-input" name="lines[<%= i %>][notes]" value="<%= l.notes || '' %>" aria-label="Notes <%= i + 1 %>"></td>
+                <td><% if (l.material_id) { %><input type="checkbox" name="lines[<%= i %>][remove]" value="1" aria-label="Remove <%= i + 1 %>"><% } %></td>
+              </tr><% }) %></tbody>
+          </table></div>
+          <p class="muted small">Four blank rows appear each time you save. Missing a material? <a href="/admin/costing/materials/new" target="_blank" rel="noopener">Add it</a> (link it to the herbal database to see its safety information here).</p>
+        </div>
+        <div class="card form-stack">
+          <label class="field"><span>Preparation instructions</span><textarea name="instructions" rows="6"><%= f.instructions %></textarea></label>
+          <div class="grid-2"><label class="field"><span>Intended use</span><textarea name="intended_use" rows="2"><%= f.intended_use %></textarea></label><label class="field"><span>Storage</span><textarea name="storage" rows="2"><%= f.storage %></textarea></label></div>
+          <div class="grid-2"><label class="field"><span>Shelf life (days)</span><input type="number" min="0" name="shelf_life_days" value="<%= f.shelf_life_days || '' %>"></label><label class="field"><span>Labour per batch (minutes)</span><input name="labour_minutes" inputmode="decimal" value="<%= Number(f.labour_minutes) %>"></label></div>
+          <label class="field"><span>Safety notes</span><textarea name="safety_notes" rows="2"><%= f.safety_notes %></textarea></label>
+          <label class="field"><span>Practitioner notes</span><textarea name="practitioner_notes" rows="2"><%= f.practitioner_notes %></textarea></label>
+        </div>
+      </div>
+      <div><div class="card form-stack">
+        <h2>Visibility</h2>
+        <select name="visibility" aria-label="Visibility"><option value="shared" <%= f.visibility === 'shared' ? 'selected' : '' %>>Shared with the business</option><option value="private" <%= f.visibility === 'private' ? 'selected' : '' %>>Private to me</option></select>
+        <button class="btn btn-primary">Save formula</button>
+      </div></div>
+    </div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

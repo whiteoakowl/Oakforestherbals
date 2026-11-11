@@ -84,7 +84,8 @@ router.post('/new', async (req, res) => {
     flash(req, 'error', 'Add at least one product and a customer email.');
     return res.redirect('/admin/orders/new');
   }
-  const cart = await pricing.buildCart(lines.map((l) => ({ variant_id: toInt(l.variant_id), quantity: toInt(l.quantity) })));
+  const existingCustomer = await get('SELECT customer_group FROM customers WHERE email = ?', email);
+  const cart = await pricing.buildCart(lines.map((l) => ({ variant_id: toInt(l.variant_id), quantity: toInt(l.quantity) })), { priceList: pricing.priceListFor(existingCustomer) });
   const fields = ['first_name', 'last_name', 'company', 'address1', 'address2', 'city', 'province', 'zip', 'country', 'phone'];
   const address = Object.fromEntries(fields.map((f) => [f, String(req.body[f] || '').trim()]));
   const shipping = { name: String(req.body.shipping_name || 'Custom shipping'), price: parseMoney(req.body.shipping_price) || 0 };
@@ -98,6 +99,7 @@ router.post('/new', async (req, res) => {
       shippingAddress: address, billingAddress: address,
       payment: { name: req.body.mark_paid ? 'Manual (paid)' : 'Manual (invoice)' },
       note: String(req.body.note || ''),
+      source: 'admin',
     });
   } catch (err) {
     if (err.status !== 409) throw err;
@@ -110,6 +112,16 @@ router.post('/new', async (req, res) => {
   res.redirect(back(order.id));
 });
 
+router.get('/abandoned', async (req, res) => {
+  const rows = await all(`SELECT a.*, o.number AS order_number FROM abandoned_checkouts a LEFT JOIN orders o ON o.id = a.order_id
+    WHERE a.created_at > now() - interval '60 days' ORDER BY a.updated_at DESC LIMIT 200`);
+  const stats = await get(`SELECT COUNT(*) FILTER (WHERE completed_at IS NULL) AS open, COUNT(*) FILTER (WHERE reminded_at IS NOT NULL) AS reminded,
+    COUNT(*) FILTER (WHERE reminded_at IS NOT NULL AND completed_at IS NOT NULL) AS recovered,
+    COALESCE(SUM(subtotal) FILTER (WHERE reminded_at IS NOT NULL AND completed_at IS NOT NULL), 0) AS recovered_value
+    FROM abandoned_checkouts WHERE created_at > now() - interval '60 days'`);
+  res.render('admin/orders/abandoned', { title: 'Abandoned checkouts', rows: rows.map((r) => ({ ...r, items: JSON.parse(r.cart || '[]') })), stats, cfg: require('../../settings').load('abandoned_cart') });
+});
+
 router.get('/:id', async (req, res, next) => {
   const order = await orders.orderById(toInt(req.params.id));
   if (!order) return next();
@@ -118,7 +130,25 @@ router.get('/:id', async (req, res, next) => {
     : null;
   const prevOrder = await get('SELECT id FROM orders WHERE id < ? ORDER BY id DESC LIMIT 1', order.id);
   const nextOrder = await get('SELECT id FROM orders WHERE id > ? ORDER BY id LIMIT 1', order.id);
-  res.render('admin/orders/show', { title: `Order ${order.name}`, order, customerStats, prevOrder, nextOrder });
+  const downloadsList = await require('../../downloads').linksForOrder(order.id);
+  const giftCards = await all('SELECT id, last4, initial_value, balance, recipient_email FROM gift_cards WHERE order_id = ? AND order_item_id IS NOT NULL ORDER BY id', order.id);
+  const paid = ['paid', 'partially_refunded'].includes(order.financial_status);
+  const cardsDue = order.items.filter((i) => i.product_kind === 'gift_card').reduce((s, i) => s + i.quantity, 0);
+  const filesDue = order.items.some((i) => i.product_kind === 'digital') && !downloadsList.length;
+  const extras = { downloads: downloadsList, giftCards, missing: paid && order.status !== 'cancelled' && (giftCards.length < cardsDue || filesDue) };
+  res.render('admin/orders/show', { title: `Order ${order.name}`, order, customerStats, prevOrder, nextOrder, extras });
+});
+
+router.post('/:id/downloads/reset', async (req, res) => {
+  await require('../../downloads').reset(toInt(req.params.id));
+  flash(req, 'success', 'Download limits reset.');
+  res.redirect(`/admin/orders/${toInt(req.params.id)}`);
+});
+
+router.post('/:id/release', async (req, res) => {
+  await orders.afterPaid(toInt(req.params.id));
+  flash(req, 'success', 'Gift cards and download links sent where missing.');
+  res.redirect(`/admin/orders/${toInt(req.params.id)}`);
 });
 
 router.get('/:id/packing-slip', async (req, res, next) => {

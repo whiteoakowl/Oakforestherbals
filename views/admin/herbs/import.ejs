@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Import and export herbs', backHref: '/admin/herbs', actions: '<a class="btn" href="/admin/herbs/export.csv">Export all (CSV)</a>' }) %>
+  <% if (report) { %>
+    <div class="card form-stack">
+      <h2>Import results</h2>
+      <p><strong><%= report.created.length %></strong> created · <strong><%= report.merged.length %></strong> merged · <strong><%= report.skipped.length %></strong> skipped as duplicates · <strong><%= report.errors.length %></strong> errors</p>
+      <% for (const [label, items, cls] of [['Created (as drafts unless status was “published”)', report.created, ''], ['Merged into existing herbs', report.merged, ''], ['Skipped — already in the database', report.skipped, ''], ['Errors', report.errors, 'critical-text'], ['Unknown categories (not imported — add them under Categories first, or fix the spelling)', report.unknownTerms, 'critical-text']]) { if (!items.length) continue; %>
+        <details <%= cls ? 'open' : '' %>><summary class="small <%= cls %>"><%= label %> (<%= items.length %>)</summary><ul class="small"><% for (const i of items) { %><li><%= i %></li><% } %></ul></details>
+      <% } %>
+    </div>
+  <% } %>
+  <form method="post" action="/admin/herbs/import" enctype="multipart/form-data" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Import a CSV</h2>
+    <input type="file" name="file" accept=".csv,text/csv" required aria-label="CSV file">
+    <label class="check"><input type="checkbox" name="merge" value="1"> Merge into herbs that already exist (fill blank fields and add names, categories and constituents; nothing is overwritten)</label>
+    <p class="muted small">Without merging, rows whose Latin name or synonym is already in the database are skipped and listed.</p>
+    <div class="right"><button class="btn btn-primary">Import</button></div>
+  </form>
+  <div class="card form-stack">
+    <h2>Format</h2>
+    <p class="small">One herb per row. Required: <code>common_name</code>, <code>latin_name</code>. Lists are separated with semicolons. Categories must match existing terms by name; prefix a tradition's term with its key, e.g. <code>tcm: Warm (wen)</code> or <code>ayurveda: Tikta</code>.</p>
+    <p class="small"><a href="/admin/herbs/template.csv">Download a blank template</a></p>
+    <p class="small muted">Columns: <%= columns.join(', ') %>.</p>
+    <p class="small muted">Safety information, dosage, uses and research aren't imported from spreadsheets: each needs its reference chosen on the herb's page, so nothing safety-related enters the database without a source.</p>
+  </div>
+</div>
+<%- include('../partials/footer') %>

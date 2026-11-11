@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<% const label = Object.fromEntries(STATUSES); %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Production', actions: '<a class="btn" href="/admin/production/trace">Trace a lot or batch</a> <a class="btn btn-primary" href="/admin/production/new">Plan a batch</a>' }) %>
+  <div class="card flush">
+    <div class="tabs pad-x">
+      <a class="tab <%= !status ? 'active' : '' %>" href="?">Open</a>
+      <% for (const [k, l] of STATUSES) { %><a class="tab <%= status === k ? 'active' : '' %>" href="?status=<%= k %>"><%= l.replace(' (quarantine)', '') %> <span class="muted"><%= counts[k] || 0 %></span></a><% } %>
+    </div>
+    <% if (!batches.length) { %><p class="pad muted">No batches here. Plan one from an approved formula or from a product with a recipe.</p><% } else { %>
+    <div class="table-scroll"><table class="table">
+      <thead><tr><th>Batch</th><th>Making</th><th class="num">Planned</th><th class="num">Made</th><th class="num">Est. cost</th><th class="num">Actual cost</th><th>Status</th></tr></thead>
+      <tbody><% for (const b of batches) { const unit = b.variant_id ? 'units' : (UNITS[b.output_unit] || {}).label; %>
+        <tr><td><a href="/admin/production/<%= b.id %>"><strong><%= b.code %></strong></a><div class="muted small"><%= b.planned_for ? `for ${ymd(b.planned_for)}` : formatDate(b.created_at) %></div></td>
+          <td><%= b.name %><%= b.variant_title && b.variant_title !== 'Default Title' ? ` — ${b.variant_title}` : '' %></td>
+          <td class="num nowrap"><%= Number(b.planned_qty) %> <%= unit %></td><td class="num nowrap"><%= b.actual_qty === null ? '—' : `${Number(b.actual_qty)} ${unit}` %></td>
+          <td class="num"><%= b.estimated_cost === null ? '—' : money(b.estimated_cost) %></td><td class="num"><%= b.actual_cost === null ? '—' : money(b.actual_cost) %></td>
+          <td><span class="badge badge-<%= b.status === 'released' ? 'success' : b.status === 'cancelled' ? 'default' : 'attention' %>"><%= label[b.status] %></span></td></tr>
+      <% } %></tbody>
+    </table></div><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,29 @@
+<%- include('../partials/header') %>
+<div class="container section">
+  <p><a href="/book">← All appointment types</a></p>
+  <h1 class="page-title"><%= type.name %></h1>
+  <p class="muted"><%= type.duration_min %> minutes · <%= type.price ? money(type.price) : 'Free' %><%= type.deposit ? ` · ${money(type.deposit)} deposit` : '' %> · times shown in <%= tz.replace('_', ' ') %></p>
+  <% if (staffList.length > 1) { %><nav class="clinic-nav" aria-label="Practitioner"><% for (const s of staffList) { %><a href="?staff=<%= s.id %>&from=<%= from %>" class="<%= s.id === staffId ? 'active' : '' %>"><%= s.name %></a><% } %></nav><% } %>
+  <div class="week-nav"><% if (prev) { %><a href="?staff=<%= staffId %>&from=<%= prev %>">← Earlier</a><% } %><a href="?staff=<%= staffId %>&from=<%= next %>">Later →</a></div>
+  <form method="post" action="/book/<%= type.id %>" class="slot-form">
+    <% if (pkgs.length) { %><label class="field">Pay with <select name="package_id"><% for (const pk of pkgs) { %><option value="<%= pk.id %>">a session from <%= pk.name %> (<%= pk.sessions_total - pk.sessions_used %> left)</option><% } %><option value="0">pay for this appointment</option></select></label><% } %>
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="staff_id" value="<%= staffId %>">
+    <div class="slot-days">
+      <% for (const d of days) { %>
+        <fieldset class="slot-day"><legend><%= new Date(`${d.day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) %></legend>
+          <% if (!d.slots.length) { %><p class="muted small">No times</p><% } %>
+          <% for (const s of d.slots) { %><label class="slot"><input type="radio" name="start" value="<%= s.start.toISOString() %>" required><span><%= s.time %><%= type.capacity > 1 ? ` (${s.spots} left)` : '' %></span></label><% } %>
+        </fieldset>
+      <% } %>
+    </div>
+    <% if (type.mode === 'either') { %><label class="field narrow-field"><span>Where</span><select name="mode"><option value="in_person">In person</option><option value="virtual">Online</option></select></label><% } %>
+    <button class="btn">Continue</button>
+  </form>
+  <% if (customer) { %>
+  <details class="card waitlist"><summary>None of these times work?</summary>
+    <form method="post" action="/book/<%= type.id %>/waitlist"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="staff_id" value="<%= staffId %>">
+      <label class="field"><span>Join the waitlist — tell us what suits you</span><input name="preferences" placeholder="e.g. weekday mornings"></label><button class="btn btn-secondary">Join waitlist</button></form>
+  </details>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>
