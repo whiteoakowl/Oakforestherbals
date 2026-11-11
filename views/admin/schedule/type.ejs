@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<% const t = type || { name: '', description: '', kind: 'initial', duration_min: 60, buffer_min: 0, price: 0, deposit: 0, mode: 'either', capacity: 1, online_booking: 1, active: 1 }; %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: type ? type.name : 'New appointment type', backHref: '/admin/schedule/types' }) %>
+  <form method="post" action="/admin/schedule/types/<%= type ? type.id : 'new' %>" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="grid-2"><label class="field"><span>Name</span><input name="name" value="<%= t.name %>" required></label>
+      <label class="field"><span>Kind</span><select name="kind"><% for (const [k, l] of KINDS) { %><option value="<%= k %>" <%= k === t.kind ? 'selected' : '' %>><%= l %></option><% } %></select></label></div>
+    <label class="field"><span>Description shown when booking</span><textarea name="description" rows="2"><%= t.description %></textarea></label>
+    <div class="grid-3"><label class="field"><span>Length (minutes)</span><input type="number" name="duration_min" min="5" value="<%= t.duration_min %>"></label>
+      <label class="field"><span>Buffer after (minutes)</span><input type="number" name="buffer_min" min="0" value="<%= t.buffer_min %>"></label>
+      <label class="field"><span>People per session</span><input type="number" name="capacity" min="1" value="<%= t.capacity %>"></label></div>
+    <div class="grid-3"><label class="field"><span>Price</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="price" value="<%= centsToInput(t.price) %>" inputmode="decimal"></div></label>
+      <label class="field"><span>Deposit to book</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="deposit" value="<%= centsToInput(t.deposit) %>" inputmode="decimal"></div></label>
+      <label class="field"><span>Where</span><select name="mode"><% for (const [k, l] of [['either', 'In person or online'], ['in_person', 'In person'], ['virtual', 'Online']]) { %><option value="<%= k %>" <%= k === t.mode ? 'selected' : '' %>><%= l %></option><% } %></select></label></div>
+    <div class="field"><span>Practitioners who offer it</span><% for (const p of people) { %><label class="check small"><input type="checkbox" name="staff_ids" value="<%= p.id %>" <%= staffIds.includes(p.id) ? 'checked' : '' %>> <%= p.name %></label><% } %></div>
+    <label class="check small"><input type="checkbox" name="online_booking" value="1" <%= t.online_booking ? 'checked' : '' %>> Clients can book this online</label>
+    <label class="check small"><input type="hidden" name="active" value="0"><input type="checkbox" name="active" value="1" <%= t.active ? 'checked' : '' %>> Active</label>
+    <p class="muted small">Deposits are taken by card at booking when Stripe is set up; otherwise they're added to the client's invoice.</p>
+    <div class="right"><button class="btn btn-primary">Save</button></div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

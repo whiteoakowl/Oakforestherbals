@@ -95,6 +95,22 @@ const SECTIONS = [
         ],
       },
       { href: '/admin/education', label: 'Education', icon: 'content', perm: 'education.manage' },
+      {
+        href: '/admin/schedule', label: 'Schedule', icon: 'calendar', anyPerm: ['scheduling.manage', 'scheduling.own'],
+        children: [
+          { href: '/admin/schedule', label: 'Calendar', exact: true, match: /^\/admin\/schedule\/appointments\// },
+          { href: '/admin/schedule/types', label: 'Appointment types', perm: 'scheduling.manage' },
+          { href: '/admin/schedule/hours', label: 'Hours and profile' },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Finance',
+    items: [
+      { href: '/admin/finance', label: 'Financials', icon: 'analytics', perm: 'finance.view', exact: true },
+      { href: '/admin/invoices', label: 'Invoices', icon: 'orders', perm: 'invoices.manage' },
+      { href: '/admin/finance/expenses', label: 'Expenses', icon: 'cost', anyPerm: ['finance.view', 'expenses.manage'] },
     ],
   },
   {

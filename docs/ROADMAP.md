@@ -69,7 +69,7 @@ Patient-facing wording uses "recommendation" and "care plan", never "prescriptio
 "My Clinic", "My Learning", "My Wellness" inside the existing `/account` area; lessons, courses,
 quizzes and assignments; purchase-from-care-plan.
 
-## Phase 8 — Scheduling, payments and finance
+## Phase 8 — Scheduling, payments and finance ✅
 Appointment types, availability, booking with deposits and policies, reminders; a payments and
 refunds ledger (back-filled from existing orders); invoices; expenses; financial dashboards and
 accounting exports; Stripe and SMTP secrets moved to environment variables.

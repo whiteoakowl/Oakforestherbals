@@ -1,0 +1,7 @@
+<%- include('../partials/header') %>
+<div class="container section narrow">
+  <h1 class="page-title">Confirm your appointment</h1>
+  <div class="card"><p><strong><%= type.name %></strong><%= staff ? ` with ${staff.name}` : '' %></p><p><%= when(p.start) %></p><p><%= type.price ? money(type.price) : 'Free' %><%= type.deposit ? ` · ${money(type.deposit)} deposit` : '' %></p>
+    <form method="post" action="/book/<%= type.id %>/confirm"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn">Book this time</button></form></div>
+</div>
+<%- include('../partials/footer') %>

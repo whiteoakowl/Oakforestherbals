@@ -1,6 +1,7 @@
 <nav class="account-nav">
   <a href="/account" class="<%= path === '/account' ? 'active' : '' %>">Orders &amp; profile</a>
   <a href="/account/addresses" class="<%= path === '/account/addresses' ? 'active' : '' %>">Addresses</a>
+  <a href="/account/appointments" class="<%= typeof originalPath !== 'undefined' && originalPath.startsWith('/account/appointments') ? 'active' : '' %>">Appointments</a>
   <% if (typeof isPatient !== 'undefined' && isPatient) { %><a href="/account/clinic" class="<%= originalPath && originalPath.startsWith('/account/clinic') ? 'active' : '' %>">My clinic</a><% } %>
   <form action="/account/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-btn">Log out</button></form>
 </nav>

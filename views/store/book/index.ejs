@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<div class="container section">
+  <h1 class="page-title">Book an appointment</h1>
+  <% if (!types.length) { %><p class="muted">Online booking isn't available right now. Please <a href="/pages/contact">contact us</a> to book.</p><% } %>
+  <div class="book-grid">
+    <% for (const t of types) { %>
+      <a class="card book-card" href="/book/<%= t.id %>">
+        <h2><%= t.name %></h2>
+        <p class="muted small"><%= t.duration_min %> minutes · <%= t.mode === 'virtual' ? 'Online' : t.mode === 'in_person' ? 'In person' : 'In person or online' %><%= t.capacity > 1 ? ` · group of up to ${t.capacity}` : '' %></p>
+        <% if (t.description) { %><p><%= t.description %></p><% } %>
+        <p><strong><%= t.price ? money(t.price) : 'Free' %></strong><%= t.deposit ? ` · ${money(t.deposit)} deposit to book` : '' %></p>
+      </a>
+    <% } %>
+  </div>
+  <% if (practitioners.length) { %>
+    <h2 class="section-title">Our practitioners</h2>
+    <div class="book-grid"><% for (const p of practitioners) { %><div class="card practitioner"><% if (p.photo_url) { %><img src="<%= p.photo_url %>" alt="<%= p.name %>" loading="lazy"><% } %><h3><%= p.name %></h3><p class="muted small"><%= p.title %></p><% if (p.bio) { %><p class="small"><%= p.bio %></p><% } %><% if (p.qualifications) { %><p class="small muted"><%= p.qualifications %></p><% } %></div><% } %></div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

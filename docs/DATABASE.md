@@ -118,3 +118,19 @@ Patient content (`_enc` columns) is encrypted; templates (forms, lessons) are no
 | `lessons`, `lesson_questions`, `courses`, `course_lessons`, `lesson_assignments`, `lesson_progress` | Education library (lessons, information sheets, guides, recipes, preparation instructions, videos, checklists, quizzes), courses, assignments to patients and their progress. |
 | `patient_documents` (new columns) | `shared_with_patient`, `uploaded_by_patient`. |
 | `patients.portal_enabled` | Whether the patient can use My clinic. |
+
+## 0007_scheduling_invoices_finance
+| Table | Purpose |
+|---|---|
+| `practitioner_profiles` | Public name, title, bio, qualifications, areas, photo, whether they show on the booking page and accept online bookings, and a private calendar-feed token. |
+| `appointment_types`, `appointment_type_staff` | Consultations, follow-ups, group sessions, workshops: length, buffer, price, deposit, in person/online, capacity, online booking, who offers them. |
+| `practitioner_hours`, `practitioner_time_off` | Weekly hours (clinic time zone, two blocks a day) and days off. |
+| `appointments` | Bookings with status (booked, confirmed, completed, no-show, cancelled), mode, location/video link, price/deposit, invoice, weekly series, encrypted internal notes, reminder tracking. |
+| `appointment_waitlist` | Clients waiting for a type/practitioner; emailed when a slot opens. |
+| `invoices`, `invoice_items` | Invoices (draft, open, partial, paid, void) with a private link for the client and card payment through Stripe. |
+| `payments` | One ledger of money in and refunds out for orders and invoices (back-filled from existing paid/refunded orders). |
+| `expenses` | Business expenses by category. |
+
+Booking is conflict-safe: a slot is re-checked inside a transaction under a per-practitioner lock.
+Calendar feeds and appointment emails contain the appointment type, time and place — never client
+names or health details.

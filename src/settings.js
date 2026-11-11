@@ -116,6 +116,21 @@ const DEFAULTS = {
     batch_prefix: 'B',
     qc_checklist: 'Ingredients and lots verified against the batch sheet\nWeights and measures recorded\nAppearance, colour and aroma as expected\nContainers clean, filled and sealed\nLabelled with batch code and best-before date',
   },
+  booking: {
+    timezone: 'America/New_York',
+    min_notice_hours: 12,
+    max_days_ahead: 60,
+    cancel_hours: 24,
+    slot_step_min: 15,
+    location: '',
+    confirmation_note: '',
+    reminder_hours: 24,
+  },
+  invoices: {
+    next_number: 1001,
+    due_days: 14,
+    footer: '',
+  },
   pos: {
     tax_country: 'US',
     tax_province: '',

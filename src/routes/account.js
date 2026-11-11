@@ -14,9 +14,9 @@ const router = express.Router();
 
 // New session id on login (prevents fixation) while keeping the shopper's cart.
 function signIn(req, customerId, done) {
-  const { cart, cartNote } = req.session;
+  const { cart, cartNote, pendingBooking } = req.session;
   req.session.regenerate(() => {
-    Object.assign(req.session, { cart, cartNote, customerId });
+    Object.assign(req.session, { cart, cartNote, customerId, pendingBooking });
     done();
   });
 }
@@ -72,7 +72,7 @@ router.post('/register', throttle('register'), async (req, res) => {
       email, first, last, hash, marketing);
   }
   await mailer.notify('customer_welcome', email, `Welcome to ${res.locals.store.name}`, 'welcome', { first_name: first });
-  signIn(req, id, () => res.redirect('/account'));
+  signIn(req, id, () => res.redirect(req.session.pendingBooking ? `/book/${req.session.pendingBooking.typeId}/confirm` : '/account'));
 });
 
 router.post('/logout', async (req, res) => {

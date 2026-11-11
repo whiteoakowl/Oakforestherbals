@@ -88,6 +88,7 @@ app.use(mw.csrfGuard);
 app.use('/admin', require('./routes/admin'));
 app.use(mw.storefrontPassword);
 app.use(mw.trackView);
+app.use(require('./routes/booking'));
 app.use('/account/clinic', require('./routes/portal'));
 app.use('/account', require('./routes/account'));
 app.use('/checkout', require('./routes/checkout'));

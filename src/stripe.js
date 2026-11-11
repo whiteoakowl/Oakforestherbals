@@ -56,4 +56,21 @@ async function retrieveSession(id) {
   return call('GET', `/checkout/sessions/${encodeURIComponent(id)}`);
 }
 
-module.exports = { createCheckoutSession, retrieveSession };
+// Pays all or part of an invoice (e.g. a booking deposit) through Stripe Checkout.
+async function createInvoiceSession(invoice, amount, baseUrl) {
+  const store = settings.load('store');
+  const session = await call('POST', '/checkout/sessions', {
+    mode: 'payment',
+    client_reference_id: `invoice-${invoice.token}`,
+    customer_email: invoice.email || undefined,
+    success_url: `${baseUrl}/invoices/${invoice.token}/stripe/return?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/invoices/${invoice.token}`,
+    metadata: { invoice_number: invoice.number },
+    line_items: { 0: { quantity: 1, price_data: { currency: store.currency.toLowerCase(), unit_amount: amount, product_data: { name: `${store.name} invoice #${invoice.number}` } } } },
+  });
+  return session.url;
+}
+
+const stripeConfigured = () => Boolean(settings.load('payments').stripe_enabled && (process.env.STRIPE_SECRET_KEY || settings.load('payments').stripe_secret_key));
+
+module.exports = { createCheckoutSession, retrieveSession, createInvoiceSession, stripeConfigured };

@@ -343,3 +343,23 @@ th.right, td.right { text-align: right; }
 .narrow-card { max-width: 720px; }
 .privacy-note { margin-top: 32px; }
 @media (max-width: 800px) { .clinic-grid { grid-template-columns: 1fr; } }
+
+/* Booking */
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.book-card { text-decoration: none; color: inherit; display: block; }
+.book-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+.book-card h2 { margin: 0 0 4px; font-size: 1.2rem; }
+.practitioner img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.week-nav { display: flex; justify-content: space-between; margin: 12px 0; }
+.slot-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.slot-day { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; align-content: start; }
+.slot-day legend { font-weight: 600; margin-bottom: 6px; }
+.slot { display: block; }
+.slot input { position: absolute; opacity: 0; }
+.slot span { display: block; text-align: center; padding: 8px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent); cursor: pointer; }
+.slot input:checked + span { background: var(--color-primary); color: var(--color-primary-contrast, #fff); border-color: var(--color-primary); }
+.slot input:focus-visible + span { outline: 2px solid var(--color-accent-ink); outline-offset: 2px; }
+.narrow-field { max-width: 260px; margin-bottom: 12px; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.row-gap { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.narrow { max-width: 760px; }

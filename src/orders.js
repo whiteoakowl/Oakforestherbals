@@ -103,6 +103,8 @@ async function markPaid(orderId, { ref = '', author = '' } = {}) {
   const order = await get('SELECT * FROM orders WHERE id = ?', orderId);
   if (!order || order.financial_status === 'paid') return;
   await run("UPDATE orders SET financial_status = 'paid', payment_ref = COALESCE(NULLIF(?, ''), payment_ref) WHERE id = ?", ref, orderId);
+  // Every payment also lands in the ledger used by financial reports.
+  await run("INSERT INTO payments (order_id, amount, method, reference, kind, recorded_by) VALUES (?, ?, ?, ?, 'payment', ?)", orderId, order.total, order.payment_method, ref || order.payment_ref || '', author || 'System');
   await addEvent(orderId, `Payment of ${(order.total / 100).toFixed(2)} ${order.currency} was marked as received${ref ? ` (ref ${ref})` : ''}.`, author);
 }
 
@@ -155,6 +157,7 @@ async function refund(orderId, { amount, restock = false, reason = '', author = 
     const refunded = order.refunded_total + value;
     const status = refunded >= order.total ? 'refunded' : refunded > 0 ? 'partially_refunded' : order.financial_status;
     await run('UPDATE orders SET refunded_total = ?, financial_status = ? WHERE id = ?', refunded, status, orderId);
+    if (value > 0) await run("INSERT INTO payments (order_id, amount, method, reference, kind, recorded_by) VALUES (?, ?, ?, ?, 'refund', ?)", orderId, -value, order.payment_method, reason, author || 'System');
     await addEvent(orderId, `Refunded ${(value / 100).toFixed(2)} ${order.currency}${restock ? ' and restocked items' : ''}${reason ? ` — ${reason}` : ''}.`, author);
   });
 }

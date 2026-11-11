@@ -1,0 +1,18 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'New invoice', backHref: '/admin/invoices' }) %>
+  <form method="post" action="/admin/invoices/new" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <div class="grid-3"><label class="field"><span>Client email</span><input type="email" name="email" value="<%= customer ? customer.email : '' %>" required></label>
+      <label class="field"><span>First name</span><input name="first_name" value="<%= customer ? customer.first_name : '' %>"></label><label class="field"><span>Last name</span><input name="last_name" value="<%= customer ? customer.last_name : '' %>"></label></div>
+    <table class="table small"><thead><tr><th>Description</th><th>Qty</th><th>Price</th><th>Taxable</th></tr></thead><tbody>
+      <% for (let i = 0; i < 5; i++) { %><tr><td><input class="cell-input" name="items[<%= i %>][description]" aria-label="Description <%= i + 1 %>"></td><td><input class="tiny-input" name="items[<%= i %>][quantity]" value="1" aria-label="Quantity <%= i + 1 %>"></td>
+        <td><input class="tiny-input" name="items[<%= i %>][unit_price]" inputmode="decimal" aria-label="Price <%= i + 1 %>"></td><td><input type="checkbox" name="items[<%= i %>][taxable]" value="1" aria-label="Taxable <%= i + 1 %>"></td></tr><% } %>
+    </tbody></table>
+    <p class="muted small">Line descriptions are visible to the client. Don't put health details on invoices.</p>
+    <div class="grid-2"><label class="field"><span>Due in (days)</span><input type="number" name="due_days" value="14" min="0"></label><label class="field"><span>Notes</span><input name="notes"></label></div>
+    <label class="check small"><input type="checkbox" name="draft" value="1"> Save as draft (don't issue yet)</label>
+    <div class="right"><button class="btn btn-primary">Create invoice</button></div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

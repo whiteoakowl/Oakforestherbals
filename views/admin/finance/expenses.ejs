@@ -1,0 +1,21 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Expenses', actions: `<a class="btn" href="/admin/finance/export/expenses.csv?from=${from}&to=${to}">Export CSV</a>` }) %>
+  <div class="layout-2">
+    <div class="card flush"><% if (!rows.length) { %><p class="pad muted">No expenses in this period.</p><% } else { %>
+      <table class="table small"><thead><tr><th>Date</th><th>Category</th><th>Vendor / description</th><th class="num">Amount</th><th></th></tr></thead><tbody>
+        <% for (const e of rows) { %><tr><td class="nowrap"><%= ymd(e.spent_on) %></td><td><%= (EXPENSE_CATEGORIES.find(([k]) => k === e.category) || [, e.category])[1] %></td><td><%= e.vendor %><div class="muted"><%= e.description %></div></td><td class="num"><%= money(e.amount) %></td>
+          <td><% if (can('expenses.manage')) { %><form method="post" action="/admin/finance/expenses/<%= e.id %>/delete" data-confirm="Delete this expense?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Delete</button></form><% } %></td></tr><% } %>
+      </tbody></table><% } %></div>
+    <% if (can('expenses.manage')) { %>
+    <form method="post" action="/admin/finance/expenses" class="card form-stack"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <h2>Add expense</h2>
+      <div class="grid-2"><label class="field"><span>Date</span><input type="date" name="spent_on" value="<%= new Date().toISOString().slice(0, 10) %>"></label><label class="field"><span>Category</span><select name="category"><% for (const [k, l] of EXPENSE_CATEGORIES) { %><option value="<%= k %>"><%= l %></option><% } %></select></label></div>
+      <label class="field"><span>Vendor</span><input name="vendor"></label><label class="field"><span>Description</span><input name="description" required></label>
+      <div class="grid-2"><label class="field"><span>Amount</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="amount" inputmode="decimal" required></div></label><label class="field"><span>of which tax</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="tax" inputmode="decimal"></div></label></div>
+      <p class="muted small">Inventory you buy through purchase orders is tracked as stock and becomes cost of goods when sold, so don't add it here too.</p>
+      <button class="btn btn-sm">Add</button></form>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

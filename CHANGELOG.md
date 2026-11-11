@@ -1,5 +1,29 @@
 # Changelog
 
+## Unreleased — Phase 8: scheduling, invoices and finance
+
+### Added
+- **Online booking** (`/book`): appointment types with practitioners, open times computed from
+  each practitioner's weekly hours, time off, existing bookings, buffers, notice and lookahead,
+  in the clinic's time zone (daylight saving handled); group sessions with capacity; booking needs
+  an account (the chosen time waits through log-in/registration); deposits by card through Stripe
+  when configured; confirmation emails; waitlist.
+- **My appointments** in the customer account: upcoming and past, add to calendar (.ics), invoice
+  link, cancel or change time online up to the cancellation window.
+- **Schedule** (Clinic → Schedule): week calendar per practitioner (practitioners see their own),
+  staff bookings with weekly repeats and an outside-hours override, statuses (confirmed, completed,
+  no-show, cancelled), video links, encrypted internal notes, moving appointments, waitlist, appointment
+  types, weekly hours and time off, practitioner profiles, booking rules, and a private calendar feed
+  for Google/Apple/Outlook that never includes client names.
+- **Invoices**: from appointments or by hand, issue, email a private link, record payments and
+  refunds (overpayment refused), card payment by Stripe, print.
+- **Financials**: revenue (products and services), cost of goods, gross profit, expenses, net,
+  sales tax collected, inventory bought, outstanding invoices, expenses by category, practitioner
+  revenue, by month; CSV exports (summary, payments, invoices, expenses). **Expenses** screen.
+- A **payments ledger**: every order payment and refund, and every invoice payment, is recorded;
+  existing paid orders were imported.
+
+
 ## Unreleased — Phases 6–7: clinic, patient portal and education
 
 ### Added

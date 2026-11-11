@@ -1,0 +1,13 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Invoices', actions: '<a class="btn btn-primary" href="/admin/invoices/new">New invoice</a>' }) %>
+  <div class="card flush">
+    <div class="tabs pad-x"><% for (const [k, l] of [['', 'All'], ['open', 'Open'], ['partial', 'Part paid'], ['paid', 'Paid'], ['draft', 'Drafts'], ['void', 'Void']]) { %><a class="tab <%= status === k ? 'active' : '' %>" href="?status=<%= k %>"><%= l %></a><% } %></div>
+    <% if (!rows.length) { %><p class="pad muted">No invoices.</p><% } else { %>
+    <table class="table"><thead><tr><th>Invoice</th><th>Client</th><th>Due</th><th class="num">Total</th><th class="num">Balance</th><th>Status</th></tr></thead><tbody>
+      <% for (const i of rows) { %><tr><td><a href="/admin/invoices/<%= i.id %>"><strong>#<%= i.number %></strong></a><div class="muted small"><%= i.issued_on ? ymd(i.issued_on) : 'not issued' %></div></td><td><%= i.name || `${i.first_name || ''} ${i.last_name || ''}`.trim() || i.email %></td>
+        <td class="small"><%= i.due_on ? ymd(i.due_on) : '' %></td><td class="num"><%= money(i.total) %></td><td class="num"><%= money(i.total - i.paid_total) %></td><td><span class="badge badge-<%= i.status === 'paid' ? 'success' : i.status === 'void' ? 'default' : 'attention' %>"><%= i.status %></span></td></tr><% } %>
+    </tbody></table><% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>

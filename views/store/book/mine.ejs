@@ -1,0 +1,19 @@
+<%- include('../partials/header') %>
+<div class="container section">
+  <h1 class="page-title">My account</h1>
+  <%- include('../account/nav') %>
+  <div class="row-between"><h2>Upcoming appointments</h2><a class="btn btn-secondary" href="/book">Book an appointment</a></div>
+  <% if (!upcoming.length) { %><p class="muted">Nothing booked.</p><% } %>
+  <% for (const a of upcoming) { %>
+    <div class="card appt-card">
+      <p><strong><%= a.type_name %></strong> with <%= a.staff_name %></p>
+      <p><%= when(a.starts_at) %> · <%= a.mode === 'virtual' ? 'Online' : a.location || 'In person' %><% if (a.mode === 'virtual' && a.video_link) { %> · <a href="<%= a.video_link %>" target="_blank" rel="noopener">Join</a><% } %></p>
+      <p class="small"><a href="/account/appointments/<%= a.id %>.ics">Add to calendar</a><% if (a.invoice_token) { %> · <a href="/invoices/<%= a.invoice_token %>">Invoice</a> (<%= a.paid_total >= a.invoice_total ? 'paid' : `${money(a.invoice_total - a.paid_total)} to pay` %>)<% } %></p>
+      <% if (canChange(a)) { %><div class="row-gap"><a class="btn btn-secondary" href="/account/appointments/<%= a.id %>/reschedule">Change time</a>
+        <form method="post" action="/account/appointments/<%= a.id %>/cancel" data-confirm="Cancel this appointment?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-secondary">Cancel</button></form></div>
+      <% } else { %><p class="muted small">To change this appointment within <%= cancelHours %> hours, please contact us.</p><% } %>
+    </div>
+  <% } %>
+  <% if (past.length) { %><h2>Past and cancelled</h2><% for (const a of past) { %><p class="small"><%= when(a.starts_at) %> · <%= a.type_name %> · <%= a.status.replace('_', ' ') %></p><% } %><% } %>
+</div>
+<%- include('../partials/footer') %>
