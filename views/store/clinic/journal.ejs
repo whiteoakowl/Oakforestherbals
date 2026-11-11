@@ -1,11 +1,17 @@
 <%- include('_top') %>
 <div class="clinic-grid">
   <section>
-    <form method="post" action="/account/clinic/journal" class="card">
+    <form method="post" action="/account/clinic/journal" class="card" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <h2>New entry</h2>
       <label class="field"><span>Date</span><input type="date" name="log_date" value="<%= new Date().toISOString().slice(0, 10) %>"></label>
-      <label class="field"><span>What would you like to record?</span><select name="kind"><option value="wellness">How I'm feeling (scores)</option><option value="symptom">A symptom</option><option value="journal">Journal note</option></select></label>
+      <label class="field"><span>What would you like to record?</span><select name="kind"><option value="wellness">How I'm feeling (scores)</option><option value="symptom">A symptom</option><option value="food">Food or drink</option><option value="journal">Journal note</option></select></label>
+      <fieldset class="food-fields"><legend class="small">Food or drink</legend>
+        <div class="grid-2"><label class="field"><span>Meal</span><select name="meal"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option><option value="drink">Drink</option></select></label>
+        <label class="field"><span>Photo (optional)</span><input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/heic"></label></div>
+        <label class="field"><span>What you had</span><textarea name="food" rows="2"></textarea></label>
+        <label class="field"><span>How you felt afterwards</span><input name="after" placeholder="e.g. bloated, energised"></label>
+      </fieldset>
       <fieldset class="scores"><legend class="small">Scores from 0 (lowest) to 10 (highest)</legend>
         <% for (const [k, l] of [['energy', 'Energy'], ['sleep', 'Sleep quality'], ['mood', 'Mood'], ['stress', 'Stress'], ['digestion', 'Digestion']]) { %><label class="field"><span><%= l %></span><input type="number" min="0" max="10" name="<%= k %>"></label><% } %></fieldset>
       <div class="grid-2"><label class="field"><span>Symptom</span><input name="symptom" placeholder="e.g. headache"></label><label class="field"><span>How strong (0–10)</span><input type="number" min="0" max="10" name="severity"></label></div>
@@ -15,7 +21,7 @@
   </section>
   <aside>
     <div class="card"><h2>Recent entries</h2><% if (!logs.length) { %><p class="muted small">Nothing yet.</p><% } %>
-      <% for (const l of logs.slice(0, 20)) { %><div class="small log-row"><strong><%= l.day %></strong> <% if (l.kind === 'symptom') { %><%= l.data.symptom %> <%= l.data.severity %>/10<% } else if (l.kind === 'wellness') { %><%= ['energy', 'sleep', 'mood', 'stress', 'digestion'].filter((k) => l.data[k] !== null && l.data[k] !== undefined).map((k) => `${k} ${l.data[k]}`).join(' · ') %><% } %><% if (l.data.note) { %><div class="prewrap"><%= l.data.note %></div><% } %></div><% } %></div>
+      <% for (const l of logs.slice(0, 20)) { %><div class="small log-row"><strong><%= l.day %></strong> <% if (l.kind === 'symptom') { %><%= l.data.symptom %> <%= l.data.severity %>/10<% } else if (l.kind === 'food') { %><%= l.data.meal %>: <%= l.data.food %><%= l.data.after ? ` — felt ${l.data.after}` : '' %><% if (l.data.photo_doc_id) { %> · <a href="/account/clinic/documents/<%= l.data.photo_doc_id %>">photo</a><% } %><% } else if (l.kind === 'wellness') { %><%= ['energy', 'sleep', 'mood', 'stress', 'digestion'].filter((k) => l.data[k] !== null && l.data[k] !== undefined).map((k) => `${k} ${l.data[k]}`).join(' · ') %><% } %><% if (l.data.note) { %><div class="prewrap"><%= l.data.note %></div><% } %></div><% } %></div>
   </aside>
 </div>
 <%- include('_bottom') %>

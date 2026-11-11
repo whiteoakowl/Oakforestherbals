@@ -1,0 +1,41 @@
+<%- include('../partials/header') %>
+<div class="page wide-page">
+  <%- include('../partials/page-header', { heading: 'Leads', actions: '<button type="button" class="btn btn-primary" data-dialog-open="new-lead">Add lead</button>' }) %>
+  <form class="row-gap" method="get" style="margin-bottom:16px">
+    <label class="visually-hidden" for="lead-q">Search leads</label><input id="lead-q" name="q" value="<%= q %>" placeholder="Search name, email or phone" style="max-width:320px">
+    <label class="check small"><input type="checkbox" name="mine" value="1" <%= mine ? 'checked' : '' %> onchange="this.form.submit()"> Only mine</label>
+    <button class="btn btn-sm">Search</button>
+  </form>
+  <div class="kanban" data-kanban>
+    <% for (const col of columns) { %>
+      <section class="kanban-col" data-stage="<%= col.key %>" aria-label="<%= col.label %>">
+        <h2><%= col.label %> <span class="count"><%= col.leads.length %></span></h2>
+        <% for (const l of col.leads) { const overdue = l.next_follow_up && new Date(l.next_follow_up).toISOString().slice(0, 10) <= today && !['client', 'lost'].includes(l.stage); %>
+          <article class="kanban-card" draggable="true" data-lead="<%= l.id %>">
+            <a href="/admin/leads/<%= l.id %>"><strong><%= l.name %></strong></a>
+            <div class="muted small"><%= l.source || '' %><%= l.owner_name ? ` · ${l.owner_name}` : '' %></div>
+            <% if (l.interest) { %><p class="small clamp"><%= l.interest %></p><% } %>
+            <% if (l.next_follow_up) { %><div class="small <%= overdue ? 'critical-text' : 'muted' %>">Follow up <%= formatDate(l.next_follow_up) %></div><% } %>
+            <form method="post" action="/admin/leads/<%= l.id %>" class="kanban-move"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="back" value="board">
+              <label class="visually-hidden" for="stage-<%= l.id %>">Stage for <%= l.name %></label>
+              <select id="stage-<%= l.id %>" name="stage" onchange="this.form.submit()"><% for (const [k, lab] of STAGES) { %><option value="<%= k %>" <%= k === l.stage ? 'selected' : '' %>><%= lab %></option><% } %></select>
+            </form>
+          </article>
+        <% } %>
+        <% if (!col.leads.length) { %><p class="muted small kanban-empty">Nothing here.</p><% } %>
+      </section>
+    <% } %>
+  </div>
+</div>
+<dialog id="new-lead" class="dialog">
+  <form method="post" action="/admin/leads" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Add a lead</h2>
+    <label class="field"><span>Name</span><input name="name" required></label>
+    <div class="grid-2"><label class="field"><span>Email</span><input type="email" name="email"></label><label class="field"><span>Phone</span><input name="phone"></label></div>
+    <div class="grid-2"><label class="field"><span>Source</span><select name="source"><% for (const s of SOURCES) { %><option><%= s %></option><% } %></select></label><label class="field"><span>Follow up on</span><input type="date" name="next_follow_up"></label></div>
+    <label class="field"><span>What they’re interested in</span><textarea name="interest" rows="3"></textarea></label>
+    <div class="dialog-actions"><button type="button" class="btn" data-dialog-close>Cancel</button><button class="btn btn-primary">Add</button></div>
+  </form>
+</dialog>
+<%- include('../partials/footer') %>

@@ -300,6 +300,8 @@ router.post('/contact', async (req, res) => {
     return res.redirect('/pages/contact');
   }
   const store = res.locals.store;
+  // Every enquiry also lands in the leads pipeline so nobody falls through the cracks.
+  await require('../leads').capture({ name: name || email, email, phone: String(req.body.phone || ''), source: 'Contact form', interest: String(message).slice(0, 2000) });
   await mailer.notify(null, store.email, `Contact form: ${name || email}`, 'contact', {
     name: escapeHtml(name), email: escapeHtml(email), message: escapeHtml(message),
   });

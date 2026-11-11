@@ -8,7 +8,8 @@
     <label class="field"><span>Status</span><select name="status"><% for (const s of ['draft', 'published', 'archived']) { %><option value="<%= s %>" <%= s === course.status ? 'selected' : '' %>><%= s %></option><% } %></select></label>
     <h2>Lessons, in order</h2>
     <% if (!lessons.length) { %><p class="muted small">No lessons yet.</p><% } %>
-    <ol class="small"><% for (const l of lessons) { %><li><a href="/admin/education/lessons/<%= l.id %>"><%= l.title %></a> <button class="link-plain small critical-text" name="remove_lesson_id" value="<%= l.id %>">Remove</button></li><% } %></ol>
+    <p class="muted small">Make it a program: each lesson can open a number of days after the course is assigned (0 = straight away).</p>
+    <ol class="small drip-list"><% for (const l of lessons) { %><li><a href="/admin/education/lessons/<%= l.id %>"><%= l.title %></a> <label class="inline-fields small">opens on day <input type="number" min="0" class="tiny-input" name="release_day[id<%= l.id %>]" value="<%= l.release_day %>" aria-label="Day <%= l.title %> opens"></label> <button class="link-plain small critical-text" name="remove_lesson_id" value="<%= l.id %>">Remove</button></li><% } %></ol>
     <label class="field"><span>Add a lesson</span><select name="add_lesson_id"><option value="">—</option><% for (const l of available) { %><option value="<%= l.id %>"><%= l.title %></option><% } %></select></label>
     <div class="right"><button class="btn btn-primary">Save course</button></div>
   </form>

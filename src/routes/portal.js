@@ -174,9 +174,16 @@ router.get('/journal', async (req, res) => {
   res.render('store/clinic/journal', { title: 'My wellness', logs: logs.filter((l) => l.by_patient), series: clinic2.series(logs.filter((l) => l.by_patient)) });
 });
 
-router.post('/journal', async (req, res) => {
-  const l = clinic2.readLog({ ...req.body, kind: ['journal', 'symptom', 'wellness'].includes(req.body.kind) ? req.body.kind : 'journal' });
-  if (l.empty) { flash(req, 'error', 'Add a note or a score.'); return res.redirect('/account/clinic/journal'); }
+router.post('/journal', storage.privateUpload.single('photo'), verifyCsrf, async (req, res) => {
+  const l = clinic2.readLog({ ...req.body, kind: ['journal', 'symptom', 'wellness', 'food'].includes(req.body.kind) ? req.body.kind : 'journal' });
+  if (l.empty && !req.file) { flash(req, 'error', 'Add a note or a score.'); return res.redirect('/account/clinic/journal'); }
+  // A photo (e.g. of a meal) is kept as an encrypted document the practitioner can see.
+  if (req.file && ['image/jpeg', 'image/png', 'image/webp', 'image/heic'].includes(storage.PRIVATE_TYPES.get(path.extname(req.file.originalname).toLowerCase()))) {
+    const key = `patients/${req.patient.id}/${token(16)}`;
+    await storage.savePrivate(key, vault.sealBuffer(req.file.buffer));
+    l.data.photo_doc_id = await insert(`INSERT INTO patient_documents (patient_id, kind, title_enc, storage_key, mime, size_bytes, uploaded_by_name, uploaded_by_patient) VALUES (?, 'photo', ?, ?, ?, ?, 'Patient', 1)`,
+      req.patient.id, vault.seal(`${l.kind === 'food' ? `${l.data.meal} photo` : 'Journal photo'} ${l.date}`), key, storage.PRIVATE_TYPES.get(path.extname(req.file.originalname).toLowerCase()), req.file.size);
+  }
   await insert('INSERT INTO patient_logs (patient_id, kind, log_date, data_enc, by_patient) VALUES (?, ?, ?, ?, 1)', req.patient.id, l.kind, l.date, vault.seal(l.data));
   await log(req, 'portal.journal_added', { kind: l.kind });
   flash(req, 'success', 'Saved.');

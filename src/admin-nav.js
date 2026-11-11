@@ -35,6 +35,7 @@ const SECTIONS = [
           { href: '/admin/clinic/referrers', label: 'Referrers' },
         ],
       },
+      { href: '/admin/leads', label: 'Leads', icon: 'funnel', perm: 'leads.manage' },
       { href: '/admin/education', label: 'Education', icon: 'content', perm: 'education.manage' },
     ],
   },

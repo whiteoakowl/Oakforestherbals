@@ -11,6 +11,7 @@
     <div class="card"><h2>Journal and logs</h2><% if (!logList.length) { %><p class="muted small">Nothing logged yet.</p><% } %>
       <% for (const l of logList) { %><div class="use-item small"><strong><%= l.day %></strong> · <%= l.kind %><%= l.by_patient ? ' · by patient' : ` · by ${l.data.by || 'staff'}` %>
         <% if (l.kind === 'symptom') { %><div><%= l.data.symptom %>: <%= l.data.severity %>/10</div><% } %>
+        <% if (l.kind === 'food') { %><div><strong><%= l.data.meal %>:</strong> <%= l.data.food %><%= l.data.after ? ` — felt ${l.data.after}` : '' %><% if (l.data.photo_doc_id) { %> · <a href="<%= base %>/documents/<%= l.data.photo_doc_id %>">photo</a><% } %></div><% } %>
         <% if (l.kind === 'wellness') { %><div><%= ['energy', 'sleep', 'mood', 'stress', 'digestion'].filter((k) => l.data[k] !== null && l.data[k] !== undefined).map((k) => `${k} ${l.data[k]}`).join(' · ') %></div><% } %>
         <% if (l.data.note) { %><p class="prewrap"><%= l.data.note %></p><% } %></div><% } %>
     </div>

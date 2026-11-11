@@ -42,6 +42,7 @@ router.use(async (req, res, next) => {
   res.locals.quickCreate = [
     ['/admin/schedule/appointments/new', 'Appointment', can('scheduling.manage') || can('scheduling.own')],
     ['/admin/clinic/patients/new', 'Client record', can('clinic.records.manage')],
+    ['/admin/leads', 'Lead', can('leads.manage')],
     ['/admin/customers/new', 'Customer', can('customers.manage')],
     ['/admin/invoices/new', 'Invoice', can('invoices.manage')],
     ['/admin/pos', 'Counter sale', can('pos.use')],
@@ -89,6 +90,7 @@ router.use('/education', allow('education.manage'), require('./education'));
 router.use('/schedule', require('./schedule'));
 router.use('/communications', require('./communications'));
 router.use('/search', require('./search'));
+router.use('/leads', allow('leads.manage'), require('./leads'));
 router.use('/assistant', allow('assistant.use'), require('./assistant'));
 router.use('/invoices', allow('invoices.manage'), require('./finance').invoices);
 router.use('/finance', require('./finance').finance);

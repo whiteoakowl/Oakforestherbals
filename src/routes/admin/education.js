@@ -117,7 +117,7 @@ router.post('/courses', async (req, res) => {
 router.get('/courses/:id', async (req, res, next) => {
   const course = await get('SELECT * FROM courses WHERE id = ?', toInt(req.params.id));
   if (!course) return next();
-  const lessons = await all('SELECT l.*, cl.position FROM course_lessons cl JOIN lessons l ON l.id = cl.lesson_id WHERE cl.course_id = ? ORDER BY cl.position', course.id);
+  const lessons = await all('SELECT l.*, cl.position, cl.release_day FROM course_lessons cl JOIN lessons l ON l.id = cl.lesson_id WHERE cl.course_id = ? ORDER BY cl.position', course.id);
   const available = await all("SELECT id, title FROM lessons WHERE status != 'archived' AND id NOT IN (SELECT lesson_id FROM course_lessons WHERE course_id = ?) ORDER BY lower(title)", course.id);
   res.render('admin/education/course', { title: course.title, course, lessons, available });
 });
@@ -130,6 +130,11 @@ router.post('/courses/:id', async (req, res) => {
   if (add) await run('INSERT INTO course_lessons (course_id, lesson_id, position) VALUES (?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM course_lessons WHERE course_id = ?)) ON CONFLICT DO NOTHING', id, add, id);
   const remove = toInt(req.body.remove_lesson_id);
   if (remove) await run('DELETE FROM course_lessons WHERE course_id = ? AND lesson_id = ?', id, remove);
+  // Drip schedule: days after the course is assigned before each lesson opens.
+  for (const [key, val] of Object.entries(req.body.release_day || {})) {
+    const lessonId = toInt(String(key).replace(/^id/, ''));
+    if (lessonId) await run('UPDATE course_lessons SET release_day = ? WHERE course_id = ? AND lesson_id = ?', Math.max(0, Math.min(3650, toInt(val, 0))), id, lessonId);
+  }
   flash(req, 'success', 'Course saved.');
   res.redirect(`/admin/education/courses/${id}`);
 });

@@ -151,13 +151,14 @@ async function logs(patientId, limit = 120) {
 }
 
 function readLog(body) {
-  const kind = ['journal', 'symptom', 'wellness', 'review'].includes(body.kind) ? body.kind : 'journal';
+  const kind = ['journal', 'symptom', 'wellness', 'review', 'food'].includes(body.kind) ? body.kind : 'journal';
   const score = (v) => (v === '' || v === undefined ? null : Math.max(0, Math.min(10, Number(v) || 0)));
   const data = { note: String(body.note || '').trim().slice(0, 10000) };
   if (kind === 'symptom') Object.assign(data, { symptom: String(body.symptom || '').trim().slice(0, 200), severity: score(body.severity) });
+  if (kind === 'food') Object.assign(data, { meal: ['breakfast', 'lunch', 'dinner', 'snack', 'drink'].includes(body.meal) ? body.meal : 'snack', food: String(body.food || '').trim().slice(0, 2000), after: String(body.after || '').trim().slice(0, 500) });
   if (kind === 'wellness') Object.assign(data, { energy: score(body.energy), sleep: score(body.sleep), mood: score(body.mood), stress: score(body.stress), digestion: score(body.digestion) });
   const date = /^\d{4}-\d{2}-\d{2}$/.test(String(body.log_date || '')) ? body.log_date : new Date().toISOString().slice(0, 10);
-  const empty = !data.note && !data.symptom && !['energy', 'sleep', 'mood', 'stress', 'digestion', 'severity'].some((k) => data[k] !== null && data[k] !== undefined);
+  const empty = !data.note && !data.symptom && !data.food && !['energy', 'sleep', 'mood', 'stress', 'digestion', 'severity'].some((k) => data[k] !== null && data[k] !== undefined);
   return { kind, data, date, empty };
 }
 
@@ -227,20 +228,26 @@ async function postMessage({ patientId, threadId, subject, body, sender, staff }
 const LESSON_KINDS = [['lesson', 'Lesson'], ['info_sheet', 'Information sheet'], ['guide', 'Downloadable guide'], ['recipe', 'Recipe'], ['preparation', 'Preparation instructions'], ['video', 'Video'], ['checklist', 'Checklist']];
 
 // Lessons assigned to a patient (directly, via a course or a care plan), with progress.
+// Lessons assigned directly or through a course. In a course, each lesson opens `release_day` days
+// after the course was assigned (a drip-fed program); `available_on` says when.
 async function assignedLessons(patientId) {
-  const rows = await all(`SELECT DISTINCT ON (l.id) l.*, a.assigned_at, a.due_at, a.assigned_by, c.title AS course_title, lp.completed_at, lp.acknowledged_at, lp.quiz_score, lp.quiz_total
+  const rows = await all(`SELECT DISTINCT ON (l.id) l.*, a.assigned_at, a.due_at, a.assigned_by, c.title AS course_title, lp.completed_at, lp.acknowledged_at, lp.quiz_score, lp.quiz_total,
+      CASE WHEN a.course_id IS NULL THEN a.assigned_at ELSE a.assigned_at + make_interval(days => COALESCE(cl.release_day, 0)) END AS available_at
     FROM lesson_assignments a
     LEFT JOIN course_lessons cl ON cl.course_id = a.course_id
     JOIN lessons l ON l.id = COALESCE(a.lesson_id, cl.lesson_id)
     LEFT JOIN courses c ON c.id = a.course_id
     LEFT JOIN lesson_progress lp ON lp.patient_id = a.patient_id AND lp.lesson_id = l.id
-    WHERE a.patient_id = ? AND l.status = 'published' ORDER BY l.id, a.assigned_at`, patientId);
+    WHERE a.patient_id = ? AND l.status = 'published'
+    ORDER BY l.id, CASE WHEN a.course_id IS NULL THEN a.assigned_at ELSE a.assigned_at + make_interval(days => COALESCE(cl.release_day, 0)) END`, patientId);
+  const now = Date.now();
+  for (const r of rows) r.locked = new Date(r.available_at).getTime() > now;
   return rows.sort((a, b) => new Date(b.assigned_at) - new Date(a.assigned_at));
 }
 
 async function canSeeLesson(patientId, lessonId) {
   return Boolean(await get(`SELECT 1 FROM lesson_assignments a LEFT JOIN course_lessons cl ON cl.course_id = a.course_id
-    WHERE a.patient_id = ? AND (a.lesson_id = ? OR cl.lesson_id = ?)`, patientId, lessonId, lessonId));
+    WHERE a.patient_id = ? AND (a.lesson_id = ? OR (cl.lesson_id = ? AND a.assigned_at + make_interval(days => COALESCE(cl.release_day, 0)) <= now()))`, patientId, lessonId, lessonId));
 }
 
 module.exports = {

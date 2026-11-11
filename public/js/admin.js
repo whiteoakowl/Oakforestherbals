@@ -373,3 +373,24 @@
     draw();
   });
 }());
+
+// Leads board: drag a card to another column to change its stage (the menu on each card does the same).
+(function () {
+  'use strict';
+  const board = document.querySelector('[data-kanban]');
+  if (!board) return;
+  let dragged = null;
+  board.addEventListener('dragstart', (e) => { dragged = e.target.closest('[data-lead]'); if (dragged) dragged.classList.add('dragging'); });
+  board.addEventListener('dragend', () => { if (dragged) dragged.classList.remove('dragging'); board.querySelectorAll('.drag-over').forEach((c) => c.classList.remove('drag-over')); });
+  board.addEventListener('dragover', (e) => { const col = e.target.closest('[data-stage]'); if (col && dragged) { e.preventDefault(); col.classList.add('drag-over'); } });
+  board.addEventListener('dragleave', (e) => { const col = e.target.closest('[data-stage]'); if (col && !col.contains(e.relatedTarget)) col.classList.remove('drag-over'); });
+  board.addEventListener('drop', (e) => {
+    const col = e.target.closest('[data-stage]');
+    if (!col || !dragged) return;
+    e.preventDefault();
+    const select = dragged.querySelector('select[name=stage]');
+    if (select.value === col.dataset.stage) return;
+    select.value = col.dataset.stage;
+    select.form.submit();
+  });
+}());

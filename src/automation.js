@@ -60,6 +60,10 @@ async function dailyDigest(now) {
       for (const s of staff) await comms.notifyStaff({ kind: 'follow_up', title: 'A care plan is due for review today', link: `/admin/clinic/patients/${r.patient_id}?tab=plans&plan=${r.id}`, staffId: s.staff_id, dedupe: `review-${r.id}-${day}-${s.staff_id}` });
     }
   }
+  // Lead follow-ups due today, to whoever owns each lead (or everyone who works leads).
+  for (const l of await require('./leads').dueToday(day)) {
+    await comms.notifyStaff({ kind: 'lead', title: `Follow up with ${l.name} today`, link: `/admin/leads/${l.id}`, ...(l.owner_id ? { staffId: l.owner_id } : { permission: 'leads.manage' }), dedupe: `lead-${l.id}-${day}` });
+  }
   const waiting = (await get("SELECT COUNT(*) AS n FROM production_batches WHERE status IN ('awaiting_qc', 'completed')")).n;
   out.batches = waiting;
   if (waiting) await comms.notifyStaff({ kind: 'batch', title: `${waiting} batch(es) awaiting quality review or release`, link: '/admin/production', permission: 'production.approve', dedupe: `batches-${day}` });

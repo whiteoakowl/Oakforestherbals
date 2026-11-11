@@ -213,3 +213,10 @@ Body chart, tongue and pulse findings are stored inside the (encrypted) clinical
 | `service_packages` | Packages/memberships on offer: sessions, price, validity, which appointment types, sold online or not. |
 | `client_packages` | A client's package: sessions used of total, expiry, status (pending until its invoice is paid, active, used, expired, cancelled). |
 | `package_uses` | Which appointment used which package session (removed again if the appointment is cancelled). |
+
+## 0016_leads_drip_food
+| Change | Purpose |
+|---|---|
+| `leads` | Enquiries and prospects: contact, source, interest, stage (new → contacted → consult booked → client / not going ahead), notes, follow-up date, owner, linked customer. |
+| `course_lessons.release_day` | Days after a course is assigned before each lesson opens (programs). |
+| `patient_logs` kind check | Adds `food` entries (meal, what was eaten, how they felt, optional photo stored as an encrypted patient document). |

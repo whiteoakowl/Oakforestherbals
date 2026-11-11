@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Leads, programs and the food journal
+
+### Added
+- **Leads** (Clinic → Leads): a board of enquiries by stage — drag cards between columns or use the menu
+  on each card — with notes, follow-up dates, owners and sources. Contact-form messages become leads
+  automatically (repeat messages add to the same lead); follow-ups due today are in the daily
+  notifications; convert a lead into a customer and straight into a clinic record. New permission
+  `leads.manage` (administrators, clinic managers, practitioners, store managers, customer service).
+- **Programs**: in a course, set the day each lesson opens after the course is assigned; clients see
+  upcoming lessons with their opening date and can't open them early.
+- **Food and drink journal** in My clinic: meal, what they had, how they felt, and an optional photo
+  (kept encrypted as a document); practitioners see entries in Progress.
+
 ## Unreleased — Rooms, packages and video visits
 
 ### Added

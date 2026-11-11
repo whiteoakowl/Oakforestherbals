@@ -23,7 +23,7 @@
   </section>
   <aside>
     <div class="card"><h2>Messages</h2><p><%= unread ? `${unread} new message${unread === 1 ? '' : 's'}` : 'No new messages' %></p><a href="/account/clinic/messages">Open messages</a></div>
-    <div class="card"><h2>Learning</h2><% const todo = lessons.filter((l) => !l.completed_at); %><p><%= todo.length ? `${todo.length} lesson${todo.length === 1 ? '' : 's'} to read` : 'All caught up' %></p><a href="/account/clinic/learning">Open learning</a></div>
+    <div class="card"><h2>Learning</h2><% const todo = lessons.filter((l) => !l.completed_at && !l.locked); %><p><%= todo.length ? `${todo.length} lesson${todo.length === 1 ? '' : 's'} to read` : 'All caught up' %></p><a href="/account/clinic/learning">Open learning</a></div>
     <div class="card"><h2>My wellness</h2><p class="small">Track symptoms, sleep, energy and mood between visits.</p><a href="/account/clinic/journal">Add an entry</a></div>
     <% if (docs.length) { %><div class="card"><h2>Documents</h2><% for (const d of docs) { %><p class="small"><a href="/account/clinic/documents/<%= d.id %>"><%= d.title %></a></p><% } %></div><% } %>
   </aside>
