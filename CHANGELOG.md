@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Rooms, packages and video visits
+
+### Added
+- **Rooms** (Calendar → Rooms): mark appointment types that need a room; online and staff booking only
+  offer times when a room is free and assign one automatically; move an appointment to another room
+  (refused if taken).
+- **Packages and memberships** (Calendar → Packages): prepaid sessions for chosen appointment types with
+  optional expiry; sell at the desk or online (`/book/packages`); a package starts when its invoice is paid;
+  booking can use a session instead of charging, and cancelling gives it back. Clients see their packages
+  under My appointments.
+- **Video visits**: choose “Create a private Jitsi Meet link automatically” in booking settings and every
+  online appointment gets its own link, included in confirmations and reminders.
+
 ## Unreleased — Charting and the dispensary
 
 ### Added

@@ -15,6 +15,7 @@
       <label class="field"><span>Where</span><select name="mode"><% for (const [k, l] of [['either', 'In person or online'], ['in_person', 'In person'], ['virtual', 'Online']]) { %><option value="<%= k %>" <%= k === t.mode ? 'selected' : '' %>><%= l %></option><% } %></select></label></div>
     <div class="field"><span>Practitioners who offer it</span><% for (const p of people) { %><label class="check small"><input type="checkbox" name="staff_ids" value="<%= p.id %>" <%= staffIds.includes(p.id) ? 'checked' : '' %>> <%= p.name %></label><% } %></div>
     <label class="check small"><input type="checkbox" name="online_booking" value="1" <%= t.online_booking ? 'checked' : '' %>> Clients can book this online</label>
+    <label class="check small"><input type="checkbox" name="needs_room" value="1" <%= t.needs_room ? 'checked' : '' %>> Needs a room (in person) — only offer times when a room is free</label>
     <label class="check small"><input type="hidden" name="active" value="0"><input type="checkbox" name="active" value="1" <%= t.active ? 'checked' : '' %>> Active</label>
     <p class="muted small">Deposits are taken by card at booking when Stripe is set up; otherwise they're added to the client's invoice.</p>
     <div class="right"><button class="btn btn-primary">Save</button></div>

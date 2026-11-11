@@ -205,3 +205,11 @@ share of an order as its own line.
 | `inventory_transactions` kind check | Adds `dispense` as a kind of stock movement. |
 
 Body chart, tongue and pulse findings are stored inside the (encrypted) clinical note, so no new columns.
+
+## 0015_rooms_packages
+| Change | Purpose |
+|---|---|
+| `rooms`, `appointment_types.needs_room`, `appointments.room_id` | Treatment rooms; types that need one only offer times when a room is free, and the room is assigned at booking. |
+| `service_packages` | Packages/memberships on offer: sessions, price, validity, which appointment types, sold online or not. |
+| `client_packages` | A client's package: sessions used of total, expiry, status (pending until its invoice is paid, active, used, expired, cancelled). |
+| `package_uses` | Which appointment used which package session (removed again if the appointment is cancelled). |

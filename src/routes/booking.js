@@ -21,6 +21,24 @@ const bookableTypes = () => all(`SELECT t.* FROM appointment_types t WHERE t.act
 const bookableStaff = (typeId) => all(`SELECT s.id, COALESCE(NULLIF(pp.display_name, ''), s.name) AS name, pp.title, pp.bio, pp.photo_url, pp.qualifications, pp.areas FROM appointment_type_staff ts JOIN staff s ON s.id = ts.staff_id
   JOIN practitioner_profiles pp ON pp.staff_id = s.id WHERE ts.type_id = ? AND pp.accepts_bookings = 1 ORDER BY s.name`, typeId);
 
+/* ---------- Packages bought online ---------- */
+
+router.get('/book/packages', async (req, res) => {
+  const list = await all('SELECT * FROM service_packages WHERE active = 1 AND online_sale = 1 ORDER BY price, name');
+  const types = await all('SELECT id, name FROM appointment_types');
+  res.render('store/book/packages', { title: 'Packages', list, types, typesOf: require('../packages').typesOf });
+});
+
+router.post('/book/packages/:id', requireCustomer, async (req, res) => {
+  const pkg = await get('SELECT * FROM service_packages WHERE id = ? AND active = 1 AND online_sale = 1', toInt(req.params.id));
+  if (!pkg) return res.redirect('/book/packages');
+  const out = await require('../packages').sell({ customer: res.locals.customer, packageId: pkg.id, by: 'Online' });
+  await require('../comms').notifyStaff({ kind: 'booking', title: `Package bought online: ${pkg.name}`, link: '/admin/schedule/packages', permission: 'scheduling.manage' });
+  if (!out.invoiceId) { flash(req, 'success', `${pkg.name} is ready to use when you book.`); return res.redirect('/account/appointments'); }
+  const inv = await billing.loadInvoice('id', out.invoiceId);
+  res.redirect(`/invoices/${inv.token}`);
+});
+
 router.get('/book', async (req, res) => {
   const types = await bookableTypes();
   const practitioners = await all(`SELECT COALESCE(NULLIF(pp.display_name, ''), s.name) AS name, pp.title, pp.bio, pp.photo_url, pp.qualifications, pp.areas FROM practitioner_profiles pp
@@ -40,7 +58,8 @@ router.get('/book/:typeId', async (req, res, next) => {
   const open = staffId && staffList.some((s) => s.id === staffId) ? await scheduling.slots(type, staffId, from, to) : [];
   const days = [];
   for (let d = from; d <= to; d = scheduling.addDays(d, 1)) days.push({ day: d, slots: open.filter((s) => s.day === d) });
-  res.render('store/book/type', { title: type.name, type, staffList, staffId, days, from, prev: from > today ? scheduling.addDays(from, -7) : null, next: scheduling.addDays(from, 7), tz });
+  const pkgs = res.locals.customer ? await require('../packages').usableFor(res.locals.customer.id, type.id) : [];
+  res.render('store/book/type', { title: type.name, type, staffList, staffId, days, from, prev: from > today ? scheduling.addDays(from, -7) : null, next: scheduling.addDays(from, 7), tz, pkgs });
 });
 
 router.post('/book/:typeId', async (req, res, next) => {
@@ -52,7 +71,7 @@ router.post('/book/:typeId', async (req, res, next) => {
     flash(req, 'success', 'Log in or create an account to finish booking — it keeps your appointments and clinic information together.');
     return res.redirect(`/account/login?next=${encodeURIComponent(`/book/${type.id}/confirm`)}`);
   }
-  return finishBooking(req, res, type, { staffId: toInt(req.body.staff_id), start: String(req.body.start || ''), mode: req.body.mode }, back);
+  return finishBooking(req, res, type, { staffId: toInt(req.body.staff_id), start: String(req.body.start || ''), mode: req.body.mode, packageId: toInt(req.body.package_id) }, back);
 });
 
 // After logging in, the chosen slot is waiting in the session.
@@ -60,7 +79,8 @@ router.get('/book/:typeId/confirm', requireCustomer, async (req, res) => {
   const p = req.session.pendingBooking;
   const type = (await bookableTypes()).find((t) => t.id === toInt(req.params.typeId));
   if (!p || !type || p.typeId !== type.id) return res.redirect(`/book/${toInt(req.params.typeId)}`);
-  res.render('store/book/confirm', { title: 'Confirm your appointment', type, p, staff: (await bookableStaff(type.id)).find((s) => s.id === p.staffId) });
+  const pkgs = res.locals.customer ? await require('../packages').usableFor(res.locals.customer.id, type.id) : [];
+  res.render('store/book/confirm', { title: 'Confirm your appointment', type, p, staff: (await bookableStaff(type.id)).find((s) => s.id === p.staffId), pkgs });
 });
 
 router.post('/book/:typeId/confirm', requireCustomer, async (req, res) => {
@@ -68,10 +88,10 @@ router.post('/book/:typeId/confirm', requireCustomer, async (req, res) => {
   const type = (await bookableTypes()).find((t) => t.id === toInt(req.params.typeId));
   if (!p || !type) return res.redirect('/book');
   delete req.session.pendingBooking;
-  return finishBooking(req, res, type, p, `/book/${type.id}?staff=${p.staffId}`);
+  return finishBooking(req, res, type, { ...p, packageId: toInt(req.body.package_id) }, `/book/${type.id}?staff=${p.staffId}`);
 });
 
-async function finishBooking(req, res, type, { staffId, start, mode }, back) {
+async function finishBooking(req, res, type, { staffId, start, mode, packageId = 0 }, back) {
   if (!(await bookableStaff(type.id)).some((s) => s.id === staffId)) { flash(req, 'error', 'Choose a practitioner.'); return res.redirect(back); }
   const customer = res.locals.customer;
   let id;
@@ -82,9 +102,11 @@ async function finishBooking(req, res, type, { staffId, start, mode }, back) {
     flash(req, 'error', e.message);
     return res.redirect(back);
   }
+  // Paid with a prepaid package session instead of an invoice.
+  const usedPackage = packageId ? await require('../packages').use(packageId, id, customer.id, type.id) : false;
   const a = await scheduling.load(id);
   let invoice = null;
-  if (type.price > 0) {
+  if (type.price > 0 && !usedPackage) {
     const invId = await billing.createInvoice({ customerId: customer.id, email: customer.email, name: `${customer.first_name} ${customer.last_name}`.trim(), items: [{ description: `${type.name} — ${scheduling.formatWhen(a.starts_at)}`, quantity: 1, unit_price: type.price }], appointmentId: id, staffId, createdBy: 'Online booking' });
     invoice = await billing.loadInvoice('id', invId);
   }
@@ -92,10 +114,10 @@ async function finishBooking(req, res, type, { staffId, start, mode }, back) {
   await require('../comms').notifyStaff({ kind: 'booking', title: `Online booking: ${type.name}, ${scheduling.formatWhen(a.starts_at)}`, link: `/admin/schedule/appointments/${id}`, staffId });
   await audit.record(req, 'appointment.booked_online', { entityType: 'appointment', entityId: id, actor: { type: 'customer', id: customer.id, name: customer.email } });
   // A deposit is paid now through Stripe when card payments are set up; otherwise at the clinic.
-  if (invoice && type.deposit > 0 && stripe.stripeConfigured()) {
+  if (invoice && !usedPackage && type.deposit > 0 && stripe.stripeConfigured()) {
     try { return res.redirect(await stripe.createInvoiceSession(invoice, Math.min(type.deposit, invoice.total), baseUrl(req))); } catch (e) { console.error('stripe deposit', e.message); }
   }
-  flash(req, 'success', `Booked: ${type.name}, ${scheduling.formatWhen(a.starts_at)}.${type.deposit > 0 ? ' Your deposit can be paid from your invoice.' : ''}`);
+  flash(req, 'success', `Booked: ${type.name}, ${scheduling.formatWhen(a.starts_at)}.${usedPackage ? ' One session was used from your package.' : type.deposit > 0 ? ' Your deposit can be paid from your invoice.' : ''}`);
   return res.redirect('/account/appointments');
 }
 
@@ -115,13 +137,15 @@ router.get('/account/appointments', requireCustomer, async (req, res) => {
   const rows = await all(`SELECT a.*, s.name AS staff_name, i.token AS invoice_token, i.total AS invoice_total, i.paid_total FROM appointments a LEFT JOIN staff s ON s.id = a.staff_id
     LEFT JOIN invoices i ON i.id = a.invoice_id WHERE a.customer_id = ? ORDER BY a.starts_at DESC`, res.locals.customer.id);
   const now = Date.now();
-  res.render('store/book/mine', { title: 'My appointments', upcoming: rows.filter((a) => new Date(a.starts_at) > now && a.status !== 'cancelled').reverse(), past: rows.filter((a) => new Date(a.starts_at) <= now || a.status === 'cancelled'), canChange: scheduling.canChange, cancelHours: settings.load('booking').cancel_hours });
+  const myPackages = await require('../packages').forCustomer(res.locals.customer.id);
+  res.render('store/book/mine', { myPackages, title: 'My appointments', upcoming: rows.filter((a) => new Date(a.starts_at) > now && a.status !== 'cancelled').reverse(), past: rows.filter((a) => new Date(a.starts_at) <= now || a.status === 'cancelled'), canChange: scheduling.canChange, cancelHours: settings.load('booking').cancel_hours });
 });
 
 router.post('/account/appointments/:id/cancel', requireCustomer, async (req, res) => {
   const a = await mine(req, toInt(req.params.id));
   if (!a || !scheduling.canChange(a)) { flash(req, 'error', `Appointments can be cancelled online up to ${settings.load('booking').cancel_hours} hours before. Please contact us.`); return res.redirect('/account/appointments'); }
   await run("UPDATE appointments SET status = 'cancelled', cancel_reason = 'Cancelled by client' WHERE id = ?", a.id);
+  await require('../packages').release(a.id);
   await audit.record(req, 'appointment.cancelled_online', { entityType: 'appointment', entityId: a.id, actor: { type: 'customer', id: res.locals.customer.id, name: res.locals.customer.email } });
   await require('./admin/schedule').notifyWaitlist(a);
   flash(req, 'success', 'Appointment cancelled.');

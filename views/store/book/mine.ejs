@@ -2,7 +2,9 @@
 <div class="container section">
   <h1 class="page-title">My account</h1>
   <%- include('../account/nav') %>
-  <div class="row-between"><h2>Upcoming appointments</h2><a class="btn btn-secondary" href="/book">Book an appointment</a></div>
+  <% const shownPkgs = myPackages.filter((p) => ['active', 'pending'].includes(p.status)); %>
+  <% if (shownPkgs.length) { %><div class="box"><h2 class="h4">Your packages</h2><% for (const p of shownPkgs) { %><p><strong><%= p.name %></strong>: <%= p.status === 'pending' ? 'starts when ' : '' %><% if (p.status === 'pending' && p.invoice_token) { %><a href="/invoices/<%= p.invoice_token %>">invoice #<%= p.invoice_number %> is paid</a><% } else { %><%= p.sessions_total - p.sessions_used %> of <%= p.sessions_total %> sessions left<%= p.expires_on ? `, until ${formatDate(p.expires_on)}` : '' %><% } %></p><% } %></div><% } %>
+  <div class="row-between"><h2>Upcoming appointments</h2><span><a class="btn btn-secondary" href="/book/packages">Packages</a> <a class="btn btn-secondary" href="/book">Book an appointment</a></span></div>
   <% if (!upcoming.length) { %><p class="muted">Nothing booked.</p><% } %>
   <% for (const a of upcoming) { %>
     <div class="card appt-card">

@@ -21,6 +21,8 @@ const SECTIONS = [
         children: [
           { href: '/admin/schedule', label: 'Calendar', exact: true, match: /^\/admin\/schedule\/appointments\// },
           { href: '/admin/schedule/types', label: 'Appointment types', perm: 'scheduling.manage' },
+          { href: '/admin/schedule/packages', label: 'Packages' },
+          { href: '/admin/schedule/rooms', label: 'Rooms', perm: 'scheduling.manage' },
           { href: '/admin/schedule/hours', label: 'Hours and profile' },
         ],
       },

@@ -27,6 +27,8 @@ async function recalc(invoiceId) {
   let status = inv.status;
   if (status !== 'void' && status !== 'draft') status = paid >= total && total > 0 ? 'paid' : paid > 0 ? 'partial' : 'open';
   await run('UPDATE invoices SET subtotal = ?, tax_total = ?, total = ?, paid_total = ?, status = ? WHERE id = ?', subtotal, tax, total, paid, status, invoiceId);
+  // A package bought on this invoice starts once it's paid.
+  if (status === 'paid') for (const cp of await all("SELECT id FROM client_packages WHERE invoice_id = ? AND status = 'pending'", invoiceId)) await require('./packages').activate(cp.id);
   return { subtotal, tax, total, paid, status };
 }
 

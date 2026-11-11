@@ -23,6 +23,10 @@
         <label class="check small"><input type="checkbox" name="notify" value="1" checked> Email the client</label>
         <button class="btn btn-sm">Move appointment</button>
       </form>
+      <% if (rooms.length || pkg) { %><div class="card form-stack"><h2>Room and payment</h2>
+        <% if (pkg) { %><p class="small">Paid with a session from <strong><%= pkg.name %></strong> (<%= pkg.sessions_used %> of <%= pkg.sessions_total %> used). Cancelling gives the session back.</p><% } %>
+        <% if (rooms.length) { %><form method="post" action="/admin/schedule/appointments/<%= a.id %>/room" class="inline-fields"><input type="hidden" name="_csrf" value="<%= csrf %>"><label class="visually-hidden" for="room">Room</label><select id="room" name="room_id"><option value="">No room</option><% for (const r of rooms) { %><option value="<%= r.id %>" <%= r.id === a.room_id ? 'selected' : '' %>><%= r.name %></option><% } %></select><button class="btn btn-sm">Set room</button></form><% } %>
+      </div><% } %>
       <div class="card"><h2>Billing</h2>
         <p class="small">Price <%= money(a.price) %><%= a.deposit ? ` · deposit ${money(a.deposit)}` : '' %></p>
         <% if (invoice) { %><p class="small"><a href="/admin/invoices/<%= invoice.id %>">Invoice #<%= invoice.number %></a> · <%= invoice.status %> · paid <%= money(invoice.paid_total) %> of <%= money(invoice.total) %></p>

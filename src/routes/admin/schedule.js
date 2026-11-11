@@ -70,7 +70,9 @@ router.get('/appointments/new', async (req, res) => {
   const customer = pre.customer ? await get('SELECT id, email, first_name, last_name FROM customers WHERE id = ?', pre.customer) : null;
   // Booking from a case: the appointment is filed under it (only if the case belongs to this client).
   const caseRow = customer && toInt(req.query.case) ? await get('SELECT c.id, c.title FROM clinic_cases c JOIN patients p ON p.id = c.patient_id WHERE c.id = ? AND p.customer_id = ?', toInt(req.query.case), customer.id) : null;
-  res.render('admin/schedule/new', { title: 'New appointment', types, people: await staffScope(req), customer, caseRow, staffId: req.all ? 0 : res.locals.staff.id });
+  const rooms = await all('SELECT id, name FROM rooms WHERE active = 1 ORDER BY position, id');
+  const pkgs = customer ? await require('../../packages').forCustomer(customer.id) : [];
+  res.render('admin/schedule/new', { title: 'New appointment', types, people: await staffScope(req), customer, caseRow, rooms, pkgs: pkgs.filter((p) => p.status === 'active'), staffId: req.all ? 0 : res.locals.staff.id });
 });
 
 // Messages to clients carry the appointment type, time, place and practitioner — nothing clinical.
@@ -106,7 +108,7 @@ router.post('/appointments/new', async (req, res) => {
   try {
     for (let w = 0; w < repeats; w++) {
       const start = scheduling.zonedToUtc(scheduling.addDays(req.body.day, w * 7), req.body.time, tz);
-      created.push(await scheduling.book({ type, staffId, customerId: customer.id, start, mode: req.body.mode, notes_enc: notes ? vault.seal(notes) : null, bookedBy: 'staff', staffOverride: req.body.override === '1', seriesId }));
+      created.push(await scheduling.book({ type, staffId, customerId: customer.id, start, mode: req.body.mode, notes_enc: notes ? vault.seal(notes) : null, bookedBy: 'staff', staffOverride: req.body.override === '1', seriesId, roomId: toInt(req.body.room_id) || null }));
     }
   } catch (e) {
     if (!e.status) throw e;
@@ -115,8 +117,17 @@ router.post('/appointments/new', async (req, res) => {
   }
   const caseId = toInt(req.body.case_id) && (await get('SELECT c.id FROM clinic_cases c JOIN patients p ON p.id = c.patient_id WHERE c.id = ? AND p.customer_id = ?', toInt(req.body.case_id), customer.id) || {}).id;
   if (caseId) for (const id of created) await run('UPDATE appointments SET case_id = ? WHERE id = ?', caseId, id);
+  // Use prepaid package sessions first, when asked.
+  const paidByPackage = new Set();
+  if (req.body.use_package === '1') {
+    const packages = require('../../packages');
+    for (const id of created) {
+      const [pk] = await packages.usableFor(customer.id, type.id);
+      if (pk && await packages.use(pk.id, id, customer.id, type.id)) paidByPackage.add(id);
+    }
+  }
   for (const id of created) {
-    if (type.price > 0 && req.body.invoice === '1') {
+    if (type.price > 0 && req.body.invoice === '1' && !paidByPackage.has(id)) {
       const a = await scheduling.load(id);
       await billing.createInvoice({ customerId: customer.id, email: a.email, name: `${a.first_name || ''} ${a.last_name || ''}`.trim(), items: [{ description: `${type.name} — ${scheduling.formatWhen(a.starts_at)}`, quantity: 1, unit_price: type.price }], appointmentId: id, staffId, createdBy: res.locals.staff.name });
     }
@@ -141,7 +152,9 @@ router.get('/appointments/:id', apptParam, async (req, res) => {
   const local = scheduling.utcToZoned(new Date(a.starts_at), settings.load('booking').timezone);
   const series = a.series_id ? await all("SELECT id, starts_at, status FROM appointments WHERE series_id = ? ORDER BY starts_at", a.series_id) : [];
   await audit.record(req, 'appointment.viewed', { entityType: 'appointment', entityId: a.id });
-  res.render('admin/schedule/appointment', { title: a.type_name, a, invoice, local, series, people: await staffScope(req) });
+  const rooms = await all('SELECT id, name FROM rooms WHERE active = 1 OR id = ? ORDER BY position, id', a.room_id || 0);
+  const pkg = await require('../../packages').usedFor(a.id);
+  res.render('admin/schedule/appointment', { title: a.type_name, a, invoice, local, series, people: await staffScope(req), rooms, pkg });
 });
 
 router.post('/appointments/:id', apptParam, async (req, res) => {
@@ -154,6 +167,7 @@ router.post('/appointments/:id', apptParam, async (req, res) => {
     status === 'cancelled' ? text(req.body.cancel_reason, 300) || a.cancel_reason : a.cancel_reason, a.id);
   await audit.record(req, 'appointment.updated', { entityType: 'appointment', entityId: a.id, details: { status } });
   if (status === 'cancelled' && a.status !== 'cancelled') {
+    await require('../../packages').release(a.id);
     if (req.body.notify === '1') await appointmentEmail(a, 'appointment_cancelled');
     await notifyWaitlist(a);
   } else if (status === 'confirmed' && a.status !== 'confirmed' && req.body.notify === '1') {
@@ -231,11 +245,11 @@ router.post('/types/:id', manageAll, async (req, res) => {
   const back = `/admin/schedule/types/${req.params.id}`;
   if (!name) return fail(req, res, 'Give the appointment type a name.', back);
   const cols = [name, text(b.description, 2000), KINDS.some(([k]) => k === b.kind) ? b.kind : 'other', Math.max(5, toInt(b.duration_min, 60)), Math.max(0, toInt(b.buffer_min, 0)),
-    parseMoney(b.price) || 0, parseMoney(b.deposit) || 0, ['in_person', 'virtual', 'either'].includes(b.mode) ? b.mode : 'either', Math.max(1, toInt(b.capacity, 1)), b.online_booking === '1' ? 1 : 0, b.active === '0' ? 0 : 1];
+    parseMoney(b.price) || 0, parseMoney(b.deposit) || 0, ['in_person', 'virtual', 'either'].includes(b.mode) ? b.mode : 'either', Math.max(1, toInt(b.capacity, 1)), b.online_booking === '1' ? 1 : 0, b.active === '0' ? 0 : 1, b.needs_room === '1' ? 1 : 0];
   const id = await tx(async () => {
     let tid = req.params.id === 'new' ? 0 : toInt(req.params.id);
-    if (tid) await run('UPDATE appointment_types SET name = ?, description = ?, kind = ?, duration_min = ?, buffer_min = ?, price = ?, deposit = ?, mode = ?, capacity = ?, online_booking = ?, active = ? WHERE id = ?', ...cols, tid);
-    else tid = await insert('INSERT INTO appointment_types (name, description, kind, duration_min, buffer_min, price, deposit, mode, capacity, online_booking, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...cols);
+    if (tid) await run('UPDATE appointment_types SET name = ?, description = ?, kind = ?, duration_min = ?, buffer_min = ?, price = ?, deposit = ?, mode = ?, capacity = ?, online_booking = ?, active = ?, needs_room = ? WHERE id = ?', ...cols, tid);
+    else tid = await insert('INSERT INTO appointment_types (name, description, kind, duration_min, buffer_min, price, deposit, mode, capacity, online_booking, active, needs_room) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', ...cols);
     await run('DELETE FROM appointment_type_staff WHERE type_id = ?', tid);
     for (const s of [].concat(b.staff_ids || []).map(toInt).filter(Boolean)) await run('INSERT INTO appointment_type_staff (type_id, staff_id) VALUES (?, ?) ON CONFLICT DO NOTHING', tid, s);
     return tid;
@@ -311,9 +325,73 @@ router.post('/settings', manageAll, async (req, res) => {
     timezone: tz, min_notice_hours: Math.max(0, toInt(req.body.min_notice_hours, 12)), max_days_ahead: Math.max(1, toInt(req.body.max_days_ahead, 60)),
     cancel_hours: Math.max(0, toInt(req.body.cancel_hours, 24)), slot_step_min: Math.max(5, toInt(req.body.slot_step_min, 15)), location: text(req.body.location, 300),
     confirmation_note: text(req.body.confirmation_note, 1000), reminder_hours: Math.max(1, toInt(req.body.reminder_hours, 24)),
+    video_provider: req.body.video_provider === 'jitsi' ? 'jitsi' : 'none',
   });
   flash(req, 'success', 'Booking settings saved.');
   res.redirect('/admin/schedule/hours');
+});
+
+/* ---------- Rooms ---------- */
+
+router.get('/rooms', manageAll, async (req, res) => {
+  res.render('admin/schedule/rooms', { title: 'Rooms', rooms: await all('SELECT r.*, (SELECT COUNT(*) FROM appointments a WHERE a.room_id = r.id AND a.starts_at > now() AND a.status IN (\'booked\', \'confirmed\')) AS upcoming FROM rooms r ORDER BY r.position, r.id') });
+});
+
+router.post('/rooms', manageAll, async (req, res) => {
+  const name = text(req.body.name, 100);
+  if (toInt(req.body.id)) await run('UPDATE rooms SET name = COALESCE(NULLIF(?, \'\'), name), active = ? WHERE id = ?', name, req.body.active === '0' ? 0 : 1, toInt(req.body.id));
+  else if (name) await insert('INSERT INTO rooms (name, position) VALUES (?, (SELECT COALESCE(MAX(position), 0) + 1 FROM rooms))', name);
+  res.redirect('/admin/schedule/rooms');
+});
+
+router.post('/appointments/:id/room', apptParam, async (req, res) => {
+  const a = req.appt;
+  const roomId = toInt(req.body.room_id) || null;
+  if (roomId) {
+    const type = await get('SELECT * FROM appointment_types WHERE id = ?', a.type_id) || { id: 0, buffer_min: 0 };
+    const free = await scheduling.freeRoom(type, new Date(a.starts_at), new Date(a.ends_at), roomId, a.id, a.staff_id);
+    if (!free) return fail(req, res, 'That room is taken at that time.', `/admin/schedule/appointments/${a.id}`);
+  }
+  await run('UPDATE appointments SET room_id = ? WHERE id = ?', roomId, a.id);
+  flash(req, 'success', 'Room updated.');
+  res.redirect(`/admin/schedule/appointments/${a.id}`);
+});
+
+/* ---------- Packages and memberships ---------- */
+
+router.get('/packages', async (req, res) => {
+  const list = await all(`SELECT sp.*, (SELECT COUNT(*) FROM client_packages cp WHERE cp.package_id = sp.id) AS sold,
+      (SELECT COUNT(*) FROM client_packages cp WHERE cp.package_id = sp.id AND cp.status = 'active') AS active_count FROM service_packages sp ORDER BY sp.active DESC, sp.name`);
+  const types = await all('SELECT id, name FROM appointment_types ORDER BY position, name');
+  const recent = await all(`SELECT cp.*, c.email, c.first_name, c.last_name FROM client_packages cp JOIN customers c ON c.id = cp.customer_id ORDER BY cp.id DESC LIMIT 30`);
+  res.render('admin/schedule/packages', { title: 'Packages', list, types, recent, edit: toInt(req.query.edit), typesOf: require('../../packages').typesOf });
+});
+
+router.post('/packages', manageAll, async (req, res) => {
+  const b = req.body;
+  const name = text(b.name, 200);
+  if (!name || toInt(b.sessions) < 1) return fail(req, res, 'Give the package a name and number of sessions.', '/admin/schedule/packages');
+  const typeIds = JSON.stringify([].concat(b.type_ids || []).flatMap((x) => String(x).split(',')).map(toInt).filter(Boolean));
+  const cols = [name, text(b.description, 2000), toInt(b.sessions), parseMoney(b.price) || 0, toInt(b.valid_days) || null, typeIds, b.online_sale === '1' ? 1 : 0, b.active === '0' ? 0 : 1];
+  if (toInt(b.id)) await run('UPDATE service_packages SET name = ?, description = ?, sessions = ?, price = ?, valid_days = ?, type_ids = ?, online_sale = ?, active = ? WHERE id = ?', ...cols, toInt(b.id));
+  else await insert('INSERT INTO service_packages (name, description, sessions, price, valid_days, type_ids, online_sale, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', ...cols);
+  flash(req, 'success', 'Package saved.');
+  res.redirect('/admin/schedule/packages');
+});
+
+router.post('/packages/sell', async (req, res) => {
+  const email = text(req.body.email, 200).toLowerCase();
+  const customer = await get('SELECT * FROM customers WHERE email = ?', email);
+  if (!customer) return fail(req, res, 'No customer with that email. Add them first.', '/admin/schedule/packages');
+  try {
+    const out = await require('../../packages').sell({ customer, packageId: toInt(req.body.package_id), by: res.locals.staff.name, paidNow: req.body.paid_now === '1', method: text(req.body.method, 40) || 'Other' });
+    await audit.record(req, 'package.sold', { entityType: 'customer', entityId: customer.id, details: { package: toInt(req.body.package_id) } });
+    flash(req, 'success', out.invoiceId && req.body.paid_now !== '1' ? 'Package sold. It starts when the invoice is paid.' : 'Package sold and active.');
+    res.redirect(out.invoiceId && res.locals.can('invoices.manage') ? `/admin/invoices/${out.invoiceId}` : '/admin/schedule/packages');
+  } catch (e) {
+    if (!e.status) throw e;
+    fail(req, res, e.message, '/admin/schedule/packages');
+  }
 });
 
 module.exports = router;

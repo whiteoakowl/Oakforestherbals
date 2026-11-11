@@ -125,6 +125,7 @@ const DEFAULTS = {
     location: '',
     confirmation_note: '',
     reminder_hours: 24,
+    video_provider: 'none',
   },
   invoices: {
     next_number: 1001,

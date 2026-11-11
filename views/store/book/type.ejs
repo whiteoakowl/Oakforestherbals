@@ -6,6 +6,7 @@
   <% if (staffList.length > 1) { %><nav class="clinic-nav" aria-label="Practitioner"><% for (const s of staffList) { %><a href="?staff=<%= s.id %>&from=<%= from %>" class="<%= s.id === staffId ? 'active' : '' %>"><%= s.name %></a><% } %></nav><% } %>
   <div class="week-nav"><% if (prev) { %><a href="?staff=<%= staffId %>&from=<%= prev %>">← Earlier</a><% } %><a href="?staff=<%= staffId %>&from=<%= next %>">Later →</a></div>
   <form method="post" action="/book/<%= type.id %>" class="slot-form">
+    <% if (pkgs.length) { %><label class="field">Pay with <select name="package_id"><% for (const pk of pkgs) { %><option value="<%= pk.id %>">a session from <%= pk.name %> (<%= pk.sessions_total - pk.sessions_used %> left)</option><% } %><option value="0">pay for this appointment</option></select></label><% } %>
     <input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="staff_id" value="<%= staffId %>">
     <div class="slot-days">
       <% for (const d of days) { %>

@@ -1,0 +1,15 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Rooms', backHref: '/admin/schedule' }) %>
+  <p class="muted">Appointment types marked “needs a room” are only offered at times when a room is free, and the room is chosen automatically. You can move an appointment to another room from the appointment.</p>
+  <div class="card flush">
+    <table class="table"><thead><tr><th>Room</th><th class="num">Upcoming bookings</th><th>Status</th><th></th></tr></thead><tbody>
+      <% for (const r of rooms) { %><tr><td><form method="post" action="/admin/schedule/rooms" class="inline-fields"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="id" value="<%= r.id %>"><input name="name" value="<%= r.name %>" aria-label="Room name"><input type="hidden" name="active" value="<%= r.active ? 1 : 0 %>"><button class="btn btn-sm">Rename</button></form></td>
+        <td class="num"><%= r.upcoming %></td><td><%= r.active ? 'In use' : 'Not in use' %></td>
+        <td><form method="post" action="/admin/schedule/rooms" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="id" value="<%= r.id %>"><input type="hidden" name="active" value="<%= r.active ? 0 : 1 %>"><button class="link-plain small"><%= r.active ? 'Stop using' : 'Use again' %></button></form></td></tr><% } %>
+      <% if (!rooms.length) { %><tr><td colspan="4" class="muted">No rooms yet.</td></tr><% } %>
+    </tbody></table>
+  </div>
+  <form method="post" action="/admin/schedule/rooms" class="card inline-fields"><input type="hidden" name="_csrf" value="<%= csrf %>"><label class="visually-hidden" for="room-name">New room</label><input id="room-name" name="name" required placeholder="e.g. Treatment room 1" class="grow"><button class="btn btn-primary">Add room</button></form>
+</div>
+<%- include('../partials/footer') %>

@@ -72,6 +72,13 @@ async function slots(type, staffId, fromDay, toDay, { ignoreAppointmentId = 0, s
   const rangeEnd = zonedToUtc(addDays(toDay, 1), '00:00', tz);
   const busy = await all(`SELECT id, type_id, starts_at, ends_at FROM appointments WHERE staff_id = ? AND status IN ('booked', 'confirmed') AND id != ?
     AND starts_at < ? AND ends_at > ?`, staffId, ignoreAppointmentId, rangeEnd.toISOString(), new Date(rangeStart.getTime() - 86400000).toISOString());
+  // Types that need a room only offer times when some room is free (a group session shares its room).
+  const rooms = type.needs_room ? await all('SELECT id FROM rooms WHERE active = 1') : [];
+  const roomBusy = rooms.length ? await all(`SELECT room_id, type_id, staff_id, starts_at, ends_at FROM appointments WHERE room_id IS NOT NULL AND status IN ('booked', 'confirmed') AND id != ?
+    AND starts_at < ? AND ends_at > ?`, ignoreAppointmentId, rangeEnd.toISOString(), new Date(rangeStart.getTime() - 86400000).toISOString()) : [];
+  const roomFree = (t, end) => !rooms.length || rooms.some((r) => !roomBusy.some((a) => a.room_id === r.id
+    && !(type.capacity > 1 && a.staff_id === staffId && a.type_id === type.id && new Date(a.starts_at).getTime() === t)
+    && new Date(a.starts_at).getTime() < end + buffer && new Date(a.ends_at).getTime() + buffer > t));
   const out = [];
   for (let day = fromDay; day <= toDay; day = addDays(day, 1)) {
     if (offDays(day)) continue;
@@ -87,7 +94,7 @@ async function slots(type, staffId, fromDay, toDay, { ignoreAppointmentId = 0, s
         const clash = busy.some((a) => !(a.type_id === type.id && new Date(a.starts_at).getTime() === t)
           && new Date(a.starts_at).getTime() < end + buffer && new Date(a.ends_at).getTime() + buffer > t);
         const spots = type.capacity - same.length;
-        if (clash || spots <= 0) continue;
+        if (clash || spots <= 0 || !roomFree(t, end)) continue;
         const local = utcToZoned(new Date(t), tz);
         out.push({ start: new Date(t), end: new Date(end), day: local.day, time: local.time, spots });
       }
@@ -100,9 +107,10 @@ async function slots(type, staffId, fromDay, toDay, { ignoreAppointmentId = 0, s
  * Books an appointment. Re-checks the slot inside a transaction under a per-practitioner lock so
  * two people can't take the same time. staffOverride lets staff book outside published hours.
  */
-async function book({ type, staffId, customerId, start, mode, notes_enc = null, bookedBy = 'patient', staffOverride = false, seriesId = null, ignoreAppointmentId = 0 }) {
+async function book({ type, staffId, customerId, start, mode, notes_enc = null, bookedBy = 'patient', staffOverride = false, seriesId = null, ignoreAppointmentId = 0, roomId = null }) {
   return tx(async () => {
     await get('SELECT pg_advisory_xact_lock(72100, ?)', staffId);
+    if (type.needs_room || roomId) await get('SELECT pg_advisory_xact_lock(72101, 0)'); // rooms are shared by everyone
     const startDate = new Date(start);
     if (Number.isNaN(startDate.getTime())) throw err('Choose a time.', 422);
     const end = new Date(startDate.getTime() + type.duration_min * 60000);
@@ -118,10 +126,32 @@ async function book({ type, staffId, customerId, start, mode, notes_enc = null, 
     const p = customerId ? await get('SELECT id FROM patients WHERE customer_id = ?', customerId) : null;
     void p;
     const m = type.mode === 'either' ? (['in_person', 'virtual'].includes(mode) ? mode : 'in_person') : type.mode;
-    return insert(`INSERT INTO appointments (type_id, type_name, staff_id, customer_id, starts_at, ends_at, status, mode, location, price, deposit, booked_by, notes_enc, series_id)
-      VALUES (?, ?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?, ?, ?)`, type.id, type.name, staffId, customerId, startDate.toISOString(), end.toISOString(), m,
-    m === 'in_person' ? booking().location : '', type.price, type.deposit, bookedBy, notes_enc, seriesId);
+    const room = m === 'in_person' && (type.needs_room || roomId) ? await freeRoom(type, startDate, end, roomId, ignoreAppointmentId, staffId) : null;
+    if (m === 'in_person' && type.needs_room && !room && (await get('SELECT 1 FROM rooms WHERE active = 1'))) throw err(roomId ? 'That room is taken at that time.' : 'No room is free at that time.');
+    const video = m === 'virtual' ? videoLink() : '';
+    return insert(`INSERT INTO appointments (type_id, type_name, staff_id, customer_id, starts_at, ends_at, status, mode, location, price, deposit, booked_by, notes_enc, series_id, room_id, video_link)
+      VALUES (?, ?, ?, ?, ?, ?, 'booked', ?, ?, ?, ?, ?, ?, ?, ?, ?)`, type.id, type.name, staffId, customerId, startDate.toISOString(), end.toISOString(), m,
+    m === 'in_person' ? booking().location : '', type.price, type.deposit, bookedBy, notes_enc, seriesId, room, video);
   });
+}
+
+// The requested room if free, else the first free room; null if none. Same-type group sessions share.
+async function freeRoom(type, start, end, wanted = null, ignoreId = 0, staffId = 0) {
+  const buffer = (type.buffer_min || 0) * 60000;
+  const rooms = await all(`SELECT id FROM rooms WHERE active = 1 ${wanted ? 'AND id = ?' : ''} ORDER BY position, id`, ...(wanted ? [wanted] : []));
+  for (const r of rooms) {
+    const clash = await get(`SELECT 1 FROM appointments WHERE room_id = ? AND status IN ('booked', 'confirmed') AND id != ? AND starts_at < ? AND ends_at > ?
+      AND NOT (? > 1 AND staff_id = ? AND type_id = ? AND starts_at = ?)`, r.id, ignoreId, new Date(end.getTime() + buffer).toISOString(), new Date(start.getTime() - buffer).toISOString(), type.capacity || 1, staffId, type.id, start.toISOString());
+    if (!clash) return r.id;
+  }
+  return null;
+}
+
+// Online appointments get a private video room link when a video service is chosen.
+function videoLink() {
+  if (booking().video_provider !== 'jitsi') return '';
+  const name = String(settings.load('store').name || 'clinic').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
+  return `https://meet.jit.si/${name}-${require('crypto').randomBytes(9).toString('hex')}`;
 }
 
 // Patients may cancel or move a booking up to `cancel_hours` before it starts.
@@ -156,4 +186,4 @@ function ics(events, name = 'Appointments') {
 
 const newToken = () => crypto.randomBytes(24).toString('hex');
 
-module.exports = { zoneOffset, zonedToUtc, utcToZoned, formatWhen, addDays, validTime, staffForType, slots, book, canChange, load, ics, newToken, booking };
+module.exports = { freeRoom, videoLink, zoneOffset, zonedToUtc, utcToZoned, formatWhen, addDays, validTime, staffForType, slots, book, canChange, load, ics, newToken, booking };

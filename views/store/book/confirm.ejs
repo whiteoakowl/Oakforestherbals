@@ -2,6 +2,10 @@
 <div class="container section narrow">
   <h1 class="page-title">Confirm your appointment</h1>
   <div class="card"><p><strong><%= type.name %></strong><%= staff ? ` with ${staff.name}` : '' %></p><p><%= when(p.start) %></p><p><%= type.price ? money(type.price) : 'Free' %><%= type.deposit ? ` · ${money(type.deposit)} deposit` : '' %></p>
-    <form method="post" action="/book/<%= type.id %>/confirm"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn">Book this time</button></form></div>
+    <form method="post" action="/book/<%= type.id %>/confirm" class="stack-form"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <% if (pkgs.length) { %><fieldset><legend>How would you like to pay?</legend>
+        <% pkgs.forEach((pk, i) => { %><label class="radio-row"><input type="radio" name="package_id" value="<%= pk.id %>" <%= i === 0 ? 'checked' : '' %>> Use a session from <strong><%= pk.name %></strong> (<%= pk.sessions_total - pk.sessions_used %> left<%= pk.expires_on ? `, until ${formatDate(pk.expires_on)}` : '' %>)</label><% }) %>
+        <label class="radio-row"><input type="radio" name="package_id" value="0"> Pay for this appointment</label></fieldset><% } %>
+      <button class="btn">Book this time</button></form></div>
 </div>
 <%- include('../partials/footer') %>
