@@ -67,6 +67,12 @@
           </button>
         </div>
         <p class="stock-note small" data-stock-note></p>
+        <% if (subscription) { %>
+          <div class="subscribe-box">
+            <p><strong>Subscribe &amp; save<%= product.subscription_discount ? ` ${product.subscription_discount}%` : '' %></strong> — delivered <%= subscription.every %><%= subscription.shipping ? `, plus ${money(subscription.shipping)} delivery` : '' %>. Skip or cancel any time from your account.</p>
+            <button class="btn btn-secondary btn-block" formaction="/subscriptions/start">Subscribe · <%= money(subscription.price) %> each</button>
+          </div>
+        <% } %>
       </form>
 
       <% if (product.kind === 'digital') { %><p class="small muted">Digital product — download links are emailed and shown on your order page once payment is received.</p><% } %>

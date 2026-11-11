@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Store: abandoned cart reminders and subscriptions
+
+### Added
+- **Abandoned cart reminders** (off by default; Settings → Store features): one email, a set number of
+  hours after a shopper gave their email at checkout and left, by default only if they agreed to
+  marketing. The link restores their cart; a stop link opts them out for good. Orders → Abandoned
+  checkouts shows what was left and what was recovered. Runs with the hourly automations.
+- **Subscribe & save** through Stripe: set a schedule and discount on a product; logged-in customers
+  subscribe through Stripe Checkout (Stripe collects card and address and bills each period). Every paid
+  Stripe invoice becomes a normal paid order for packing (once, however often Stripe repeats the event;
+  never refused for stock, with a staff alert instead). Customers cancel, resume or update their card from
+  their account; staff see subscriptions, estimated monthly billing, and can end or cancel them.
+
 ## Unreleased — Store: reviews, gift cards, bundles and digital downloads
 
 ### Added

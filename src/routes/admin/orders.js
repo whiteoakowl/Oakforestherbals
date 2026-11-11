@@ -112,6 +112,16 @@ router.post('/new', async (req, res) => {
   res.redirect(back(order.id));
 });
 
+router.get('/abandoned', async (req, res) => {
+  const rows = await all(`SELECT a.*, o.number AS order_number FROM abandoned_checkouts a LEFT JOIN orders o ON o.id = a.order_id
+    WHERE a.created_at > now() - interval '60 days' ORDER BY a.updated_at DESC LIMIT 200`);
+  const stats = await get(`SELECT COUNT(*) FILTER (WHERE completed_at IS NULL) AS open, COUNT(*) FILTER (WHERE reminded_at IS NOT NULL) AS reminded,
+    COUNT(*) FILTER (WHERE reminded_at IS NOT NULL AND completed_at IS NOT NULL) AS recovered,
+    COALESCE(SUM(subtotal) FILTER (WHERE reminded_at IS NOT NULL AND completed_at IS NOT NULL), 0) AS recovered_value
+    FROM abandoned_checkouts WHERE created_at > now() - interval '60 days'`);
+  res.render('admin/orders/abandoned', { title: 'Abandoned checkouts', rows: rows.map((r) => ({ ...r, items: JSON.parse(r.cart || '[]') })), stats, cfg: require('../../settings').load('abandoned_cart') });
+});
+
 router.get('/:id', async (req, res, next) => {
   const order = await orders.orderById(toInt(req.params.id));
   if (!order) return next();

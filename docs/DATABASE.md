@@ -180,3 +180,13 @@ Encrypted values are now written as `v2:<key id>:<data>` (older `v1:` values are
 Selling a gift card is left out of "product sales" in Financials (the money is owed to the customer until
 it's spent); the order where it's spent counts as the sale. The payments ledger records the gift card's
 share of an order as its own line.
+
+## 0012_abandoned_carts_subscriptions
+| Change | Purpose |
+|---|---|
+| `abandoned_checkouts` | Checkouts where an email was given: cart, subtotal, marketing consent, when reminded, when the link was opened, when finished (and the order). |
+| `marketing_suppressions` | Emails that asked for no cart reminders. |
+| `products.subscription_interval`, `subscription_interval_count`, `subscription_discount` | Subscribe & save schedule (every N weeks/months) and subscriber discount. |
+| `subscriptions` | Our copy of each Stripe subscription: customer, variant, quantity, price, delivery charge, schedule, status, next renewal, ending flag, delivery address. |
+| `subscription_invoices` | One row per paid Stripe invoice, so each becomes exactly one order. |
+| `orders.subscription_id` | Which subscription a delivery order came from. |

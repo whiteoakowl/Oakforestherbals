@@ -71,6 +71,40 @@ async function createInvoiceSession(invoice, amount, baseUrl) {
   return session.url;
 }
 
+// Subscribe & save: Stripe Checkout in subscription mode. Stripe collects the card and the
+// delivery address, then bills on schedule; each paid invoice becomes an order here (webhook).
+async function createSubscriptionSession({ customer, stripeCustomerId, product, variant, quantity, unitAmount, shippingPrice, countries, baseUrl }) {
+  const store = settings.load('store');
+  const cfg = settings.load('subscriptions');
+  const recurring = { interval: product.subscription_interval, interval_count: product.subscription_interval_count || 1 };
+  const meta = { customer_id: customer.id, variant_id: variant.id, quantity, price: unitAmount, shipping_price: shippingPrice };
+  const lineItems = {
+    0: { quantity, price_data: { currency: store.currency.toLowerCase(), unit_amount: unitAmount, recurring, product_data: { name: `${product.title}${variant.title && variant.title !== 'Default Title' ? ` — ${variant.title}` : ''}` } } },
+  };
+  if (shippingPrice > 0) lineItems[1] = { quantity: 1, price_data: { currency: store.currency.toLowerCase(), unit_amount: shippingPrice, recurring, product_data: { name: 'Delivery' } } };
+  const session = await call('POST', '/checkout/sessions', {
+    mode: 'subscription',
+    client_reference_id: `customer-${customer.id}`,
+    ...(stripeCustomerId ? { customer: stripeCustomerId } : { customer_email: customer.email }),
+    success_url: `${baseUrl}/account/subscriptions?started=1`,
+    cancel_url: `${baseUrl}/products/${product.handle}`,
+    ...(variant.requires_shipping ? { shipping_address_collection: { allowed_countries: countries } } : {}),
+    line_items: lineItems,
+    subscription_data: { metadata: meta },
+    metadata: meta,
+    ...(cfg.automatic_tax ? { automatic_tax: { enabled: true } } : {}),
+  });
+  return session.url;
+}
+
+const getSubscription = (id) => call('GET', `/subscriptions/${encodeURIComponent(id)}`);
+const updateSubscription = (id, body) => call('POST', `/subscriptions/${encodeURIComponent(id)}`, body);
+const cancelSubscriptionNow = (id) => call('DELETE', `/subscriptions/${encodeURIComponent(id)}`);
+const getCustomer = (id) => call('GET', `/customers/${encodeURIComponent(id)}`);
+async function billingPortal(customerId, returnUrl) {
+  return (await call('POST', '/billing_portal/sessions', { customer: customerId, return_url: returnUrl })).url;
+}
+
 const stripeConfigured = () => Boolean(settings.load('payments').stripe_enabled && (process.env.STRIPE_SECRET_KEY || settings.load('payments').stripe_secret_key));
 
-module.exports = { createCheckoutSession, retrieveSession, createInvoiceSession, stripeConfigured };
+module.exports = { call, createCheckoutSession, retrieveSession, createInvoiceSession, stripeConfigured, createSubscriptionSession, getSubscription, updateSubscription, cancelSubscriptionNow, getCustomer, billingPortal };

@@ -176,6 +176,47 @@ router.post('/addresses/:id/delete', async (req, res) => {
   res.redirect('/account/addresses');
 });
 
+/* ---------- Subscriptions ---------- */
+
+router.get('/subscriptions', async (req, res) => {
+  const subs = require('../subscriptions');
+  const list = await subs.forCustomer(res.locals.customer.id);
+  res.render('store/account/subscriptions', { title: 'Subscriptions', list, every: subs.every, started: req.query.started === '1' });
+});
+
+async function mySubscription(req, res) {
+  const sub = await get('SELECT * FROM subscriptions WHERE id = ? AND customer_id = ?', toInt(req.params.id), res.locals.customer.id);
+  if (!sub || !sub.stripe_subscription_id) { res.status(404).render('store/404', { title: 'Not found' }); return null; }
+  return sub;
+}
+
+router.post('/subscriptions/:id/cancel', async (req, res) => {
+  const sub = await mySubscription(req, res);
+  if (!sub) return;
+  const stripe = require('../stripe');
+  try {
+    // Ends after the period already paid for, so the last delivery still arrives.
+    await require('../subscriptions').upsert(await stripe.updateSubscription(sub.stripe_subscription_id, { cancel_at_period_end: req.body.resume === '1' ? 'false' : 'true' }));
+    flash(req, 'success', req.body.resume === '1' ? 'Your subscription will carry on.' : 'Your subscription will end after the current period.');
+  } catch (err) {
+    console.error('[stripe]', err.message);
+    flash(req, 'error', 'We couldn’t change your subscription just now. Please try again or contact us.');
+  }
+  res.redirect('/account/subscriptions');
+});
+
+router.post('/subscriptions/:id/billing', async (req, res) => {
+  const sub = await mySubscription(req, res);
+  if (!sub) return;
+  try {
+    res.redirect(303, await require('../stripe').billingPortal(sub.stripe_customer_id, `${req.protocol}://${req.get('host')}/account/subscriptions`));
+  } catch (err) {
+    console.error('[stripe]', err.message);
+    flash(req, 'error', 'Card details can’t be changed online right now. Please contact us.');
+    res.redirect('/account/subscriptions');
+  }
+});
+
 router.post('/preferences', requireCustomer, async (req, res) => {
   const { normalizePhone } = require('../comms');
   const wantsSms = req.body.sms_opt_in === '1';

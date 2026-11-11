@@ -101,6 +101,10 @@ router.post('/information', async (req, res) => {
     errors.forEach((e) => flash(req, 'error', e.charAt(0).toUpperCase() + e.slice(1)));
     return res.redirect('/checkout/information');
   }
+  try {
+    const cart = await pricing.buildCart(req.session.cart, { priceList: pricing.priceListFor(res.locals.customer) });
+    await require('../abandoned').track(req.session, { email, customerId: res.locals.customer ? res.locals.customer.id : null, cart, consent: co.accepts_marketing || Boolean(res.locals.customer && res.locals.customer.accepts_marketing) });
+  } catch (err) { console.error('[abandoned]', err.message); }
   res.redirect('/checkout/shipping');
 });
 
@@ -181,6 +185,7 @@ router.post('/payment', async (req, res, next) => {
       return res.redirect('/cart');
     }
 
+    await require('../abandoned').complete(ctx.co.recovery_token, order.id);
     req.session.cart = [];
     req.session.cartNote = '';
     req.session.checkout = {};

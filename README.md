@@ -107,7 +107,7 @@ Without `DATABASE_URL`, the store uses a built-in copy of Postgres saved in `dat
 Under **Settings → Payments**:
 
 - **Manual methods** (bank transfer, cash on delivery, check) work immediately. Orders arrive as "Payment pending"; mark them paid from the order page.
-- **Card payments via Stripe**: paste your Stripe secret key and enable card payments. Shoppers are sent to Stripe Checkout and the order is marked paid when they return. For reliability, also add a webhook in Stripe pointing to `https://your-domain/webhooks/stripe` for the `checkout.session.completed` event and paste its signing secret.
+- **Card payments via Stripe**: paste your Stripe secret key and enable card payments. Shoppers are sent to Stripe Checkout and the order is marked paid when they return. For reliability, also add a webhook in Stripe pointing to `https://your-domain/webhooks/stripe` for the `checkout.session.completed` event (and, if you offer subscriptions, `invoice.paid`, `customer.subscription.updated` and `customer.subscription.deleted`) and paste its signing secret.
 
 ## Sending email
 

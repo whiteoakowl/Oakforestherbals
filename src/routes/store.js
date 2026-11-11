@@ -85,8 +85,10 @@ async function renderProduct(req, res, next) {
     || product.variants.find(catalog.isVariantAvailable) || product.variants[0];
   const reviewsModule = require('../reviews');
   const reviews = { enabled: settings.load('reviews').enabled, summary: await reviewsModule.summary(product.id), list: await reviewsModule.published(product.id), eligibility: await reviewsModule.eligibility(res.locals.customer, product.id) };
+  const subs = require('../subscriptions');
+  const subscription = product.subscription_interval && subs.available() ? { every: subs.every(product), price: subs.subscriptionPrice(product, selected), shipping: Number(settings.load('subscriptions').shipping_price) || 0 } : null;
   res.render('store/product', {
-    reviews,
+    reviews, subscription,
     title: product.seo_title || product.title,
     description: product.seo_description || res.locals.stripHtml(product.description_html).slice(0, 160),
     ogImage: product.image,
@@ -111,6 +113,35 @@ router.post('/products/:handle/reviews', async (req, res, next) => {
     if (out.status === 'pending') await require('../comms').notifyStaff({ kind: 'review', title: `New review of ${product.title} waiting for approval`, link: '/admin/reviews?status=pending', permission: 'products.manage' });
   }
   res.redirect(`/products/${product.handle}#reviews`);
+});
+
+/* ---------- Subscribe & save ---------- */
+
+router.post('/subscriptions/start', async (req, res) => {
+  const subs = require('../subscriptions');
+  const stripe = require('../stripe');
+  const variant = await get(`SELECT v.*, p.title AS product_title, p.handle FROM variants v JOIN products p ON p.id = v.product_id
+    WHERE v.id = ? AND p.status = 'active' AND p.subscription_interval != ''`, toInt(req.body.variant_id));
+  if (!variant || !subs.available()) { flash(req, 'error', 'That product can’t be subscribed to.'); return res.redirect(safeBack(req, '/')); }
+  if (!res.locals.customer) {
+    flash(req, 'info', 'Log in or create an account to subscribe, so you can manage your deliveries.');
+    return res.redirect(`/account/login?next=${encodeURIComponent(`/products/${variant.handle}?variant=${variant.id}`)}`);
+  }
+  const product = await get('SELECT * FROM products WHERE id = ?', variant.product_id);
+  const quantity = Math.max(1, Math.min(20, toInt(req.body.quantity, 1)));
+  const previous = await get("SELECT stripe_customer_id FROM subscriptions WHERE customer_id = ? AND stripe_customer_id != '' ORDER BY id DESC LIMIT 1", res.locals.customer.id);
+  try {
+    const url = await stripe.createSubscriptionSession({
+      customer: res.locals.customer, stripeCustomerId: previous ? previous.stripe_customer_id : null, product, variant, quantity,
+      unitAmount: subs.subscriptionPrice(product, variant), shippingPrice: variant.requires_shipping ? Number(settings.load('subscriptions').shipping_price) || 0 : 0,
+      countries: await subs.shippingCountries(), baseUrl: `${req.protocol}://${req.get('host')}`,
+    });
+    res.redirect(303, url);
+  } catch (err) {
+    console.error('[stripe subscription]', err.message);
+    flash(req, 'error', 'We couldn’t start the subscription. Please try again later.');
+    res.redirect(`/products/${variant.handle}`);
+  }
 });
 
 /* ---------- Downloads and gift card balance ---------- */
@@ -229,6 +260,24 @@ router.post('/cart/update', async (req, res) => {
   if (req.xhr || req.accepts(['html', 'json']) === 'json') return res.json(await cartPayload(req, res));
   if (req.body.checkout) return res.redirect('/checkout');
   res.redirect('/cart');
+});
+
+// Link from a cart reminder email: puts the cart back and continues where they left off.
+router.get('/cart/recover/:token', async (req, res) => {
+  const a = await get('SELECT * FROM abandoned_checkouts WHERE token = ?', String(req.params.token));
+  if (!a || a.completed_at) { flash(req, 'info', 'That cart has already been checked out or has expired.'); return res.redirect('/cart'); }
+  const items = JSON.parse(a.cart || '[]').map((i) => ({ variant_id: i.variant_id, quantity: i.quantity, ...(i.properties ? { properties: i.properties } : {}) }));
+  req.session.cart = toSession((await buildCart(items, { priceList: priceListFor(res.locals.customer) })).lines);
+  req.session.checkout = { email: a.email, recovery_token: a.token };
+  await run('UPDATE abandoned_checkouts SET recovered_at = COALESCE(recovered_at, now()) WHERE id = ?', a.id);
+  flash(req, 'success', 'Your cart is back.');
+  res.redirect('/cart');
+});
+
+router.get('/cart/recover/:token/stop', async (req, res) => {
+  const a = await get('SELECT email FROM abandoned_checkouts WHERE token = ?', String(req.params.token));
+  if (a) await run("INSERT INTO marketing_suppressions (email, reason) VALUES (?, 'cart reminder link') ON CONFLICT DO NOTHING", a.email);
+  res.render('store/message', { title: 'Unsubscribed', heading: 'You won’t get cart reminders', message: 'We won’t email you about unfinished checkouts again.' });
 });
 
 router.post('/cart/clear', async (req, res) => {

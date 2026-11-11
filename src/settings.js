@@ -148,6 +148,7 @@ const DEFAULTS = {
   abandoned_cart: { enabled: false, delay_hours: 4, require_consent: true },
   gift_cards: { expiry_months: 0 },
   downloads: { max_downloads: 5, expiry_days: 30 },
+  subscriptions: { enabled: false, shipping_price: 0, automatic_tax: false },
   seo: {
     home_title: '',
     home_description: 'Small-batch organic herbal teas, tinctures and botanicals.',

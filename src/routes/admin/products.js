@@ -184,6 +184,13 @@ function publishAt(input) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+// Subscribe & save: only for physical products and downloads, not gift cards or bundles.
+async function saveSubscriptionFields(id, body, kind) {
+  const interval = ['week', 'month'].includes(body.subscription_interval) && ['standard', 'digital'].includes(kind) ? body.subscription_interval : '';
+  await run('UPDATE products SET subscription_interval = ?, subscription_interval_count = ?, subscription_discount = ? WHERE id = ?',
+    interval, Math.max(1, Math.min(12, toInt(body.subscription_interval_count, 1))), Math.max(0, Math.min(90, toInt(body.subscription_discount, 0))), id);
+}
+
 async function saveProduct(id, body, files) {
   const uploaded = await saveFiles(files); // upload before the transaction so it isn't held open
   const title = String(body.title || '').trim() || 'Untitled product';
@@ -216,6 +223,7 @@ async function saveProduct(id, body, files) {
     } else {
       id = await insert(`INSERT INTO products (title, handle, description_html, vendor, product_type, tags, status, options, seo_title, seo_description,
         ingredients, directions, warnings, publish_at, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, ...values, kind);
+      await saveSubscriptionFields(id, body, kind);
     }
 
     // Variants: one per option combination, keeping existing rows whose values still match.

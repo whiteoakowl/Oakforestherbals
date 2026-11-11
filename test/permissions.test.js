@@ -23,6 +23,8 @@ const AREAS = [
   ['/admin/customers', any('customers.view', 'customers.manage')],
   ['/admin/reviews', any('products.manage')],
   ['/admin/gift-cards', any('orders.manage')],
+  ['/admin/subscriptions', any('orders.view', 'orders.manage')],
+  ['/admin/orders/abandoned', any('orders.view', 'orders.manage')],
   ['/admin/settings/store-features', any('settings.manage')],
   ['/admin/settings/security', any('settings.manage')],
   ['/admin/discounts', any('discounts.manage')],

@@ -16,7 +16,14 @@ const SECTIONS = [
   {
     label: 'Store',
     items: [
-      { href: '/admin/orders', label: 'Orders', icon: 'orders', perm: 'orders.view' },
+      {
+        href: '/admin/orders', label: 'Orders', icon: 'orders', perm: 'orders.view',
+        children: [
+          { href: '/admin/orders', label: 'All orders', exact: true, match: /^\/admin\/orders\/(\d+|new)/ },
+          { href: '/admin/orders/abandoned', label: 'Abandoned checkouts' },
+          { href: '/admin/subscriptions', label: 'Subscriptions' },
+        ],
+      },
       { href: '/admin/pos', label: 'Point of sale', icon: 'pos', perm: 'pos.use' },
       {
         href: '/admin/products', label: 'Products', icon: 'products', perm: 'products.manage',

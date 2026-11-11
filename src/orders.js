@@ -46,7 +46,7 @@ async function upsertCustomer({ email, first_name, last_name, phone, accepts_mar
  * Places an order from a priced cart. Decrements inventory, increments discount usage
  * and records the customer. Throws (status 409) if stock ran out since the cart was built.
  */
-async function createOrder({ cart, totals, contact, shippingAddress, billingAddress, shipping, discount, payment, note, customerId, source = 'web', giftCard = null }) {
+async function createOrder({ cart, totals, contact, shippingAddress, billingAddress, shipping, discount, payment, note, customerId, source = 'web', giftCard = null, allowOversell = false }) {
   const orderId = await tx(async () => {
     await get('SELECT pg_advisory_xact_lock(72001)'); // serializes order-number assignment
     const costs = new Map();
@@ -63,7 +63,7 @@ async function createOrder({ cart, totals, contact, shippingAddress, billingAddr
     for (const id of [...need.keys()].sort((a, b) => a - b)) {
       const v = await get('SELECT v.*, p.title AS product_title FROM variants v JOIN products p ON p.id = v.product_id WHERE v.id = ? FOR UPDATE OF v', id);
       costs.set(id, v.cost);
-      if (v.track_inventory && !v.continue_selling && v.inventory_qty < need.get(id)) {
+      if (!allowOversell && v.track_inventory && !v.continue_selling && v.inventory_qty < need.get(id)) {
         const line = cart.lines.find((l) => l.variant_id === id);
         throw Object.assign(new Error(`Only ${Math.max(0, v.inventory_qty)} of ${line ? line.title : v.product_title} left in stock.`), { status: 409 });
       }
@@ -127,7 +127,8 @@ async function createOrder({ cart, totals, contact, shippingAddress, billingAddr
     if (!cart.requires_shipping) await run("UPDATE orders SET fulfillment_status = 'fulfilled' WHERE id = ?", id);
     await addEvent(id, source === 'pos'
       ? `In-person sale${contact.email ? ` to ${contact.email}` : ''} paid by ${payment.name}.`
-      : `Order placed by ${contact.email} using ${payment.name}.`);
+      : source === 'subscription' ? `Subscription delivery for ${contact.email}, billed by Stripe.`
+        : `Order placed by ${contact.email} using ${payment.name}.`);
     return id;
   });
 

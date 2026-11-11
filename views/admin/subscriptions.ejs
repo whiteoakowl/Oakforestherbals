@@ -1,0 +1,25 @@
+<%- include('partials/header') %>
+<div class="page">
+  <%- include('partials/page-header', { heading: 'Subscriptions' }) %>
+  <% if (!ready) { %><p class="banner">Subscribe &amp; save is off. Turn on Stripe card payments (Settings → Payments) and subscriptions (Settings → Store features), then choose a delivery schedule on each product that can be subscribed to.</p><% } %>
+  <div class="stat-row">
+    <div class="card pad"><div class="muted small">Active subscriptions</div><strong><%= stats.active %></strong></div>
+    <div class="card pad"><div class="muted small">Billed per month (approx.)</div><strong><%= money(Math.round(Number(stats.monthly))) %></strong></div>
+  </div>
+  <div class="card flush">
+    <table class="table"><thead><tr><th>Customer</th><th>Subscription</th><th>Status</th><th>Next renewal</th><th class="num">Deliveries</th><th></th></tr></thead><tbody>
+      <% for (const s of list) { %><tr>
+        <td><% if (s.customer_id) { %><a href="/admin/customers/<%= s.customer_id %>"><%= `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email %></a><% } else { %>—<% } %></td>
+        <td><%= s.quantity %> × <%= s.title %><div class="muted small"><%= money(s.price * s.quantity + s.shipping_price) %> <%= every(s) %></div></td>
+        <td><%= s.status.replace('_', ' ') %><%= s.cancel_at_period_end && s.status !== 'canceled' ? ' (ending)' : '' %></td>
+        <td><%= s.current_period_end && s.status !== 'canceled' ? formatDate(s.current_period_end) : '—' %></td>
+        <td class="num"><a href="/admin/orders?q=<%= encodeURIComponent(s.email || '') %>"><%= s.deliveries %></a></td>
+        <td class="num"><% if (s.status !== 'canceled' && can('orders.manage')) { %>
+          <form method="post" action="/admin/subscriptions/<%= s.id %>/cancel" class="inline" data-confirm="End this subscription after the current period?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small">End</button></form>
+          · <form method="post" action="/admin/subscriptions/<%= s.id %>/cancel" class="inline" data-confirm="Cancel immediately? No refund is made automatically."><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="now" value="1"><button class="link-plain small critical-text">Cancel now</button></form>
+        <% } %></td></tr><% } %>
+      <% if (!list.length) { %><tr><td colspan="6" class="muted">No subscriptions yet.</td></tr><% } %>
+    </tbody></table>
+  </div>
+</div>
+<%- include('partials/footer') %>

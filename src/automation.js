@@ -73,6 +73,7 @@ async function runAll(trigger = 'manual', now = new Date()) {
   try {
     if (a.appointment_reminders) summary.reminders = await appointmentReminders(now);
     if (a.invoice_reminders) summary.invoices = await invoiceReminders(now);
+    summary.carts = await require('./abandoned').remind(now);
     summary.digest = await dailyDigest(now);
     await run('UPDATE automation_runs SET finished_at = now(), summary = ? WHERE id = ?', JSON.stringify(summary), runId);
   } catch (err) {

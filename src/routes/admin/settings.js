@@ -201,6 +201,7 @@ router.post('/taxes/rates/:id/delete', async (req, res) => {
 
 router.get('/store-features', (req, res) => res.render('admin/settings/store-features', {
   title: 'Store features', reviews: settings.load('reviews'), gift: settings.load('gift_cards'), downloads: settings.load('downloads'), abandoned: settings.load('abandoned_cart'),
+  subs: settings.load('subscriptions'), stripeReady: require('../../stripe').stripeConfigured(),
 }));
 
 router.post('/store-features', async (req, res) => {
@@ -208,6 +209,7 @@ router.post('/store-features', async (req, res) => {
   await settings.save('reviews', { enabled: asBool(req.body.reviews_enabled), require_purchase: asBool(req.body.reviews_require_purchase), auto_publish: asBool(req.body.reviews_auto_publish) });
   await settings.save('gift_cards', { expiry_months: num(req.body.gift_expiry_months, 0, 120, 0) });
   await settings.save('downloads', { max_downloads: num(req.body.max_downloads, 0, 1000, 5), expiry_days: num(req.body.expiry_days, 0, 3650, 30) });
+  await settings.save('subscriptions', { enabled: asBool(req.body.subscriptions_enabled), shipping_price: Math.max(0, parseMoney(req.body.subscription_shipping) || 0), automatic_tax: asBool(req.body.subscriptions_automatic_tax) });
   await settings.save('abandoned_cart', { enabled: asBool(req.body.abandoned_enabled), delay_hours: num(req.body.abandoned_delay_hours, 1, 168, 4), require_consent: asBool(req.body.abandoned_require_consent) });
   await audit.record(req, 'settings.updated', { entityType: 'settings', entityId: 'store-features' });
   flash(req, 'success', 'Settings saved.');

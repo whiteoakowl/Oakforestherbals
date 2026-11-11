@@ -163,6 +163,15 @@
         <% if (product && product.kind === 'bundle') { %><a class="btn" href="/admin/products/<%= product.id %>/bundle">What’s in the bundle</a><% } %>
         <% if (product && product.kind === 'digital') { %><a class="btn" href="/admin/products/<%= product.id %>/files">Download files</a><% } %>
       </div>
+      <div class="card form-stack">
+        <h2>Subscribe &amp; save</h2>
+        <div class="grid-2">
+          <label class="field"><span>Deliver every</span><input type="number" name="subscription_interval_count" min="1" max="12" value="<%= p.subscription_interval_count || 1 %>"></label>
+          <label class="field"><span>Unit</span><select name="subscription_interval"><option value="">Not offered</option><option value="week" <%= p.subscription_interval === 'week' ? 'selected' : '' %>>Weeks</option><option value="month" <%= p.subscription_interval === 'month' ? 'selected' : '' %>>Months</option></select></label>
+        </div>
+        <label class="field"><span>Subscriber discount (%)</span><input type="number" name="subscription_discount" min="0" max="90" value="<%= p.subscription_discount || 0 %>"></label>
+        <p class="muted small">Needs Stripe card payments and subscriptions turned on (Settings → Payments). Not for gift cards or bundles.</p>
+      </div>
       <% if (product && can('costing.manage')) { %>
       <div class="card">
         <h2>Costing</h2>
