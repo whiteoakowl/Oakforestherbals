@@ -24,8 +24,10 @@ const SECTIONS = [
           { href: '/admin/products', label: 'All products', exact: true, match: /^\/admin\/products\/(\d+|new)$/ },
           { href: '/admin/collections', label: 'Collections' },
           { href: '/admin/products/inventory', label: 'Inventory' },
+          { href: '/admin/reviews', label: 'Reviews' },
         ],
       },
+      { href: '/admin/gift-cards', label: 'Gift cards', icon: 'discounts', perm: 'orders.manage' },
       { href: '/admin/customers', label: 'Customers', icon: 'customers', perm: 'customers.view' },
       {
         href: '/admin/content', label: 'Content', icon: 'content', perm: 'content.manage',

@@ -59,6 +59,8 @@ router.use(require('./dashboard'));
 
 router.use('/products', allow('products.manage'), require('./products'));
 router.use('/collections', allow('products.manage'), require('./collections'));
+router.use('/reviews', allow('products.manage'), require('./reviews'));
+router.use('/gift-cards', allow('orders.manage'), require('./giftcards'));
 router.use('/orders', allow('orders.view', 'orders.manage'), require('./orders'));
 router.use('/customers', allow('customers.view', 'customers.manage'), require('./customers'));
 router.use('/discounts', allow('discounts.manage'), require('./discounts'));

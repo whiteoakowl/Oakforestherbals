@@ -120,7 +120,25 @@ router.get('/:id', async (req, res, next) => {
     : null;
   const prevOrder = await get('SELECT id FROM orders WHERE id < ? ORDER BY id DESC LIMIT 1', order.id);
   const nextOrder = await get('SELECT id FROM orders WHERE id > ? ORDER BY id LIMIT 1', order.id);
-  res.render('admin/orders/show', { title: `Order ${order.name}`, order, customerStats, prevOrder, nextOrder });
+  const downloadsList = await require('../../downloads').linksForOrder(order.id);
+  const giftCards = await all('SELECT id, last4, initial_value, balance, recipient_email FROM gift_cards WHERE order_id = ? AND order_item_id IS NOT NULL ORDER BY id', order.id);
+  const paid = ['paid', 'partially_refunded'].includes(order.financial_status);
+  const cardsDue = order.items.filter((i) => i.product_kind === 'gift_card').reduce((s, i) => s + i.quantity, 0);
+  const filesDue = order.items.some((i) => i.product_kind === 'digital') && !downloadsList.length;
+  const extras = { downloads: downloadsList, giftCards, missing: paid && order.status !== 'cancelled' && (giftCards.length < cardsDue || filesDue) };
+  res.render('admin/orders/show', { title: `Order ${order.name}`, order, customerStats, prevOrder, nextOrder, extras });
+});
+
+router.post('/:id/downloads/reset', async (req, res) => {
+  await require('../../downloads').reset(toInt(req.params.id));
+  flash(req, 'success', 'Download limits reset.');
+  res.redirect(`/admin/orders/${toInt(req.params.id)}`);
+});
+
+router.post('/:id/release', async (req, res) => {
+  await orders.afterPaid(toInt(req.params.id));
+  flash(req, 'success', 'Gift cards and download links sent where missing.');
+  res.redirect(`/admin/orders/${toInt(req.params.id)}`);
 });
 
 router.get('/:id/packing-slip', async (req, res, next) => {

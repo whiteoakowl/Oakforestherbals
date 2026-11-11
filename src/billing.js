@@ -78,7 +78,9 @@ async function loadInvoice(where, value) {
 async function summary(from, to) {
   const months = await all(`WITH m AS (SELECT generate_series(date_trunc('month', ?::date), date_trunc('month', (?::date - 1)), interval '1 month')::date AS month)
     SELECT to_char(m.month, 'YYYY-MM') AS month,
-      COALESCE((SELECT SUM(o.total - o.refunded_total - o.tax_total) FROM orders o WHERE o.status != 'cancelled' AND o.financial_status IN ('paid', 'partially_refunded') AND date_trunc('month', o.created_at)::date = m.month), 0) AS product_sales,
+      COALESCE((SELECT SUM(o.total - o.refunded_total - o.tax_total) FROM orders o WHERE o.status != 'cancelled' AND o.financial_status IN ('paid', 'partially_refunded') AND date_trunc('month', o.created_at)::date = m.month), 0)
+        -- Selling a gift card isn't a sale yet (it's owed to the customer); spending it is.
+        - COALESCE((SELECT SUM(oi.price * oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.product_kind = 'gift_card' AND o.status != 'cancelled' AND o.financial_status IN ('paid', 'partially_refunded') AND date_trunc('month', o.created_at)::date = m.month), 0) AS product_sales,
       COALESCE((SELECT SUM(oi.quantity * oi.unit_cost) FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE o.status != 'cancelled' AND o.financial_status IN ('paid', 'partially_refunded') AND date_trunc('month', o.created_at)::date = m.month), 0) AS cogs,
       COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.invoice_id IS NOT NULL AND date_trunc('month', p.received_at)::date = m.month), 0) AS services,
       COALESCE((SELECT SUM(e.amount) FROM expenses e WHERE date_trunc('month', e.spent_on)::date = m.month), 0) AS expenses,

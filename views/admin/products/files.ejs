@@ -1,0 +1,20 @@
+<%- include('../partials/header') %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: `${product.title}: download files`, backHref: `/admin/products/${product.id}` }) %>
+  <p class="muted">Files are kept in private storage. After payment, each buyer gets their own download link (limits under Settings → Store features).</p>
+  <div class="card flush">
+    <% if (!files.length) { %><p class="pad muted">No files yet — buyers would receive nothing.</p><% } else { %>
+    <table class="table"><thead><tr><th>File</th><th>For</th><th class="num">Size</th><th></th></tr></thead><tbody>
+      <% for (const f of files) { %><tr><td><%= f.filename %></td><td><%= f.variant_title ? f.variant_title : 'Every variant' %></td><td class="num"><%= (f.size_bytes / 1048576).toFixed(1) %> MB</td>
+        <td class="num"><form method="post" action="/admin/products/<%= product.id %>/files/<%= f.id %>/delete" class="inline" data-confirm="Remove <%= f.filename %>? Existing download links for it stop working."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Remove</button></form></td></tr><% } %>
+    </tbody></table><% } %>
+  </div>
+  <form method="post" action="/admin/products/<%= product.id %>/files" enctype="multipart/form-data" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <h2>Add a file</h2>
+    <label class="field"><span>File (<%= types %>; up to 4 MB on the live site)</span><input type="file" name="file" required></label>
+    <% if (product.variants.length > 1) { %><label class="field"><span>For</span><select name="variant_id"><option value="">Every variant</option><% for (const v of product.variants) { %><option value="<%= v.id %>"><%= v.title %></option><% } %></select></label><% } %>
+    <div><button class="btn btn-primary">Upload</button></div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

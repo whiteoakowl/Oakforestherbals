@@ -1,0 +1,16 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Gift cards', actions: '<a class="btn btn-primary" href="/admin/gift-cards/new">Issue gift card</a>' }) %>
+  <p class="muted">Outstanding balance on all cards: <strong><%= money(totals.outstanding) %></strong> (<%= totals.active %> card(s) with money left). This is money owed to customers, not yet earned.</p>
+  <form class="card pad row-gap" method="get"><label class="visually-hidden" for="gc-q">Search</label><input id="gc-q" name="q" value="<%= q %>" placeholder="Last 4 characters or email"><button class="btn">Search</button></form>
+  <div class="card flush">
+    <table class="table"><thead><tr><th>Card</th><th>For</th><th>Status</th><th class="num">Balance</th><th class="num">Value</th><th>Expires</th><th>Source</th></tr></thead><tbody>
+      <% for (const c of cards) { %><tr><td><a href="/admin/gift-cards/<%= c.id %>">••••<%= c.last4 %></a></td><td><%= c.recipient_email || c.customer_email || '—' %></td>
+        <td><%= c.status === 'active' ? (c.balance > 0 ? 'Active' : 'Used up') : 'Disabled' %></td><td class="num"><%= money(c.balance) %></td><td class="num"><%= money(c.initial_value) %></td>
+        <td><%= c.expires_on ? ymd(c.expires_on) : 'Never' %></td><td><%= c.order_number ? `Order #${c.order_number}` : `Issued by ${c.created_by || 'staff'}` %></td></tr><% } %>
+      <% if (!cards.length) { %><tr><td colspan="7" class="muted">No gift cards yet. Sell them by making a product of the kind “Gift card”, or issue one here.</td></tr><% } %>
+    </tbody></table>
+  </div>
+  <%- include('../partials/pagination', { pager }) %>
+</div>
+<%- include('../partials/footer') %>

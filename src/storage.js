@@ -163,4 +163,26 @@ async function removePrivate(key) {
   }
 }
 
-Object.assign(module.exports, { privateUpload, savePrivate, readPrivate, removePrivate, PRIVATE_TYPES });
+// A short-lived link straight to a private file (Supabase only), so large downloads don't pass
+// through the serverless function. Returns null when files are stored locally.
+async function signedPrivateUrl(key, seconds = 60) {
+  safeKey(key);
+  if (!useSupabase) return null;
+  const json = await supabase('POST', `object/sign/${PRIVATE_BUCKET}/${key}`, JSON.stringify({ expiresIn: seconds }), { 'Content-Type': 'application/json' });
+  const signed = json.signedURL || json.signedUrl;
+  return signed.startsWith('http') ? signed : `${SUPABASE_URL}/storage/v1${signed}`;
+}
+
+// Files sold as digital products (kept in private storage, given out through download links).
+const DIGITAL_TYPES = new Map([
+  ['.pdf', 'application/pdf'], ['.epub', 'application/epub+zip'], ['.zip', 'application/zip'], ['.mp3', 'audio/mpeg'], ['.m4a', 'audio/mp4'],
+  ['.mp4', 'video/mp4'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'], ['.png', 'image/png'], ['.txt', 'text/plain'],
+  ['.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+]);
+const digitalUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES, files: 1 },
+  fileFilter: (req, file, cb) => cb(null, DIGITAL_TYPES.has(path.extname(file.originalname).toLowerCase())),
+});
+
+Object.assign(module.exports, { privateUpload, savePrivate, readPrivate, removePrivate, signedPrivateUrl, digitalUpload, DIGITAL_TYPES, PRIVATE_TYPES });

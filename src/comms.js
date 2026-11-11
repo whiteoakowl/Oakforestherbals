@@ -37,6 +37,15 @@ const TEMPLATES = [
     '<p>Your invoice #{{number}} for {{amount}} is ready.{{due}}</p><p><a href="{{link}}">View and pay your invoice</a></p>', '', 'number, amount, due, link, store'],
   ['invoice_reminder', 'Invoice reminder', 'Reminder: invoice #{{number}} is due',
     '<p>Invoice #{{number}} has {{amount}} outstanding.{{due}}</p><p><a href="{{link}}">View and pay your invoice</a></p>', '', 'number, amount, due, link, store'],
+  ['gift_card_received', 'Gift card received', 'You\'ve received a {{amount}} gift card from {{store}}',
+    '<p>Hi {{first_name}},</p><p>{{sender}} sent you a <strong>{{amount}}</strong> gift card for {{store}}.</p><p style="white-space:pre-line">{{message}}</p><p>Your code: <strong style="font-size:18px;letter-spacing:1px">{{code}}</strong></p><p>Enter it at checkout.{{expires}} <a href="{{link}}">Check your balance</a>.</p>',
+    '', 'first_name, sender, amount, message, code, expires, link, store'],
+  ['downloads_ready', 'Downloads ready', 'Your downloads from order #{{number}}',
+    '<p>Hi {{first_name}},</p><p>Thank you for your order. Your files are ready:</p><p style="white-space:pre-line">{{links}}</p><p>You can also find them on <a href="{{link}}">your order page</a>.</p>',
+    '', 'first_name, number, links, link, store'],
+  ['abandoned_cart', 'Abandoned cart reminder', 'You left something in your cart',
+    '<p>Hi {{first_name}},</p><p>You left these in your cart at {{store}}:</p><p style="white-space:pre-line">{{items}}</p><p><a href="{{link}}">Return to your cart</a></p><p style="font-size:12px;color:#666">You received this because you agreed to hear from us at checkout. <a href="{{unsubscribe}}">Don\'t send these</a>.</p>',
+    '', 'first_name, items, link, unsubscribe, store'],
 ];
 const KEYS = TEMPLATES.map(([k]) => k);
 

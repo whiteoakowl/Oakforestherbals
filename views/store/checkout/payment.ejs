@@ -1,10 +1,23 @@
 <%- include('layout-top') %>
 <%- include('review-box') %>
+<form action="/checkout/gift-card" method="post" class="inline-form discount-form gift-card-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (giftCard) { %>
+    <span class="tag">Gift card ••••<%= giftCard.last4 %> · −<%= money(giftCard.amount) %></span>
+    <button class="link-btn" name="remove" value="1">Remove</button>
+  <% } else { %>
+    <input name="code" placeholder="Gift card code" aria-label="Gift card code" autocomplete="off">
+    <button class="btn btn-secondary">Apply</button>
+  <% } %>
+</form>
+<% if (giftCardError) { %><p class="error small"><%= giftCardError %></p><% } %>
 <form action="/checkout/payment" method="post" class="stack-form checkout-form" data-payment-form>
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <h2>Payment</h2>
   <p class="muted small">All transactions are secure and encrypted.</p>
-  <% if (!methods.length) { %>
+  <% if (amountDue === 0) { %>
+    <p class="banner">Your gift card covers this order. Nothing more to pay.</p>
+  <% } else if (!methods.length) { %>
     <div class="flash flash-error">This store has no payment methods enabled yet. Please contact us to complete your order.</div>
   <% } else { %>
     <div class="radio-list">
@@ -41,7 +54,7 @@
   </div>
   <div class="checkout-actions">
     <a href="/checkout/shipping" class="link">← Return to shipping</a>
-    <button class="btn btn-lg" <%= methods.length ? '' : 'disabled' %> data-submit-once>Pay now · <%= money(totals.total) %></button>
+    <button class="btn btn-lg" <%= methods.length || amountDue === 0 ? '' : 'disabled' %> data-submit-once><%= amountDue === 0 ? 'Place order' : `Pay now · ${money(amountDue)}` %></button>
   </div>
 </form>
 <%- include('layout-bottom') %>

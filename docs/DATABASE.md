@@ -165,3 +165,18 @@ notifications by recipient; order lines by variant; orders by payment status and
 | `clinical_notes_lock_signed()` (replaced) | Signed notes stay locked, except that the re-encryption tool may rewrite their encrypted columns — and nothing else — after a key change. |
 
 Encrypted values are now written as `v2:<key id>:<data>` (older `v1:` values are still read).
+
+## 0011_reviews_gift_cards_bundles_downloads
+| Change | Purpose |
+|---|---|
+| `products.kind` | `standard`, `bundle`, `digital` or `gift_card`. |
+| `order_items.product_kind`, `properties`, `bundle_snapshot` | What kind of item was sold, gift card recipient details, and a bundle's parts at the time of sale (used to restock). |
+| `product_reviews` | One review per customer per product: rating, text, verified-buyer flag, status (pending/published/hidden), public reply. |
+| `gift_cards`, `gift_card_transactions` | Cards (SHA-256 of the code, last 4 characters, value, balance, expiry, recipient) and every change to a balance. |
+| `orders.gift_card_total`, `gift_card_id` | How much of an order a gift card paid. |
+| `bundle_components` | Which variants (and how many of each) make up a bundle variant. |
+| `digital_files`, `download_links` | Files sold as downloads (in private storage) and each buyer's limited link. |
+
+Selling a gift card is left out of "product sales" in Financials (the money is owed to the customer until
+it's spent); the order where it's spent counts as the sale. The payments ledger records the gift card's
+share of an order as its own line.

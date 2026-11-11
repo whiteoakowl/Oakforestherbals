@@ -18,6 +18,7 @@ const SECTIONS = [
   ['checkout', 'Checkout', 'Customer accounts and checkout form', 'settings.manage'],
   ['shipping', 'Shipping and delivery', 'Shipping rates and zones', 'settings.manage'],
   ['taxes', 'Taxes and duties', 'Tax rates by region', 'settings.manage'],
+  ['store-features', 'Store features', 'Reviews, gift cards, downloads and cart reminders', 'settings.manage'],
   ['notifications', 'Notifications', 'Email sending and customer notifications', 'settings.manage'],
   ['policies', 'Policies', 'Refund, privacy, terms and shipping policies', 'settings.manage'],
   ['preferences', 'Preferences', 'SEO, tracking code and store password', 'settings.manage'],
@@ -195,6 +196,23 @@ router.post('/taxes/rates/:id/delete', async (req, res) => {
 });
 
 /* ---------- Staff ---------- */
+
+/* ---------- Store features: reviews, gift cards, downloads, abandoned carts ---------- */
+
+router.get('/store-features', (req, res) => res.render('admin/settings/store-features', {
+  title: 'Store features', reviews: settings.load('reviews'), gift: settings.load('gift_cards'), downloads: settings.load('downloads'), abandoned: settings.load('abandoned_cart'),
+}));
+
+router.post('/store-features', async (req, res) => {
+  const num = (v, min, max, d) => Math.max(min, Math.min(max, toInt(v, d)));
+  await settings.save('reviews', { enabled: asBool(req.body.reviews_enabled), require_purchase: asBool(req.body.reviews_require_purchase), auto_publish: asBool(req.body.reviews_auto_publish) });
+  await settings.save('gift_cards', { expiry_months: num(req.body.gift_expiry_months, 0, 120, 0) });
+  await settings.save('downloads', { max_downloads: num(req.body.max_downloads, 0, 1000, 5), expiry_days: num(req.body.expiry_days, 0, 3650, 30) });
+  await settings.save('abandoned_cart', { enabled: asBool(req.body.abandoned_enabled), delay_hours: num(req.body.abandoned_delay_hours, 1, 168, 4), require_consent: asBool(req.body.abandoned_require_consent) });
+  await audit.record(req, 'settings.updated', { entityType: 'settings', entityId: 'store-features' });
+  flash(req, 'success', 'Settings saved.');
+  res.redirect('/admin/settings/store-features');
+});
 
 /* ---------- Security: two-step sign-in rule and encryption key rotation ---------- */
 

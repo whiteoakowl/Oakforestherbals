@@ -154,6 +154,15 @@
         <p class="muted small mt-sm">Active products are visible on your online store. Drafts are hidden.</p>
         <label class="field mt-sm"><span>Publish automatically on</span><input type="datetime-local" name="publish_at" value="<%= toDateTimeInput(p.publish_at) %>"><small class="muted">Times are UTC. A draft becomes active at this time.</small></label>
       </div>
+      <div class="card form-stack">
+        <h2>Kind of product</h2>
+        <select name="kind" aria-label="Kind of product" class="full">
+          <% for (const [k, label] of PRODUCT_KINDS) { %><option value="<%= k %>" <%= (p.kind || 'standard') === k ? 'selected' : '' %>><%= label %></option><% } %>
+        </select>
+        <p class="muted small">Gift cards: each variant's price is the card's value; codes are emailed when paid. Digital: files are given out as download links. Bundle: each variant is made of other products, whose stock it uses.</p>
+        <% if (product && product.kind === 'bundle') { %><a class="btn" href="/admin/products/<%= product.id %>/bundle">What’s in the bundle</a><% } %>
+        <% if (product && product.kind === 'digital') { %><a class="btn" href="/admin/products/<%= product.id %>/files">Download files</a><% } %>
+      </div>
       <% if (product && can('costing.manage')) { %>
       <div class="card">
         <h2>Costing</h2>

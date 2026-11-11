@@ -42,7 +42,7 @@ async function createCheckoutSession(order, baseUrl) {
         quantity: 1,
         price_data: {
           currency: order.currency.toLowerCase(),
-          unit_amount: order.total,
+          unit_amount: order.total - (order.gift_card_total || 0),
           product_data: { name: `${store.name} order ${order.name}`, description: order.items.map((i) => `${i.quantity} × ${i.title}`).join(', ').slice(0, 500) },
         },
       },

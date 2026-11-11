@@ -14,6 +14,7 @@ async function hydrateMany(products) {
     all('SELECT * FROM variants WHERE product_id = ANY(?::int[]) ORDER BY position, id', ids),
     all('SELECT * FROM product_images WHERE product_id = ANY(?::int[]) ORDER BY position, id', ids),
   ]);
+  await require('./bundles').applyStock(variants);
   for (const p of list) {
     decorate(p, variants.filter((v) => v.product_id === p.id), images.filter((i) => i.product_id === p.id));
   }

@@ -46,17 +46,34 @@ async function upsertCustomer({ email, first_name, last_name, phone, accepts_mar
  * Places an order from a priced cart. Decrements inventory, increments discount usage
  * and records the customer. Throws (status 409) if stock ran out since the cart was built.
  */
-async function createOrder({ cart, totals, contact, shippingAddress, billingAddress, shipping, discount, payment, note, customerId, source = 'web' }) {
+async function createOrder({ cart, totals, contact, shippingAddress, billingAddress, shipping, discount, payment, note, customerId, source = 'web', giftCard = null }) {
   const orderId = await tx(async () => {
     await get('SELECT pg_advisory_xact_lock(72001)'); // serializes order-number assignment
     const costs = new Map();
+    // Units each variant must supply: the variant itself, or a bundle's components.
+    const need = new Map();
+    const bundles = await require('./bundles').componentsFor(cart.lines.map((l) => l.variant_id));
     for (const line of cart.lines) {
-      // FOR UPDATE holds the row so two checkouts can't both take the last unit.
-      const v = await get('SELECT * FROM variants WHERE id = ? FOR UPDATE', line.variant_id);
-      costs.set(line.variant_id, v.cost);
-      if (v.track_inventory && !v.continue_selling && v.inventory_qty < line.quantity) {
-        throw Object.assign(new Error(`Only ${Math.max(0, v.inventory_qty)} of ${line.title} left in stock.`), { status: 409 });
+      const comps = bundles.get(line.variant_id);
+      if (comps) for (const c of comps) need.set(c.variant_id, (need.get(c.variant_id) || 0) + c.quantity * line.quantity);
+      else need.set(line.variant_id, (need.get(line.variant_id) || 0) + line.quantity);
+    }
+    // FOR UPDATE holds the rows (in id order, so concurrent checkouts can't deadlock) and nobody
+    // else can take the last unit meanwhile.
+    for (const id of [...need.keys()].sort((a, b) => a - b)) {
+      const v = await get('SELECT v.*, p.title AS product_title FROM variants v JOIN products p ON p.id = v.product_id WHERE v.id = ? FOR UPDATE OF v', id);
+      costs.set(id, v.cost);
+      if (v.track_inventory && !v.continue_selling && v.inventory_qty < need.get(id)) {
+        const line = cart.lines.find((l) => l.variant_id === id);
+        throw Object.assign(new Error(`Only ${Math.max(0, v.inventory_qty)} of ${line ? line.title : v.product_title} left in stock.`), { status: 409 });
       }
+    }
+    for (const line of cart.lines) {
+      const comps = bundles.get(line.variant_id);
+      if (comps) {
+        const v = await get('SELECT cost FROM variants WHERE id = ?', line.variant_id);
+        costs.set(line.variant_id, v.cost !== null ? v.cost : comps.every((c) => costs.get(c.variant_id) !== null && costs.get(c.variant_id) !== undefined) ? comps.reduce((sum, c) => sum + costs.get(c.variant_id) * c.quantity, 0) : null);
+      } else if (!costs.has(line.variant_id)) costs.set(line.variant_id, (await get('SELECT cost FROM variants WHERE id = ?', line.variant_id)).cost);
     }
     // Walk-in point-of-sale customers may give no email; their order has no customer record.
     const cid = customerId || (!contact.email ? null : await upsertCustomer({
@@ -76,13 +93,35 @@ async function createOrder({ cart, totals, contact, shippingAddress, billingAddr
     discount ? discount.code : '', shipping ? shipping.name : '', JSON.stringify(shippingAddress || {}),
     JSON.stringify(billingAddress || shippingAddress || {}), payment.name, note || '', source);
     for (const line of cart.lines) {
-      const itemId = await insert(`INSERT INTO order_items (order_id, product_id, variant_id, title, variant_title, sku, image, price, quantity, requires_shipping, unit_cost)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, line.product_id, line.variant_id, line.title, line.variant_title,
-      line.sku, line.image, line.price, line.quantity, line.requires_shipping ? 1 : 0, costs.get(line.variant_id) ?? null);
+      const comps = bundles.get(line.variant_id);
+      const itemId = await insert(`INSERT INTO order_items (order_id, product_id, variant_id, title, variant_title, sku, image, price, quantity, requires_shipping, unit_cost,
+          product_kind, properties, bundle_snapshot)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, line.product_id, line.variant_id, line.title, line.variant_title,
+      line.sku, line.image, line.price, line.quantity, line.requires_shipping ? 1 : 0, costs.get(line.variant_id) ?? null,
+      line.product_kind || 'standard', JSON.stringify(line.properties || {}), comps ? JSON.stringify(comps.map((c) => ({ variant_id: c.variant_id, quantity: c.quantity, title: c.title }))) : null);
+      const production = require('./production');
+      if (comps) {
+        // A bundle takes its components' stock and production lots; its cost is theirs added up.
+        let unitCost = 0;
+        let known = true;
+        for (const c of comps) {
+          const actual = await production.allocateSale(itemId, c.variant_id, c.quantity * line.quantity, costs.get(c.variant_id) ?? null);
+          if (actual === null || actual === undefined) known = false; else unitCost += actual * c.quantity;
+          await run('UPDATE variants SET inventory_qty = inventory_qty - ? WHERE id = ? AND track_inventory = 1', c.quantity * line.quantity, c.variant_id);
+        }
+        if (known) await run('UPDATE order_items SET unit_cost = ? WHERE id = ?', unitCost, itemId);
+        continue;
+      }
       // Units made in production batches are drawn from their lots (oldest first) at their actual cost.
-      const actual = await require('./production').allocateSale(itemId, line.variant_id, line.quantity, costs.get(line.variant_id) ?? null);
+      const actual = await production.allocateSale(itemId, line.variant_id, line.quantity, costs.get(line.variant_id) ?? null);
       if (actual !== (costs.get(line.variant_id) ?? null)) await run('UPDATE order_items SET unit_cost = ? WHERE id = ?', actual, itemId);
       await run('UPDATE variants SET inventory_qty = inventory_qty - ? WHERE id = ? AND track_inventory = 1', line.quantity, line.variant_id);
+    }
+    if (giftCard && totals.total > 0) {
+      // Gift cards can't buy gift cards (that would let a balance be turned into a new code).
+      const payable = totals.total - cart.lines.filter((l) => l.product_kind === 'gift_card').reduce((sum, l) => sum + l.line_price, 0);
+      const taken = await require('./giftcards').redeem(giftCard.id, id, Math.min(payable, giftCard.amount || payable), contact.email || 'POS');
+      await run('UPDATE orders SET gift_card_total = ?, gift_card_id = ? WHERE id = ?', taken, giftCard.id, id);
     }
     if (discount) await run('UPDATE discounts SET used_count = used_count + 1 WHERE id = ?', discount.id);
     if (!cart.requires_shipping) await run("UPDATE orders SET fulfillment_status = 'fulfilled' WHERE id = ?", id);
@@ -102,10 +141,25 @@ async function createOrder({ cart, totals, contact, shippingAddress, billingAddr
 async function markPaid(orderId, { ref = '', author = '' } = {}) {
   const order = await get('SELECT * FROM orders WHERE id = ?', orderId);
   if (!order || order.financial_status === 'paid') return;
-  await run("UPDATE orders SET financial_status = 'paid', payment_ref = COALESCE(NULLIF(?, ''), payment_ref) WHERE id = ?", ref, orderId);
-  // Every payment also lands in the ledger used by financial reports.
-  await run("INSERT INTO payments (order_id, amount, method, reference, kind, recorded_by) VALUES (?, ?, ?, ?, 'payment', ?)", orderId, order.total, order.payment_method, ref || order.payment_ref || '', author || 'System');
-  await addEvent(orderId, `Payment of ${(order.total / 100).toFixed(2)} ${order.currency} was marked as received${ref ? ` (ref ${ref})` : ''}.`, author);
+  const claimed = await run("UPDATE orders SET financial_status = 'paid', payment_ref = COALESCE(NULLIF(?, ''), payment_ref) WHERE id = ? AND financial_status != 'paid'", ref, orderId);
+  if (!claimed.changes) return;
+  // Every payment also lands in the ledger used by financial reports; a gift card's share separately.
+  const giftPart = order.gift_card_total || 0;
+  if (order.total - giftPart > 0 || !giftPart) await run("INSERT INTO payments (order_id, amount, method, reference, kind, recorded_by) VALUES (?, ?, ?, ?, 'payment', ?)", orderId, order.total - giftPart, order.payment_method, ref || order.payment_ref || '', author || 'System');
+  if (giftPart) await run("INSERT INTO payments (order_id, amount, method, reference, kind, recorded_by) VALUES (?, ?, 'Gift card', ?, 'payment', ?)", orderId, giftPart, `card ending ${(await get('SELECT last4 FROM gift_cards WHERE id = ?', order.gift_card_id) || {}).last4 || ''}`, author || 'System');
+  await addEvent(orderId, `Payment of ${(order.total / 100).toFixed(2)} ${order.currency} was marked as received${giftPart ? ` (${(giftPart / 100).toFixed(2)} by gift card)` : ''}${ref ? ` (ref ${ref})` : ''}.`, author);
+  await afterPaid(orderId);
+}
+
+// Paid orders release what was bought online: gift card codes and download links.
+async function afterPaid(orderId) {
+  try {
+    await require('./giftcards').issueForOrder(orderId);
+    await require('./downloads').grantForOrder(orderId);
+  } catch (err) {
+    console.error('[after paid]', orderId, err.message);
+    await addEvent(orderId, `Couldn't finish issuing gift cards or downloads: ${err.message}. Open the order to retry.`);
+  }
 }
 
 // items: [{ id, quantity }] of order_items to fulfill; empty = everything remaining.
@@ -141,7 +195,9 @@ async function fulfill(orderId, { items = [], tracking_company = '', tracking_nu
 
 async function restockItems(order) {
   for (const item of order.items) {
-    if (item.variant_id) await run('UPDATE variants SET inventory_qty = inventory_qty + ? WHERE id = ? AND track_inventory = 1', item.quantity, item.variant_id);
+    if (item.bundle_snapshot) {
+      for (const c of JSON.parse(item.bundle_snapshot)) await run('UPDATE variants SET inventory_qty = inventory_qty + ? WHERE id = ? AND track_inventory = 1', c.quantity * item.quantity, c.variant_id);
+    } else if (item.variant_id) await run('UPDATE variants SET inventory_qty = inventory_qty + ? WHERE id = ? AND track_inventory = 1', item.quantity, item.variant_id);
     await require('./production').returnSale(item.id);
   }
 }
@@ -167,6 +223,8 @@ async function cancel(orderId, { restock = true, reason = '', author = '', notif
   if (!order || order.status === 'cancelled') return;
   await tx(async () => {
     if (restock) await restockItems(order);
+    // Gift card balance used on an unpaid order goes back on the card.
+    if (order.financial_status !== 'paid' && order.gift_card_total) await require('./giftcards').restoreForOrder(orderId, author);
     const financial = order.financial_status === 'paid' ? order.financial_status : 'voided';
     await run("UPDATE orders SET status = 'cancelled', cancelled_at = now(), financial_status = ? WHERE id = ?", financial, orderId);
     await addEvent(orderId, `Order cancelled${reason ? ` — ${reason}` : ''}${restock ? '; items restocked' : ''}.`, author);
@@ -174,4 +232,4 @@ async function cancel(orderId, { restock = true, reason = '', author = '', notif
   if (notify) await mailer.notify('order_cancelled', order.email, `Order ${order.name} has been cancelled`, 'order-cancelled', { order, reason });
 }
 
-module.exports = { orderById, orderByToken, orderName, createOrder, markPaid, fulfill, refund, cancel, addEvent, upsertCustomer };
+module.exports = { orderById, orderByToken, orderName, createOrder, markPaid, afterPaid, fulfill, refund, cancel, addEvent, upsertCustomer };

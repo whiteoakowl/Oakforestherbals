@@ -147,6 +147,7 @@ const DEFAULTS = {
   reviews: { enabled: true, require_purchase: true, auto_publish: false },
   abandoned_cart: { enabled: false, delay_hours: 4, require_consent: true },
   gift_cards: { expiry_months: 0 },
+  downloads: { max_downloads: 5, expiry_days: 30 },
   seo: {
     home_title: '',
     home_description: 'Small-batch organic herbal teas, tinctures and botanicals.',

@@ -11,10 +11,11 @@ const priceListFor = (customer) => (customer && customer.customer_group === 'who
 
 async function buildCart(items = [], { priceList = 'retail' } = {}) {
   const ids = items.map((i) => i.variant_id);
-  const rows = ids.length ? await all(`SELECT v.*, p.title AS product_title, p.handle,
+  const rows = ids.length ? await all(`SELECT v.*, p.title AS product_title, p.handle, p.kind AS product_kind,
       (SELECT url FROM product_images WHERE product_id = p.id ORDER BY position, id LIMIT 1) AS image
     FROM variants v JOIN products p ON p.id = v.product_id
     WHERE v.id = ANY(?::int[]) AND p.status = 'active'`, intArray(ids)) : [];
+  await require('./bundles').applyStock(rows);
   const byId = new Map(rows.map((r) => [r.id, r]));
   const lines = [];
   for (const item of items) {
@@ -38,8 +39,13 @@ async function buildCart(items = [], { priceList = 'retail' } = {}) {
       wholesale,
       quantity,
       max,
-      taxable: !!variant.taxable,
-      requires_shipping: !!variant.requires_shipping,
+      // Gift cards are a way to pay, not a taxable sale; gift cards and downloads never ship.
+      taxable: variant.product_kind === 'gift_card' ? false : !!variant.taxable,
+      requires_shipping: ['gift_card', 'digital'].includes(variant.product_kind) ? false : !!variant.requires_shipping,
+      product_kind: variant.product_kind || 'standard',
+      properties: item.properties || null,
+      bundle_components: variant.bundle_components || null,
+      cost: variant.cost,
       line_price: price * quantity,
     });
   }
@@ -51,6 +57,9 @@ async function buildCart(items = [], { priceList = 'retail' } = {}) {
     requires_shipping: lines.some((l) => l.requires_shipping),
   };
 }
+
+// What's kept in the session for each cart line.
+const toSession = (lines) => lines.map((l) => ({ variant_id: l.variant_id, quantity: l.quantity, ...(l.properties ? { properties: l.properties } : {}) }));
 
 // Returns { discount } when usable, or { error } explaining why not.
 async function validateDiscount(code, cart, email = '') {
@@ -125,4 +134,4 @@ async function computeTotals(cart, { discount = null, shipping = null, address =
   return { subtotal, discount_total, shipping_total, tax_total, tax_name, tax_rate: rate, tax_included: !!taxes.prices_include_tax, total };
 }
 
-module.exports = { CUSTOMER_GROUPS, priceListFor, buildCart, validateDiscount, discountAmount, shippingOptions, taxRateFor, computeTotals };
+module.exports = { CUSTOMER_GROUPS, priceListFor, buildCart, toSession, validateDiscount, discountAmount, shippingOptions, taxRateFor, computeTotals };

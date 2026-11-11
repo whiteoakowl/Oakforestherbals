@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — Store: reviews, gift cards, bundles and digital downloads
+
+### Added
+- **Kinds of product** (on the product page in the admin): physical, bundle, digital download, gift card.
+- **Bundles**: build each bundle variant from other products (Products → the bundle → What’s in the
+  bundle). Bundles are available while their parts are, selling one takes the parts' stock and
+  production lots at actual cost, cancelling restocks the parts, and the product page shows what's
+  included and the saving.
+- **Gift cards**: sell them as products (the buyer names a recipient and message; the code is emailed
+  when paid), or issue them by hand (Gift cards → Issue). Redeem at checkout, alone or with another
+  payment; balance check page at `/gift-cards/balance`; balance adjustments, disabling, expiry, and full
+  history. Codes are stored only as hashes. Gift cards can't buy gift cards.
+- **Digital downloads**: upload files to a digital product; buyers get private links (limited downloads
+  and days, Settings → Store features) by email and on their order page once paid; staff can reset limits.
+- **Product reviews**: buyers review products (verified-buyer badge), staff approve, hide or reply
+  (Products → Reviews), average rating on the product page and in search-engine data.
+- **Settings → Store features** for reviews, gift card expiry, download limits and cart reminders.
+
 ## Unreleased — Security: two-step sign-in and key rotation
 
 ### Added

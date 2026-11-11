@@ -25,7 +25,7 @@
         <h3>Shipping address</h3><%- include('../../partials/address', { a: order.shipping_address }) %>
       </div>
       <div>
-        <h3>Payment</h3><p><%= order.payment_method %> · <span class="status status-<%= order.financial_status %>"><%= order.financial_status.replace('_', ' ') %></span></p>
+        <h3>Payment</h3><p><%= order.payment_method %> · <span class="status status-<%= order.financial_status %>"><%= order.financial_status.replace('_', ' ') %></span><% if (order.gift_card_total) { %><br><span class="small"><%= money(order.gift_card_total) %> paid by gift card</span><% } %></p>
         <h3>Shipping method</h3><p><%= order.shipping_method %></p>
       </div>
     </div>
@@ -36,6 +36,17 @@
   </div>
   <aside class="checkout-summary">
     <%- include('../../partials/order-items', { order }) %>
+    <% if (downloads.length) { %>
+      <div class="box">
+        <h3>Your downloads</h3>
+        <ul class="download-list"><% for (const d of downloads) { %><li><a href="/downloads/<%= d.token %>"><%= d.filename %></a> <span class="muted small"><%= d.max_downloads ? `${Math.max(0, d.max_downloads - d.downloads)} download(s) left` : '' %><%= d.expires_at ? ` · until ${formatDate(d.expires_at)}` : '' %></span></li><% } %></ul>
+      </div>
+    <% } else if (order.items.some((i) => i.product_kind === 'digital') && order.financial_status !== 'paid') { %>
+      <p class="muted">Your download links will appear here and in your email once payment is received.</p>
+    <% } %>
+    <% if (order.items.some((i) => i.product_kind === 'gift_card')) { %>
+      <p class="muted"><%= order.financial_status === 'paid' ? 'Gift card codes have been emailed to their recipients.' : 'Gift card codes will be emailed to their recipients once payment is received.' %></p>
+    <% } %>
   </aside>
 </div>
 </body>

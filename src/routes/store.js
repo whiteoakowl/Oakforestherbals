@@ -2,10 +2,10 @@
 const express = require('express');
 const { get, all, run } = require('../db');
 const catalog = require('../catalog');
-const { buildCart, priceListFor } = require('../pricing');
+const { buildCart, priceListFor, toSession } = require('../pricing');
 const settings = require('../settings');
 const mailer = require('../mailer');
-const { flash } = require('../middleware');
+const { flash, throttle } = require('../middleware');
 const { paginate, toInt, escapeHtml } = require('../utils');
 
 const router = express.Router();
@@ -83,7 +83,10 @@ async function renderProduct(req, res, next) {
     ORDER BY RANDOM() LIMIT 4`, product.id, product.product_type));
   const selected = product.variants.find((v) => String(v.id) === String(req.query.variant))
     || product.variants.find(catalog.isVariantAvailable) || product.variants[0];
+  const reviewsModule = require('../reviews');
+  const reviews = { enabled: settings.load('reviews').enabled, summary: await reviewsModule.summary(product.id), list: await reviewsModule.published(product.id), eligibility: await reviewsModule.eligibility(res.locals.customer, product.id) };
   res.render('store/product', {
+    reviews,
     title: product.seo_title || product.title,
     description: product.seo_description || res.locals.stripHtml(product.description_html).slice(0, 160),
     ogImage: product.image,
@@ -97,6 +100,37 @@ async function renderProduct(req, res, next) {
   });
 }
 router.get('/products/:handle', renderProduct);
+
+router.post('/products/:handle/reviews', async (req, res, next) => {
+  const product = await catalog.productByHandle(req.params.handle);
+  if (!product) return next();
+  const out = await require('../reviews').submit(res.locals.customer, product.id, req.body);
+  if (out.error) flash(req, 'error', out.error);
+  else {
+    flash(req, 'success', out.status === 'published' ? 'Thank you — your review is up.' : 'Thank you — your review will appear once we’ve checked it.');
+    if (out.status === 'pending') await require('../comms').notifyStaff({ kind: 'review', title: `New review of ${product.title} waiting for approval`, link: '/admin/reviews?status=pending', permission: 'products.manage' });
+  }
+  res.redirect(`/products/${product.handle}#reviews`);
+});
+
+/* ---------- Downloads and gift card balance ---------- */
+
+router.get('/downloads/:token', async (req, res) => {
+  const downloads = require('../downloads');
+  const out = await downloads.open(req.params.token);
+  if (out.error) return res.status(out.status).render('store/message', { title: 'Download unavailable', heading: 'Download unavailable', message: out.error });
+  res.set('Cache-Control', 'no-store');
+  const signed = await downloads.storage.signedPrivateUrl(out.link.storage_key, 60);
+  if (signed) return res.redirect(302, signed);
+  res.attachment(out.link.filename).type(out.link.mime).send(await downloads.storage.readPrivate(out.link.storage_key));
+});
+
+router.get('/gift-cards/balance', (req, res) => res.render('store/gift-card-balance', { title: 'Gift card balance', result: null }));
+router.post('/gift-cards/balance', throttle('giftcard'), async (req, res) => {
+  const found = await require('../giftcards').find(req.body.code);
+  const card = found.card || (found.error && found.error !== 'That gift card code isn’t valid.' ? await get('SELECT * FROM gift_cards WHERE code_hash = ?', require('../giftcards').hash(req.body.code)) : null);
+  res.render('store/gift-card-balance', { title: 'Gift card balance', result: card ? { balance: card.balance, last4: card.last4, expires: card.expires_on, note: found.error || '' } : { error: found.error } });
+});
 router.get('/collections/:collection/products/:handle', renderProduct);
 
 router.get('/search', async (req, res) => {
@@ -139,7 +173,7 @@ async function cartPayload(req, res) {
 router.get('/cart', async (req, res) => {
   const cart = await buildCart(req.session.cart, { priceList: priceListFor(res.locals.customer) });
   // Drop lines that are no longer purchasable so the session matches what we show.
-  req.session.cart = cart.lines.map((l) => ({ variant_id: l.variant_id, quantity: l.quantity }));
+  req.session.cart = toSession(cart.lines);
   res.render('store/cart', { title: 'Your cart', cart, note: req.session.cartNote || '', settingsOrderNotes: settings.load('checkout').order_notes });
 });
 
@@ -148,18 +182,30 @@ router.get('/cart.json', async (req, res) => res.json(await cartPayload(req, res
 router.post('/cart/add', async (req, res) => {
   const variantId = toInt(req.body.variant_id);
   const quantity = Math.max(1, toInt(req.body.quantity, 1));
-  const variant = await get(`SELECT v.* FROM variants v JOIN products p ON p.id = v.product_id
+  const variant = await get(`SELECT v.*, p.kind AS product_kind FROM variants v JOIN products p ON p.id = v.product_id
     WHERE v.id = ? AND p.status = 'active'`, variantId);
+  if (variant) await require('../bundles').applyStock([variant]);
   const wantsJson = req.xhr || req.accepts(['html', 'json']) === 'json';
   if (!variant || !catalog.isVariantAvailable(variant)) {
     if (wantsJson) return res.status(422).json({ error: 'This item is sold out.' });
     flash(req, 'error', 'Sorry, that item is sold out.');
     return res.redirect(safeBack(req, '/cart'));
   }
+  // A gift card carries who it's for; the code is emailed to them once the order is paid.
+  let properties = null;
+  if (variant.product_kind === 'gift_card') {
+    const email = String(req.body.recipient_email || '').trim().toLowerCase().slice(0, 200);
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (wantsJson) return res.status(422).json({ error: 'Enter a valid email for the recipient.' });
+      flash(req, 'error', 'Enter a valid email for the recipient.');
+      return res.redirect(safeBack(req, '/cart'));
+    }
+    properties = { recipient_email: email, recipient_name: String(req.body.recipient_name || '').trim().slice(0, 100), sender_name: String(req.body.sender_name || '').trim().slice(0, 100), message: String(req.body.gift_message || '').trim().slice(0, 500) };
+  }
   const cart = req.session.cart || [];
   const line = cart.find((l) => l.variant_id === variantId);
-  if (line) line.quantity += quantity; else cart.push({ variant_id: variantId, quantity });
-  req.session.cart = (await buildCart(cart, { priceList: priceListFor(res.locals.customer) })).lines.map((l) => ({ variant_id: l.variant_id, quantity: l.quantity }));
+  if (line) { line.quantity += quantity; if (properties) line.properties = properties; } else cart.push({ variant_id: variantId, quantity, ...(properties ? { properties } : {}) });
+  req.session.cart = toSession((await buildCart(cart, { priceList: priceListFor(res.locals.customer) })).lines);
   if (wantsJson) return res.json(await cartPayload(req, res));
   flash(req, 'success', 'Added to your cart.');
   res.redirect('/cart');
@@ -171,7 +217,7 @@ router.post('/cart/update', async (req, res) => {
   for (const line of req.session.cart || []) {
     const sent = quantities[`id${line.variant_id}`];
     const q = sent !== undefined ? toInt(sent, line.quantity) : line.quantity;
-    if (q > 0) next.push({ variant_id: line.variant_id, quantity: q });
+    if (q > 0) next.push({ ...line, quantity: q });
   }
   if (req.body.remove) {
     const removeId = toInt(req.body.remove);

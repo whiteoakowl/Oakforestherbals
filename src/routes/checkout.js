@@ -6,6 +6,7 @@ const settings = require('../settings');
 const pricing = require('../pricing');
 const orders = require('../orders');
 const stripe = require('../stripe');
+const giftcards = require('../giftcards');
 const { flash } = require('../middleware');
 const { toInt, asBool } = require('../utils');
 const { COUNTRIES } = require('../countries');
@@ -35,7 +36,19 @@ async function context(req) {
   const options = address ? await pricing.shippingOptions(cart, address.country, discount) : [];
   const shipping = options.find((o) => o.id === co.shipping_rate_id) || null;
   const totals = await pricing.computeTotals(cart, { discount, shipping, address });
-  return { co, cart, discount, discountError, options, shipping, totals, address };
+  // A gift card pays for anything except other gift cards.
+  let giftCard = null;
+  let giftCardError = '';
+  if (co.gift_card_code) {
+    const found = await giftcards.find(co.gift_card_code);
+    if (found.error) giftCardError = found.error;
+    else {
+      const payable = Math.max(0, totals.total - cart.lines.filter((l) => l.product_kind === 'gift_card').reduce((sum, l) => sum + l.line_price, 0));
+      giftCard = { id: found.card.id, last4: found.card.last4, balance: found.card.balance, amount: Math.min(found.card.balance, payable) };
+    }
+  }
+  const amountDue = totals.total - (giftCard ? giftCard.amount : 0);
+  return { co, cart, discount, discountError, options, shipping, totals, address, giftCard, giftCardError, amountDue };
 }
 
 function render(res, view, ctx, extra = {}) {
@@ -132,7 +145,11 @@ router.post('/payment', async (req, res, next) => {
       flash(req, 'error', ctx.discountError);
       return res.redirect('/checkout/payment');
     }
-    const method = paymentMethods().find((m) => m.id === req.body.payment_method);
+    if (ctx.giftCardError) {
+      flash(req, 'error', ctx.giftCardError);
+      return res.redirect('/checkout/payment');
+    }
+    const method = ctx.amountDue === 0 ? { id: 'gift_card', name: 'Gift card', kind: 'gift_card' } : paymentMethods().find((m) => m.id === req.body.payment_method);
     if (!method) {
       flash(req, 'error', 'Choose a payment method.');
       return res.redirect('/checkout/payment');
@@ -156,6 +173,7 @@ router.post('/payment', async (req, res, next) => {
         payment: method,
         note: ctx.co.note || '',
         customerId: res.locals.customer ? res.locals.customer.id : null,
+        giftCard: ctx.giftCard,
       });
     } catch (err) {
       if (err.status !== 409) throw err;
@@ -174,15 +192,26 @@ router.post('/payment', async (req, res, next) => {
         return res.redirect(303, await stripe.createCheckoutSession(order, base));
       } catch (err) {
         console.error('[stripe]', err.message);
-        req.session.cart = order.items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }));
+        req.session.cart = order.items.map((i) => ({ variant_id: i.variant_id, quantity: i.quantity, ...(i.product_kind === 'gift_card' ? { properties: JSON.parse(i.properties || '{}') } : {}) }));
         await orders.cancel(order.id, { restock: true, reason: `Card payment could not start: ${err.message}`, notify: false });
         flash(req, 'error', 'We could not start the card payment. Please try again or choose another payment method.');
         return res.redirect('/cart');
       }
     }
-    if (order.total === 0) await orders.markPaid(order.id, { ref: 'zero-total' });
+    if (order.total - order.gift_card_total <= 0) await orders.markPaid(order.id, { ref: order.gift_card_total ? 'gift-card' : 'zero-total' });
     res.redirect(`/checkout/thank-you/${order.token}`);
   } catch (err) { next(err); }
+});
+
+router.post('/gift-card', async (req, res) => {
+  const co = state(req);
+  if (req.body.remove) co.gift_card_code = '';
+  else {
+    const found = await giftcards.find(req.body.code);
+    if (found.error) flash(req, 'error', found.error);
+    else { co.gift_card_code = giftcards.normalize(req.body.code); flash(req, 'success', `Gift card ending ${found.card.last4} applied.`); }
+  }
+  res.redirect('/checkout/payment');
 });
 
 router.post('/discount', async (req, res) => {
@@ -219,7 +248,7 @@ router.get('/stripe/cancel', async (req, res) => {
   const order = await orders.orderByToken(String(req.query.order || ''));
   if (order && order.financial_status === 'pending' && req.session.lastOrder === order.token) {
     // Put the items back in the cart and release the reserved stock.
-    req.session.cart = order.items.filter((i) => i.variant_id).map((i) => ({ variant_id: i.variant_id, quantity: i.quantity }));
+    req.session.cart = order.items.filter((i) => i.variant_id).map((i) => ({ variant_id: i.variant_id, quantity: i.quantity, ...(i.product_kind === 'gift_card' ? { properties: JSON.parse(i.properties || '{}') } : {}) }));
     await orders.cancel(order.id, { restock: true, reason: 'Customer abandoned card payment', notify: false });
     flash(req, 'info', 'Payment was cancelled. Your cart has been restored.');
   }
@@ -231,7 +260,7 @@ router.get('/thank-you/:token', async (req, res, next) => {
   if (!order) return next();
   const method = settings.load('payments').manual.find((m) => m.name === order.payment_method);
   res.render('store/checkout/thank-you', {
-    title: `Order ${order.name}`, layoutless: true, order, method,
+    title: `Order ${order.name}`, layoutless: true, order, method, downloads: await require('../downloads').linksForOrder(order.id),
     checkoutSettings: settings.load('checkout'),
   });
 });
