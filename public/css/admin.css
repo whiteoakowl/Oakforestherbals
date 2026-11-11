@@ -749,3 +749,11 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
 .kanban { grid-template-columns: repeat(5, minmax(190px, 1fr)); }
 .community-post.is-hidden, .community-reply.is-hidden { opacity: .55; }
 .community-reply { margin: 10px 0 0 16px; padding: 8px 12px; border-left: 3px solid var(--border-strong); background: var(--surface-2); border-radius: 0 10px 10px 0; }
+
+/* Sign-in pages, in the practice theme: calm neutral background, soft card, brand at the top. */
+.auth-page { background: radial-gradient(1200px 600px at 10% -10%, var(--primary-soft), transparent 60%), radial-gradient(900px 500px at 110% 110%, var(--primary-soft), transparent 55%), var(--bg); }
+.auth-card { width: min(420px, 100%); border: 1px solid var(--border); border-radius: 20px; padding: 36px 32px; box-shadow: var(--shadow-pop); }
+.auth-card h1 { font-size: 24px; }
+.auth-card .muted { margin-bottom: 20px; }
+.auth-brand { font-size: 16px; font-weight: 650; margin-bottom: 28px; }
+.auth-card .btn-block { min-height: 44px; font-size: 15px; margin-top: 4px; }
