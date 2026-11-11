@@ -1583,6 +1583,13 @@ CREATE TABLE IF NOT EXISTS staff_password_resets (
 );
 `,
   },
+  {
+    id: '0019_must_change_password',
+    sql: `
+-- Accounts created from deploy settings must choose their own password at first login.
+ALTER TABLE staff ADD COLUMN IF NOT EXISTS must_change_password INTEGER NOT NULL DEFAULT 0;
+`,
+  },
 ];
 
 // Supabase publishes the public schema through its Data API (PostgREST) to anyone holding the

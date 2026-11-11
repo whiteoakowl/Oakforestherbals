@@ -32,7 +32,7 @@ if (!storage.useSupabase) {
 // Tables and default menus exist before the first request is handled.
 let baseReady;
 app.use(async (req, res, next) => {
-  baseReady = baseReady || Promise.all([ensureBase(), require('./permissions').sync()]);
+  baseReady = baseReady || Promise.all([ensureBase(), require('./permissions').sync()]).then(() => require('./seed').bootstrapAdmin());
   await baseReady;
   next();
 });

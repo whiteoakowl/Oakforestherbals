@@ -26,7 +26,11 @@ router.post('/', async (req, res) => {
       flash(req, 'error', 'New password must be at least 8 characters.');
       return res.redirect('/admin/profile');
     }
-    await run('UPDATE staff SET password_hash = ? WHERE id = ?', bcrypt.hashSync(new_password, 10), me.id);
+    if (bcrypt.compareSync(new_password, me.password_hash)) {
+      flash(req, 'error', 'Choose a different password from your current one.');
+      return res.redirect('/admin/profile');
+    }
+    await run('UPDATE staff SET password_hash = ?, must_change_password = 0 WHERE id = ?', bcrypt.hashSync(new_password, 10), me.id);
   }
   flash(req, 'success', 'Profile saved.');
   res.redirect('/admin/profile');

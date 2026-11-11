@@ -228,4 +228,19 @@ if (require.main === module) {
   main().then(() => end(), (err) => { console.error(err); process.exitCode = 1; return end(); });
 }
 
-module.exports = { ensureBase, main };
+// On a deployed site: when ADMIN_EMAIL and ADMIN_PASSWORD are set in the hosting settings and no staff
+// account has that email, create it as an owner (full control). The password is temporary: it must be
+// changed at first login. Existing accounts are never touched, so this can't override anyone's password.
+async function bootstrapAdmin() {
+  const email = String(process.env.ADMIN_EMAIL || '').trim();
+  const password = String(process.env.ADMIN_PASSWORD || '');
+  if (!email.includes('@') || password.length < 8) return false;
+  const res = await run(`INSERT INTO staff (email, name, password_hash, role, must_change_password) VALUES (?, ?, ?, 'owner', 1)
+    ON CONFLICT (email) DO NOTHING`, email, process.env.ADMIN_NAME || 'Store owner', bcrypt.hashSync(password, 10));
+  if (res.changes) {
+    await require('./audit').record(null, 'staff.owner_bootstrapped', { entityType: 'staff', actor: { type: 'system', id: null, name: 'Deploy settings' }, details: { email } });
+  }
+  return Boolean(res.changes);
+}
+
+module.exports = { ensureBase, main, bootstrapAdmin };

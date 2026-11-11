@@ -6,6 +6,7 @@
     <label class="field"><span>Name</span><input name="name" value="<%= staff.name %>"></label>
     <label class="field"><span>Email</span><input value="<%= staff.email %>" disabled></label>
     <h3>Change password</h3>
+    <% if (staff.must_change_password) { %><p class="banner banner-critical">Your password is temporary. Choose your own to continue.</p><% } %>
     <div class="grid-2">
       <label class="field"><span>Current password</span><input type="password" name="current_password" autocomplete="current-password"></label>
       <label class="field"><span>New password</span><input type="password" name="new_password" minlength="8" autocomplete="new-password"></label>

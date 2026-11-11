@@ -57,3 +57,37 @@ test('owner recovery works only with the recovery key, shows the owner email and
   // The recovery window closes after use.
   assert.doesNotMatch((await c.get('/admin/recover')).text, /name="staff_id"/);
 });
+
+test('an owner created from deploy settings has full control but must replace the temporary password', async () => {
+  const { bootstrapAdmin } = require('../src/seed');
+  const saved = { e: process.env.ADMIN_EMAIL, p: process.env.ADMIN_PASSWORD };
+  process.env.ADMIN_EMAIL = 'main.admin@example.com';
+  process.env.ADMIN_PASSWORD = 'changeme123';
+  try {
+    assert.equal(await bootstrapAdmin(), true);
+    assert.equal(await bootstrapAdmin(), false, 'never recreated or overwritten');
+    const row = await get("SELECT role, must_change_password FROM staff WHERE email = 'main.admin@example.com'");
+    assert.deepEqual([row.role, row.must_change_password], ['owner', 1]);
+    const c = new Client(ctx.base);
+    await c.post('/admin/login', { email: 'main.admin@example.com', password: 'changeme123', next: '/admin' }, '/admin/login');
+    assert.equal((await c.get('/admin/orders')).location, '/admin/profile', 'sent to change the password first');
+    assert.match((await c.get('/admin/profile')).text, /Your password is temporary/);
+    await c.post('/admin/profile', { name: 'Main admin', current_password: 'changeme123', new_password: 'changeme123' }, '/admin/profile');
+    assert.equal((await get("SELECT must_change_password FROM staff WHERE email = 'main.admin@example.com'")).must_change_password, 1, 'same password refused');
+    await c.post('/admin/profile', { name: 'Main admin', current_password: 'changeme123', new_password: 'my-own-strong-pw' }, '/admin/profile');
+    assert.equal((await c.get('/admin/orders')).status, 200);
+    // Full control: sets another staff member's password and removes an account.
+    await c.post('/admin/settings/staff', { name: 'Temp Helper', email: 'temp@example.com', password: 'password123', role: 'customer_service' }, '/admin/settings/staff');
+    const temp = await get("SELECT id FROM staff WHERE email = 'temp@example.com'");
+    await c.post(`/admin/settings/staff/${temp.id}/password`, { password: 'temporary-99' }, '/admin/settings/staff');
+    assert.equal((await get('SELECT must_change_password FROM staff WHERE id = ?', temp.id)).must_change_password, 1);
+    const helper = new Client(ctx.base);
+    assert.equal((await helper.post('/admin/login', { email: 'temp@example.com', password: 'temporary-99', next: '/admin' }, '/admin/login')).location, '/admin');
+    await c.post(`/admin/settings/staff/${temp.id}/delete`, {}, '/admin/settings/staff');
+    assert.equal(await get('SELECT 1 FROM staff WHERE id = ?', temp.id), undefined);
+    assert.equal((await helper.get('/admin')).status, 302, 'removed accounts are signed out');
+  } finally {
+    process.env.ADMIN_EMAIL = saved.e;
+    process.env.ADMIN_PASSWORD = saved.p;
+  }
+});

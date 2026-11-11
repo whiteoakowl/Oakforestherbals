@@ -27,6 +27,12 @@ router.use((req, res, next) => {
   req.session.lastActive = now;
   next();
 });
+// A temporary password (from deploy settings) must be replaced before anything else.
+router.use((req, res, next) => {
+  if (!res.locals.staff.must_change_password || req.path === '/profile' || req.path === '/logout') return next();
+  flash(req, 'info', 'Choose your own password to continue — the one you signed in with was temporary.');
+  res.redirect('/admin/profile');
+});
 // When the owner requires two-step sign-in, staff without it can only reach the page that sets it up.
 router.use((req, res, next) => {
   const staff = res.locals.staff;

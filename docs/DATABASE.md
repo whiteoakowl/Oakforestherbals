@@ -234,3 +234,8 @@ Body chart, tongue and pulse findings are stored inside the (encrypted) clinical
 | Change | Purpose |
 |---|---|
 | `staff_password_resets` | Staff “forgot password” links: a hash of the token, who it's for, when it expires (1 hour) and when it was used. |
+
+## 0019_must_change_password
+| Change | Purpose |
+|---|---|
+| `staff.must_change_password` | Set for accounts created from deploy settings or given a temporary password by an admin; they must choose their own at the next login. |

@@ -3,6 +3,11 @@
 ## Unreleased — Getting back into the admin
 
 ### Added
+- **Owner from deploy settings**: set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in Netlify and an owner account
+  (full control) is created on the next deploy if that email has no account. Its password is temporary and
+  must be changed at first login; existing accounts are never overwritten.
+- **Set a temporary password** for another staff member (Settings → Users → Password); they choose their own
+  at next login. Only owners can do this for owners.
 - **Forgot your password?** on the admin login: emails a one-hour, single-use link; signs the person out
   everywhere once the password changes.
 - **Owner recovery** at `/admin/recover` for a locked-out owner (no email needed): set

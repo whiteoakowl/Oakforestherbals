@@ -261,6 +261,23 @@ router.post('/staff/:id/reset-two-factor', async (req, res) => {
   res.redirect('/admin/settings/staff');
 });
 
+// Sets a temporary password for another staff member (they must change it at their next login).
+router.post('/staff/:id/password', async (req, res) => {
+  const id = toInt(req.params.id);
+  const target = await get('SELECT * FROM staff WHERE id = ?', id);
+  const password = String(req.body.password || '');
+  if (!target || id === res.locals.staff.id) flash(req, 'error', 'Change your own password under Your profile.');
+  else if (target.role === 'owner' && res.locals.staff.role !== 'owner') flash(req, 'error', 'Only an owner can change an owner’s password.');
+  else if (password.length < 8) flash(req, 'error', 'The temporary password must be at least 8 characters.');
+  else {
+    await run('UPDATE staff SET password_hash = ?, must_change_password = 1 WHERE id = ?', bcrypt.hashSync(password, 10), id);
+    await endStaffSessions(id);
+    await audit.record(req, 'staff.password_set_by_admin', { entityType: 'staff', entityId: id, details: { email: target.email } });
+    flash(req, 'success', `Temporary password set for ${target.name}. Share it with them securely; they’ll choose their own when they log in.`);
+  }
+  res.redirect('/admin/settings/staff');
+});
+
 router.get('/staff', async (req, res) => {
   res.render('admin/settings/staff', {
     title: 'Users',
