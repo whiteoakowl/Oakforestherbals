@@ -30,8 +30,8 @@ can apply even when HIPAA doesn't. Please confirm your position with a lawyer.
    `CLINIC_ENCRYPTION_KEY`, and redeploy. Until then the clinic shows "records locked".
 2. **Back the key up** in a password manager. If it's lost, no one — including Supabase or me —
    can recover the records. If it leaks, treat it like a breach.
-3. **Never change the key** once records exist (key rotation isn't built yet; changing it makes
-   existing records unreadable).
+3. **Change the key only with the rotation steps** in Settings → Security (set the old key as
+   `CLINIC_ENCRYPTION_KEY_PREVIOUS` first). Replacing it without that makes existing records unreadable.
 4. **Back up the database yourself.** The free plan has no automatic backups. Backups contain only
    ciphertext for clinical data, so the key is needed to restore anything useful.
 5. **Keep accounts tight:** give clinical roles only to people who need them, use strong unique
@@ -40,9 +40,10 @@ can apply even when HIPAA doesn't. Please confirm your position with a lawyer.
    information; don't add any to templates.
 7. Devices used to view records should have screen locks and disk encryption.
 
+| Two-step sign-in | Staff can (and, if you choose, must) enter a code from an authenticator app after their password; ten single-use recovery codes cover a lost phone; owners can reset it for others. Settings → Security sets who must use it — "owners and anyone who can see patient records" is recommended. |
+| Idle sign-out | Staff who can see patient records are signed out after 30 minutes without activity (adjustable in Settings → Security). |
+| Key rotation | Settings → Security re-encrypts every record and file with a new key while the old one is still loaded (`CLINIC_ENCRYPTION_KEY_PREVIOUS`), then the old key can be retired. |
+
 ## Known limits (planned work)
-- No two-factor sign-in yet for staff.
-- No key rotation yet.
-- No automatic session timeout for clinic staff beyond the normal 30-day login (sign out on shared devices).
 - Anthropic does not sign a BAA on ordinary API plans. If you grant the assistant's patient-record
   permission, patient details leave your systems for Anthropic's API; leave it off if that isn't acceptable.

@@ -62,7 +62,7 @@ async function locals(req, res, next) {
   res.locals.query = req.query;
   res.locals.cartCount = (req.session.cart || []).reduce((s, i) => s + i.quantity, 0);
   const [staff, customer, menus] = await Promise.all([
-    req.session.staffId ? get('SELECT id, email, name, role FROM staff WHERE id = ?', req.session.staffId) : null,
+    req.session.staffId ? get('SELECT id, email, name, role, totp_enabled_at IS NOT NULL AS two_factor FROM staff WHERE id = ?', req.session.staffId) : null,
     req.session.customerId ? get('SELECT * FROM customers WHERE id = ?', req.session.customerId) : null,
     catalog.menus(),
   ]);

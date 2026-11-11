@@ -12,5 +12,10 @@
     </div>
     <div><button class="btn btn-primary">Save</button></div>
   </form>
+  <div class="card form-stack">
+    <h2>Two-step sign-in</h2>
+    <p><%= staff.two_factor ? 'On — you enter a code from your authenticator app after your password.' : 'Off.' %><% if (!staff.two_factor && twoFactorRequired) { %> <strong>Your store requires it for your role.</strong><% } %></p>
+    <div><a class="btn" href="/admin/profile/two-factor"><%= staff.two_factor ? 'Manage' : 'Set up two-step sign-in' %></a></div>
+  </div>
 </div>
 <%- include('partials/footer') %>

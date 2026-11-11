@@ -143,6 +143,10 @@ const DEFAULTS = {
     tax_country: 'US',
     tax_province: '',
   },
+  security: { require_two_factor: 'none', clinical_idle_minutes: 30 },
+  reviews: { enabled: true, require_purchase: true, auto_publish: false },
+  abandoned_cart: { enabled: false, delay_hours: 4, require_consent: true },
+  gift_cards: { expiry_months: 0 },
   seo: {
     home_title: '',
     home_description: 'Small-batch organic herbal teas, tinctures and botanicals.',

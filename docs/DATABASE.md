@@ -155,3 +155,13 @@ questions nor answers.
 Indexes only (no data changes): herb uses, preparations, tradition profiles and images by herb;
 invoice lines by invoice; invoices by customer and by status/due date; batches by status; staff
 notifications by recipient; order lines by variant; orders by payment status and date.
+
+## 0010_two_factor_key_rotation
+| Change | Purpose |
+|---|---|
+| `staff.totp_secret_enc`, `totp_enabled_at`, `totp_last_step` | Two-step sign-in: the authenticator secret (encrypted with the site key), when it was turned on, and the last code's time step (so a code can't be reused). |
+| `staff_recovery_codes` | Ten single-use recovery codes per person, stored as bcrypt hashes. |
+| `patient_documents.key_id` | Which encryption key each private file was last written with (used by key rotation). |
+| `clinical_notes_lock_signed()` (replaced) | Signed notes stay locked, except that the re-encryption tool may rewrite their encrypted columns — and nothing else — after a key change. |
+
+Encrypted values are now written as `v2:<key id>:<data>` (older `v1:` values are still read).

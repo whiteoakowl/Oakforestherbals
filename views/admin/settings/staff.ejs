@@ -2,7 +2,7 @@
 <div class="card flush">
   <div class="card-head pad"><h2>Staff (<%= members.length %>)</h2></div>
   <table class="table">
-    <thead><tr><th>Name</th><th>Role</th><th>Last login</th><th></th></tr></thead>
+    <thead><tr><th>Name</th><th>Role</th><th>Two-step</th><th>Last login</th><th></th></tr></thead>
     <tbody>
     <% for (const m of members) { %>
       <tr><td><strong><%= m.name %></strong><div class="muted small"><%= m.email %></div></td>
@@ -20,6 +20,7 @@
             </form>
           <% } %>
         </td>
+        <td class="small"><% if (m.totp_enabled_at) { %>On<% if (m.id !== staff.id && (m.role !== 'owner' || staff.role === 'owner')) { %> <form action="/admin/settings/staff/<%= m.id %>/reset-two-factor" method="post" class="inline" data-confirm="Reset two-step sign-in for <%= m.name %>? Do this only after confirming who they are."><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small">Reset</button></form><% } %><% } else { %><span class="muted">Off</span><% } %></td>
         <td class="muted small"><%= m.last_login_at ? formatDate(m.last_login_at, true) : 'Never' %></td>
         <td class="num"><% if (m.id !== staff.id) { %><form action="/admin/settings/staff/<%= m.id %>/delete" method="post" class="inline" data-confirm="Remove <%= m.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain small critical-text">Remove</button></form><% } %></td></tr>
     <% } %>

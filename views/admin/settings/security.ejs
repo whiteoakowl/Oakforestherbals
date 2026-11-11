@@ -1,0 +1,44 @@
+<%- include('_top') %>
+<form action="/admin/settings/security" method="post" class="card form-stack">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <h2>Two-step sign-in</h2>
+  <p class="muted small">Staff enter a code from an authenticator app after their password. Each person sets it up under Your profile.</p>
+  <% if (!keyReady) { %><p class="banner banner-critical">Two-step sign-in needs <code>CLINIC_ENCRYPTION_KEY</code> set in Netlify first.</p><% } %>
+  <fieldset class="form-stack">
+    <legend>Who must use it</legend>
+    <label class="check"><input type="radio" name="require_two_factor" value="none" <%= s.require_two_factor === 'none' ? 'checked' : '' %>> Optional for everyone</label>
+    <label class="check"><input type="radio" name="require_two_factor" value="clinical" <%= s.require_two_factor === 'clinical' ? 'checked' : '' %>> Required for owners and anyone who can see patient records (recommended)</label>
+    <label class="check"><input type="radio" name="require_two_factor" value="all" <%= s.require_two_factor === 'all' ? 'checked' : '' %>> Required for all staff</label>
+  </fieldset>
+  <label class="field"><span>Sign out staff who can see patient records after this many minutes without activity (0 = never)</span><input type="number" name="clinical_idle_minutes" min="0" max="1440" value="<%= s.clinical_idle_minutes %>"></label>
+  <% if (without.length) { %><p class="small">Not set up yet: <%= without.map((w) => `${w.name} (${w.role_name})`).join(', ') %>. When required, they'll be asked to set it up at their next page view.</p><% } %>
+  <div class="right"><button class="btn btn-primary">Save</button></div>
+</form>
+
+<div class="card form-stack">
+  <h2>Encryption key</h2>
+  <% if (!keyReady) { %>
+    <p>No encryption key is set, so clinic records are locked.</p>
+  <% } else if (!isOwner) { %>
+    <p class="muted">Only an owner can see and rotate the encryption key status.</p>
+  <% } else { %>
+    <p>Current key ID: <code><%= rotation.keyId %></code><% if (rotation.known.length > 1) { %> · older keys still loaded: <code><%= rotation.known.slice(1).join(', ') %></code><% } %></p>
+    <% if (rotation.done) { %>
+      <p class="banner banner-success">Everything is encrypted with the current key.<% if (rotation.known.length > 1) { %> You can now remove <code>CLINIC_ENCRYPTION_KEY_PREVIOUS</code> from Netlify.<% } %></p>
+    <% } else { %>
+      <p><strong><%= rotation.oldValues %></strong> stored value(s) and <strong><%= rotation.files.old %></strong> file(s) are still on an older key<%= rotation.files.failed ? ` (${rotation.files.failed} file(s) could not be read)` : '' %>.</p>
+      <form action="/admin/settings/security/reencrypt" method="post" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-primary">Re-encrypt the next batch</button></form>
+      <p class="muted small">Each click works for a few seconds. Repeat until this says everything is done.</p>
+    <% } %>
+    <details>
+      <summary>How to change the key</summary>
+      <ol class="small">
+        <li>Generate a new key: <code>node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"</code>, and save it in your password manager.</li>
+        <li>In Netlify, set <code>CLINIC_ENCRYPTION_KEY_PREVIOUS</code> to the current key and <code>CLINIC_ENCRYPTION_KEY</code> to the new one. Redeploy.</li>
+        <li>Come back here and re-encrypt until everything is done.</li>
+        <li>Remove <code>CLINIC_ENCRYPTION_KEY_PREVIOUS</code> and redeploy. Keep a record of the old key until your old backups expire — they were made with it.</li>
+      </ol>
+    </details>
+  <% } %>
+</div>
+<%- include('_bottom') %>

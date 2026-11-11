@@ -21,6 +21,7 @@ const SECTIONS = [
   ['notifications', 'Notifications', 'Email sending and customer notifications', 'settings.manage'],
   ['policies', 'Policies', 'Refund, privacy, terms and shipping policies', 'settings.manage'],
   ['preferences', 'Preferences', 'SEO, tracking code and store password', 'settings.manage'],
+  ['security', 'Security', 'Two-step sign-in and the encryption key', 'settings.manage'],
   ['staff', 'Users', 'Staff accounts and their roles', 'staff.manage'],
   ['roles', 'Roles and permissions', 'What each role can see and do', 'staff.manage'],
   ['audit', 'Audit log', 'Sign-ins, permission changes and other security events', 'audit.view'],
@@ -195,10 +196,55 @@ router.post('/taxes/rates/:id/delete', async (req, res) => {
 
 /* ---------- Staff ---------- */
 
+/* ---------- Security: two-step sign-in rule and encryption key rotation ---------- */
+
+router.get('/security', async (req, res) => {
+  const vault = require('../../vault');
+  const isOwner = res.locals.staff.role === 'owner';
+  res.render('admin/settings/security', {
+    title: 'Security', s: settings.load('security'), keyReady: vault.configured(),
+    rotation: isOwner && vault.configured() ? await require('../../keyrotation').status() : null, isOwner,
+    without: (await all('SELECT s.name, s.email, r.name AS role_name FROM staff s JOIN roles r ON r.key = s.role WHERE s.totp_enabled_at IS NULL ORDER BY s.name')),
+  });
+});
+
+router.post('/security', async (req, res) => {
+  const rule = ['none', 'clinical', 'all'].includes(req.body.require_two_factor) ? req.body.require_two_factor : 'none';
+  const idle = Math.max(0, Math.min(1440, toInt(req.body.clinical_idle_minutes, 30)));
+  await settings.save('security', { require_two_factor: rule, clinical_idle_minutes: idle });
+  await audit.record(req, 'settings.updated', { entityType: 'settings', entityId: 'security', details: { require_two_factor: rule } });
+  flash(req, 'success', 'Security settings saved.');
+  res.redirect('/admin/settings/security');
+});
+
+// Owner only: re-encrypts a batch of records with the current key, then comes back for more.
+router.post('/security/reencrypt', async (req, res) => {
+  if (res.locals.staff.role !== 'owner') return res.status(403).render('admin/error', { title: 'Permission required', message: 'Only an owner can re-encrypt records.' });
+  const out = await require('../../keyrotation').runBatch();
+  await audit.record(req, 'encryption.reencrypted', { details: { values: out.values, files: out.files, errors: out.errors.length } });
+  flash(req, out.errors.length ? 'error' : 'success', `Re-encrypted ${out.values} value(s) and ${out.files} file(s).${out.errors.length ? ` ${out.errors.length} could not be read: ${out.errors.slice(0, 3).join('; ')}` : ''}`);
+  res.redirect('/admin/settings/security');
+});
+
+// Clears another staff member's two-step sign-in (lost phone and recovery codes).
+router.post('/staff/:id/reset-two-factor', async (req, res) => {
+  const id = toInt(req.params.id);
+  const target = await get('SELECT * FROM staff WHERE id = ?', id);
+  if (!target || id === res.locals.staff.id || (target.role === 'owner' && res.locals.staff.role !== 'owner')) {
+    flash(req, 'error', 'Only an owner can reset an owner’s two-step sign-in, and you can’t reset your own here.');
+  } else {
+    await require('../../twofactor').disable(id);
+    await endStaffSessions(id);
+    await audit.record(req, 'staff.two_factor_reset', { entityType: 'staff', entityId: id, details: { email: target.email } });
+    flash(req, 'success', `Two-step sign-in reset for ${target.name}. They'll set it up again at their next sign-in.`);
+  }
+  res.redirect('/admin/settings/staff');
+});
+
 router.get('/staff', async (req, res) => {
   res.render('admin/settings/staff', {
     title: 'Users',
-    members: await all('SELECT s.id, s.email, s.name, s.role, s.last_login_at, s.created_at, r.name AS role_name FROM staff s JOIN roles r ON r.key = s.role ORDER BY s.id'),
+    members: await all('SELECT s.id, s.email, s.name, s.role, s.last_login_at, s.created_at, s.totp_enabled_at, r.name AS role_name FROM staff s JOIN roles r ON r.key = s.role ORDER BY s.id'),
     roles: await all("SELECT key, name, description FROM roles ORDER BY key = 'owner' DESC, is_system DESC, name"),
   });
 });

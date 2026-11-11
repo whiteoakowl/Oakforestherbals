@@ -1,6 +1,6 @@
 'use strict';
 const express = require('express');
-const { requireStaff, requirePermission: allow } = require('../../middleware');
+const { requireStaff, requirePermission: allow, flash } = require('../../middleware');
 const { navFor, showSettings } = require('../../admin-nav');
 
 const router = express.Router();
@@ -12,6 +12,29 @@ router.use(async (req, res, next) => {
 
 router.use(require('./auth'));
 router.use(requireStaff);
+// Staff who can see patient records are signed out after a period without activity.
+router.use((req, res, next) => {
+  const staff = res.locals.staff;
+  const minutes = Number(require('../../settings').load('security').clinical_idle_minutes) || 0;
+  const clinical = [...staff.permissions].some((p) => p.startsWith('clinic.'));
+  const now = Date.now();
+  if (clinical && minutes > 0 && req.session.lastActive && now - req.session.lastActive > minutes * 60000) {
+    return req.session.regenerate(() => {
+      flash(req, 'info', `You were signed out after ${minutes} minutes without activity.`);
+      res.redirect(`/admin/login?next=${encodeURIComponent(req.originalUrl)}`);
+    });
+  }
+  req.session.lastActive = now;
+  next();
+});
+// When the owner requires two-step sign-in, staff without it can only reach the page that sets it up.
+router.use((req, res, next) => {
+  const staff = res.locals.staff;
+  if (staff.two_factor || !require('../../twofactor').required(staff)) return next();
+  if (req.path.startsWith('/profile') || req.path === '/logout') return next();
+  flash(req, 'info', 'Your store requires two-step sign-in. Set it up to continue.');
+  res.redirect('/admin/profile/two-factor');
+});
 router.use(async (req, res, next) => {
   res.locals.adminNav = navFor(res.locals.can);
   res.locals.showSettings = showSettings(res.locals.can);

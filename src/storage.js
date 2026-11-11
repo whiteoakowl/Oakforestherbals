@@ -132,11 +132,11 @@ const safeKey = (key) => {
   return key;
 };
 
-async function savePrivate(key, buffer) {
+async function savePrivate(key, buffer, { overwrite = false } = {}) {
   safeKey(key);
   if (useSupabase) {
     await ensurePrivateBucket();
-    await supabase('POST', `object/${PRIVATE_BUCKET}/${key}`, buffer, { 'Content-Type': 'application/octet-stream' });
+    await supabase('POST', `object/${PRIVATE_BUCKET}/${key}`, buffer, { 'Content-Type': 'application/octet-stream', ...(overwrite ? { 'x-upsert': 'true' } : {}) });
     return;
   }
   const file = path.join(PRIVATE_DIR, key);

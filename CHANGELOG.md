@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Security: two-step sign-in and key rotation
+
+### Added
+- **Two-step sign-in** for staff (authenticator-app codes, with 10 single-use recovery codes), set up
+  under Your profile. Codes can't be reused; wrong codes are limited per attempt and per address.
+- **Settings → Security**: require two-step sign-in for nobody, for owners and clinical staff, or for
+  everyone; see who hasn't set it up; owners (and staff managers, for non-owners) can reset it.
+- **Encryption key rotation**: load the old key as `CLINIC_ENCRYPTION_KEY_PREVIOUS`, set a new
+  `CLINIC_ENCRYPTION_KEY`, and re-encrypt every encrypted value and private file from Settings →
+  Security (owner only), including signed notes, whose content stays unchanged.
+- **Idle sign-out** for staff who can see patient records (30 minutes by default, adjustable).
+
 ## Unreleased — Phase 10: hardening
 
 ### Added

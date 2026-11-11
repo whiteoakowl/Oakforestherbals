@@ -6,6 +6,7 @@ const { get, run, insert } = require('../../db');
 const settings = require('../../settings');
 const { flash, throttle } = require('../../middleware');
 const audit = require('../../audit');
+const twofactor = require('../../twofactor');
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ async function signIn(req, staffId, done) {
   await run('UPDATE staff SET last_login_at = now() WHERE id = ?', staffId);
   const { cart } = req.session;
   req.session.regenerate(() => {
-    Object.assign(req.session, { cart, staffId });
+    Object.assign(req.session, { cart, staffId, pending2fa: null });
     done();
   });
 }
@@ -66,8 +67,44 @@ router.post('/login', throttle('staff'), async (req, res) => {
     flash(req, 'error', 'Incorrect email or password.');
     return res.redirect(`/admin/login?next=${encodeURIComponent(safeNext(req.body.next))}`);
   }
+  if (staff.totp_enabled_at) {
+    // Password was right; the code from their authenticator app is still needed.
+    req.session.pending2fa = { staffId: staff.id, next: safeNext(req.body.next), at: Date.now(), attempts: 0 };
+    return res.redirect('/admin/login/verify');
+  }
   await audit.record(req, 'staff.login', { entityType: 'staff', entityId: staff.id, actor: { type: 'staff', id: staff.id, name: staff.name } });
   await signIn(req, staff.id, () => res.redirect(safeNext(req.body.next)));
+});
+
+const PENDING_MS = 5 * 60 * 1000;
+const pending = (req) => {
+  const p = req.session.pending2fa;
+  return p && Date.now() - p.at < PENDING_MS && p.attempts < 5 ? p : null;
+};
+
+router.get('/login/verify', (req, res) => {
+  if (!pending(req)) { req.session.pending2fa = null; return res.redirect('/admin/login'); }
+  res.render('admin/login-verify', { title: 'Two-step sign-in' });
+});
+
+router.post('/login/verify', throttle('staff2fa'), async (req, res) => {
+  const p = pending(req);
+  if (!p) {
+    req.session.pending2fa = null;
+    flash(req, 'error', 'That took too long or had too many tries. Please sign in again.');
+    return res.redirect('/admin/login');
+  }
+  const staff = await get('SELECT id, name, email FROM staff WHERE id = ?', p.staffId);
+  const result = staff ? await twofactor.check(staff.id, req.body.code) : { ok: false };
+  if (!result.ok) {
+    p.attempts += 1;
+    await audit.record(req, 'staff.two_factor_failed', { entityType: 'staff', entityId: p.staffId, actor: staff ? { type: 'staff', id: staff.id, name: staff.name } : undefined });
+    flash(req, 'error', 'That code didn’t work. Check your authenticator app and try again.');
+    return res.redirect('/admin/login/verify');
+  }
+  await audit.record(req, 'staff.login', { entityType: 'staff', entityId: staff.id, actor: { type: 'staff', id: staff.id, name: staff.name }, details: { two_factor: result.recovery ? 'recovery_code' : 'app' } });
+  if (result.recovery) flash(req, 'info', `You used a recovery code. ${await twofactor.remainingCodes(staff.id)} left — make new ones under Your profile if you're running low.`);
+  await signIn(req, staff.id, () => res.redirect(p.next));
 });
 
 router.post('/logout', async (req, res) => {

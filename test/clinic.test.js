@@ -50,13 +50,13 @@ after(() => ctx.close());
 
 test('vault encrypts, detects tampering and validates keys', () => {
   const sealed = vault.seal({ med: 'Lisinopril 10 mg' });
-  assert.match(sealed, /^v1:/);
+  assert.match(sealed, /^v2:[0-9a-f]{8}:/);
   assert.doesNotMatch(sealed, /Lisinopril/);
   assert.deepEqual(vault.open(sealed), { med: 'Lisinopril 10 mg' });
   assert.notEqual(vault.seal('same'), vault.seal('same'), 'random IV per value');
-  const raw = Buffer.from(sealed.slice(3), 'base64');
+  const raw = Buffer.from(sealed.split(":")[2], "base64");
   raw[raw.length - 1] ^= 1;
-  assert.throws(() => vault.open(`v1:${raw.toString('base64')}`));
+  assert.throws(() => vault.open(`${sealed.split(":").slice(0, 2).join(":")}:${raw.toString("base64")}`));
   assert.throws(() => vault.parseKey('too-short'), /32 bytes/);
   const buf = Buffer.from('%PDF-1.4 lab result');
   assert.deepEqual(vault.openBuffer(vault.sealBuffer(buf)), buf);

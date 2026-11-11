@@ -1,0 +1,12 @@
+<%- include('auth-layout') %>
+  <h1>Two-step sign-in</h1>
+  <p class="muted">Enter the 6-digit code from your authenticator app. Lost your phone? Enter one of your recovery codes instead.</p>
+  <form action="/admin/login/verify" method="post" class="form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Code</span><input name="code" required autocomplete="one-time-code" inputmode="text" autofocus maxlength="20" spellcheck="false"></label>
+    <button class="btn btn-primary btn-block">Verify</button>
+  </form>
+  <p class="small"><a href="/admin/login">Start again</a></p>
+</main>
+</body>
+</html>
