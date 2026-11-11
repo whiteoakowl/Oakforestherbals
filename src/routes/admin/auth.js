@@ -114,9 +114,25 @@ const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('h
 const endSessions = (id) => run('DELETE FROM sessions WHERE data LIKE ? OR data LIKE ?', `%"staffId":${id},%`, `%"staffId":${id}}%`);
 const recoveryKey = () => process.env.ADMIN_RECOVERY_KEY || '';
 
-router.get('/forgot', (req, res) => res.render('admin/forgot', { title: 'Reset your password', recovery: Boolean(recoveryKey()) }));
+// Temporary, no-email reset: on only while ALLOW_OPEN_PASSWORD_RESET=1 is set in the hosting settings,
+// and it switches itself off after one successful reset.
+const openReset = () => process.env.ALLOW_OPEN_PASSWORD_RESET === '1' && !settings.load('security').open_reset_used_at;
+
+router.get('/forgot', (req, res) => res.render('admin/forgot', { title: 'Reset your password', recovery: Boolean(recoveryKey()), open: openReset() }));
 
 router.post('/forgot', throttle('staffreset'), async (req, res) => {
+  if (openReset()) {
+    const staff = await get('SELECT id, email, name FROM staff WHERE email = ?', String(req.body.email || '').trim());
+    const password = String(req.body.password || '');
+    if (!staff) { flash(req, 'error', 'No staff account has that email.'); return res.redirect('/admin/forgot'); }
+    if (password.length < 8 || password !== String(req.body.confirm || '')) { flash(req, 'error', 'Enter the same new password twice, at least 8 characters.'); return res.redirect('/admin/forgot'); }
+    await run('UPDATE staff SET password_hash = ?, must_change_password = 0 WHERE id = ?', bcrypt.hashSync(password, 10), staff.id);
+    await endSessions(staff.id);
+    await settings.save('security', { open_reset_used_at: new Date().toISOString() });
+    await audit.record(req, 'staff.password_reset_open', { entityType: 'staff', entityId: staff.id, actor: { type: 'system', id: null, name: 'Open reset' }, details: { email: staff.email } });
+    flash(req, 'success', 'Password changed. Log in now. The no-email reset has switched itself off — remove ALLOW_OPEN_PASSWORD_RESET from Netlify too.');
+    return res.redirect('/admin/login');
+  }
   const staff = await get('SELECT id, email, name FROM staff WHERE email = ?', String(req.body.email || '').trim());
   if (staff) {
     const t = crypto.randomBytes(32).toString('base64url');

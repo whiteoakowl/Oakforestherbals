@@ -91,3 +91,26 @@ test('an owner created from deploy settings has full control but must replace th
     process.env.ADMIN_PASSWORD = saved.p;
   }
 });
+
+test('the temporary no-email reset works once, only while ALLOW_OPEN_PASSWORD_RESET=1', async () => {
+  const settings = require('../src/settings');
+  const c = new Client(ctx.base);
+  assert.doesNotMatch((await c.get('/admin/forgot')).text, /name="confirm"/, 'off by default');
+  process.env.ALLOW_OPEN_PASSWORD_RESET = '1';
+  try {
+    assert.match((await c.get('/admin/forgot')).text, /Save new password/);
+    let res = await c.post('/admin/forgot', { email: 'owner@example.com', password: 'opened-pw-123', confirm: 'opened-pw-123' }, '/admin/forgot');
+    assert.equal(res.location, '/admin/login');
+    const login = await new Client(ctx.base).post('/admin/login', { email: 'owner@example.com', password: 'opened-pw-123', next: '/admin' }, '/admin/login');
+    assert.equal(login.location, '/admin');
+    assert.ok(await get("SELECT 1 FROM audit_logs WHERE action = 'staff.password_reset_open'"));
+    // Switched itself off: the same form no longer appears and posting just sends a reset email.
+    assert.doesNotMatch((await c.get('/admin/forgot')).text, /name="confirm"/);
+    res = await c.post('/admin/forgot', { email: 'owner@example.com', password: 'again-pw-123', confirm: 'again-pw-123' }, '/admin/forgot');
+    const again = await new Client(ctx.base).post('/admin/login', { email: 'owner@example.com', password: 'again-pw-123', next: '/admin' }, '/admin/login');
+    assert.notEqual(again.location, '/admin');
+  } finally {
+    delete process.env.ALLOW_OPEN_PASSWORD_RESET;
+    await settings.save('security', { open_reset_used_at: '' });
+  }
+});

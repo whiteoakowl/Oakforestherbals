@@ -122,6 +122,7 @@ Order confirmations, shipping updates, cancellations, welcome and password-reset
 | `SUPABASE_BUCKET` | `store-media` | Storage bucket name (created automatically, public) |
 | `SETUP_KEY` | — | Required to create the first admin account, when set |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Creates an owner account (full control) with this email if none exists yet. The password is temporary: it must be changed at first login. Existing accounts are never changed. Remove both once you've logged in |
+| `ALLOW_OPEN_PASSWORD_RESET` | — | Temporary: set to `1` and “Forgot your password?” lets someone enter a staff email and choose a new password with no email check. Switches itself off after one reset; remove the variable afterwards |
 | `ADMIN_RECOVERY_KEY` | — | Only if the owner is locked out: set it, visit `/admin/recover`, reset the owner password, then remove it |
 | `CLINIC_ENCRYPTION_KEY` | — | **Required for clinic records.** 64 hex characters (32 random bytes). Encrypts clinical data before it is stored. Back it up; it cannot be recovered. See `docs/PRIVACY.md` |
 | `CLINIC_ENCRYPTION_KEY_PREVIOUS` | — | Only while rotating the key: the old key(s), comma-separated, so existing records can be re-encrypted. Remove when Settings → Security says everything is done |
