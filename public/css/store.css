@@ -380,3 +380,35 @@ th.right, td.right { text-align: right; }
 .community-post .inline-form { display: flex; gap: 8px; margin-top: 10px; }
 .community-post .inline-form input { flex: 1; }
 .guidelines { background: #f7f9f7; padding: 12px; border-radius: 10px; }
+
+/* Phones: account menus scroll sideways as one row of pills instead of wrapping into narrow columns. */
+@media (max-width: 760px) {
+  .account-nav { gap: 8px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 10px; scrollbar-width: none; }
+  .account-nav::-webkit-scrollbar, .clinic-nav::-webkit-scrollbar { display: none; }
+  .account-nav a { white-space: nowrap; padding: 6px 12px; border-radius: 999px; background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+  .account-nav a.active { background: var(--color-primary); color: var(--color-primary-contrast, #fff); }
+  .account-nav form { margin-left: 0; flex-shrink: 0; }
+  .account-nav form button { white-space: nowrap; }
+  .clinic-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .clinic-nav a { white-space: nowrap; flex-shrink: 0; }
+  .clinic-grid, .account-layout, .address-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  table { display: block; overflow-x: auto; max-width: 100%; }
+  img, video, iframe { max-width: 100%; height: auto; }
+  .box, .card { max-width: 100%; }
+  input, select, textarea { max-width: 100%; }
+}
+
+@media (max-width: 700px) {
+  table.stackable { display: block !important; overflow: visible !important; border: 0; }
+  table.stackable thead { display: none; }
+  table.stackable tbody { display: grid; gap: 10px; }
+  table.stackable tbody tr { display: block; border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent); border-radius: 12px; padding: 6px 12px; background: var(--color-bg, #fff); }
+  table.stackable tbody td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0 !important; border: 0 !important; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+  table.stackable tbody td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: color-mix(in srgb, var(--color-text) 60%, transparent); text-align: left; flex-shrink: 0; max-width: 45%; }
+  table.stackable tbody td:not([data-label])::before, table.stackable tbody td[data-label=""]::before { content: none; }
+  table.stackable tbody td[data-label=""], table.stackable tbody td:not([data-label]) { justify-content: flex-end; }
+  table.stackable tbody td:first-child { font-weight: 600; }
+  table.stackable tbody td[colspan] { justify-content: center; text-align: center; }
+  table.stackable tbody td.check-col::before { content: none; }
+  .card.flush table.stackable tbody { padding: 10px; }
+}
