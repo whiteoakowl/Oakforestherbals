@@ -16,7 +16,7 @@
     <div class="banner banner-critical" role="note"><strong>Allergies:</strong> <%= allergies.map((a) => a.data.name).join(', ') %></div>
   <% } %>
   <nav class="tabs card flush patient-tabs" aria-label="Patient record sections">
-    <% for (const [k, l] of [['overview', 'Overview'], ['health', 'Health history'], ['notes', `Notes (${notes.length})`], ['forms', 'Forms'], ['plans', 'Care plans'], ['progress', 'Progress'], ['learning', 'Learning'], ['messages', 'Messages'], ['documents', `Documents (${documents.length})`], ['timeline', 'Timeline']]) { %>
+    <% for (const [k, l] of [['overview', 'Overview'], ['cases', 'Cases'], ['health', 'Health history'], ['notes', `Notes (${notes.length})`], ['forms', 'Forms'], ['plans', 'Care plans'], ['progress', 'Progress'], ['learning', 'Learning'], ['messages', 'Messages'], ['documents', `Documents (${documents.length})`], ['timeline', 'Timeline']]) { %>
       <a href="?tab=<%= k %>" class="tab <%= tab === k ? 'active' : '' %>" <%= tab === k ? 'aria-current="page"' : '' %>><%= l %></a>
     <% } %>
   </nav>
@@ -146,6 +146,7 @@
       <form method="post" action="<%= base %>/notes" class="form-stack mt-sm">
         <%- csrfField %>
         <% if (amending) { %><input type="hidden" name="amends_note_id" value="<%= amending.id %>"><% } %>
+        <% if (typeof openCases !== 'undefined' && openCases.length) { %><label class="field"><span>Case</span><select name="case_id"><option value="">Not part of a case</option><% for (const oc of openCases) { %><option value="<%= oc.id %>" <%= String(query.case) === String(oc.id) || openCases.length === 1 ? 'selected' : '' %>><%= oc.title %></option><% } %></select></label><% } %>
         <div class="grid-2">
           <label class="field"><span>Type</span><select name="kind"><% for (const [k, l] of NOTE_KINDS) { %><option value="<%= k %>" <%= k === 'consultation' ? 'selected' : '' %>><%= l %></option><% } %></select></label>
           <label class="field"><span>Visit date</span><input type="date" name="visit_date" value="<%= new Date().toISOString().slice(0, 10) %>"></label>
@@ -199,6 +200,37 @@
         <% } %>
       </article>
     <% } %>
+  <% } %>
+
+  <% if (tab === 'cases') { %>
+    <% if (canManage) { %>
+    <details class="card" <%= casesList.length ? '' : 'open' %>>
+      <summary><h2 class="inline">Open a new case</h2></summary>
+      <form method="post" action="<%= base %>/cases" class="form-stack mt-sm">
+        <%- csrfField %>
+        <label class="field"><span>Title</span><input name="title" required maxlength="200" placeholder="e.g. Sleep and stress, Digestive support"></label>
+        <div class="grid-3">
+          <label class="field"><span>Referred by</span><select name="referrer_id"><option value="">No referrer</option><% for (const r of referrers) { %><option value="<%= r.id %>"><%= r.name %><%= r.organisation ? ` — ${r.organisation}` : '' %></option><% } %></select></label>
+          <label class="field"><span>Referral date</span><input type="date" name="referral_date"></label>
+          <label class="field"><span>Opened</span><input type="date" name="opened_on" value="<%= new Date().toISOString().slice(0, 10) %>"></label>
+        </div>
+        <label class="field"><span>Reason for seeking care</span><textarea name="reason" rows="3"></textarea></label>
+        <label class="field"><span>Goals</span><textarea name="goals" rows="2"></textarea></label>
+        <p class="muted small"><a href="/admin/clinic/referrers">Manage referrers</a></p>
+        <div class="right"><button class="btn btn-primary">Open case</button></div>
+      </form>
+    </details>
+    <% } %>
+    <% if (!casesList.length) { %><div class="card empty-state"><%- include('../partials/icon', { name: 'folder', size: 40 }) %><p>No cases yet. A case groups the notes, appointments, care plans and invoices for one concern or course of treatment.</p></div><% } %>
+    <div class="case-grid">
+    <% for (const c of casesList) { %>
+      <a class="card case-card" href="<%= base %>/cases/<%= c.id %>">
+        <div class="row-between"><strong><%= c.title %></strong><span class="badge badge-<%= c.status === 'open' ? 'success' : 'default' %>"><%= c.status %></span></div>
+        <p class="muted small">Opened <%= ymd(c.opened_on) %><%= c.closed_on ? ` · closed ${ymd(c.closed_on)}` : '' %><%= c.referrer_name ? ` · referred by ${c.referrer_name}` : '' %></p>
+        <p class="small"><%= c.note_count %> note(s) · <%= c.appointment_count %> appointment(s)<%= c.last_visit ? ` · last visit ${formatDate(c.last_visit)}` : '' %></p>
+      </a>
+    <% } %>
+    </div>
   <% } %>
 
   <% if (tab === 'documents') { %>

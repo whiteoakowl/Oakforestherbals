@@ -63,7 +63,9 @@
     <% if (p && planProgress) { %><div class="card"><h2>Task completion</h2><p class="stat-value"><%= planProgress.percent %>%</p><p class="muted small"><%= planProgress.done %> of <%= planProgress.possible %> over the last 14 days</p></div><% } %>
     <div class="card"><h2>Plans</h2><% for (const pl of plansList) { %><p class="small"><a href="?tab=plans&plan=<%= pl.id %>"><%= pl.content.title || 'Care plan' %></a> <span class="badge badge-default"><%= pl.status %></span><%= pl.shared_with_patient ? ' · shared' : '' %></p><% } %>
       <% if (canManage) { %><form method="post" action="<%= base %>/plans" class="form-stack mt-sm"><%- csrfField %><input name="title" placeholder="New plan title" aria-label="New plan title" required>
-        <div class="grid-2"><input type="date" name="start_date" aria-label="Start date"><input type="date" name="review_date" aria-label="Review date"></div><button class="btn btn-sm">Create plan</button></form><% } %></div>
+        <div class="grid-2"><input type="date" name="start_date" aria-label="Start date"><input type="date" name="review_date" aria-label="Review date"></div>
+        <% if (typeof openCases !== 'undefined' && openCases.length) { %><select name="case_id" aria-label="Case"><option value="">Not part of a case</option><% for (const oc of openCases) { %><option value="<%= oc.id %>" <%= String(query.case) === String(oc.id) ? 'selected' : '' %>><%= oc.title %></option><% } %></select><% } %>
+        <button class="btn btn-sm">Create plan</button></form><% } %></div>
     <% if (p && p.versions.length) { %><div class="card"><h2>Previous versions</h2><% for (const v of p.versions) { %><p class="small"><a href="<%= base %>/plans/<%= p.id %>/versions/<%= v.version %>">v<%= v.version %></a> <span class="muted"><%= v.saved_by %> · <%= formatDate(v.created_at, true) %></span></p><% } %></div><% } %>
   </div>
 </div>

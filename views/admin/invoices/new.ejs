@@ -2,7 +2,7 @@
 <div class="page narrow">
   <%- include('../partials/page-header', { heading: 'New invoice', backHref: '/admin/invoices' }) %>
   <form method="post" action="/admin/invoices/new" class="card form-stack">
-    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="_csrf" value="<%= csrf %>"><% if (typeof caseRow !== "undefined" && caseRow) { %><input type="hidden" name="case_id" value="<%= caseRow.id %>"><p class="small">Case: <strong><%= caseRow.title %></strong></p><% } %>
     <div class="grid-3"><label class="field"><span>Client email</span><input type="email" name="email" value="<%= customer ? customer.email : '' %>" required></label>
       <label class="field"><span>First name</span><input name="first_name" value="<%= customer ? customer.first_name : '' %>"></label><label class="field"><span>Last name</span><input name="last_name" value="<%= customer ? customer.last_name : '' %>"></label></div>
     <table class="table small"><thead><tr><th>Description</th><th>Qty</th><th>Price</th><th>Taxable</th></tr></thead><tbody>

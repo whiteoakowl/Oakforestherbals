@@ -31,7 +31,7 @@ async function recalc(invoiceId) {
 }
 
 /** Creates an invoice. items: [{ description, quantity, unit_price, taxable }]. */
-async function createInvoice({ customerId, email, name, items, dueDays, notes = '', appointmentId = null, staffId = null, issue = true, createdBy = '' }) {
+async function createInvoice({ customerId, email, name, items, dueDays, notes = '', appointmentId = null, staffId = null, issue = true, createdBy = '', caseId = null }) {
   return tx(async () => {
     const due = new Date(Date.now() + (dueDays ?? Number(settings.load('invoices').due_days) ?? 14) * 86400000).toISOString().slice(0, 10);
     const id = await insert(`INSERT INTO invoices (number, token, customer_id, email, name, status, issued_on, due_on, notes, appointment_id, staff_id, created_by)
@@ -42,6 +42,8 @@ async function createInvoice({ customerId, email, name, items, dueDays, notes = 
     }
     await recalc(id);
     if (appointmentId) await run('UPDATE appointments SET invoice_id = ? WHERE id = ?', id, appointmentId);
+    const caseFor = caseId || (appointmentId ? (await require('./db').get('SELECT case_id FROM appointments WHERE id = ?', appointmentId) || {}).case_id : null);
+    if (caseFor) await run('UPDATE invoices SET case_id = ? WHERE id = ?', caseFor, id);
     return id;
   });
 }

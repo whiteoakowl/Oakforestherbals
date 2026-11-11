@@ -8,7 +8,7 @@
       <label class="field"><span>Type</span><select name="type_id" required><% for (const t of types) { %><option value="<%= t.id %>"><%= t.name %> (<%= t.duration_min %> min<%= t.price ? `, ${money(t.price)}` : '' %>)</option><% } %></select></label>
       <label class="field"><span>Practitioner</span><select name="staff_id"><% for (const p of people) { %><option value="<%= p.id %>" <%= p.id === staffId ? 'selected' : '' %>><%= p.name %></option><% } %></select></label>
     </div>
-    <% if (customer) { %><input type="hidden" name="customer_id" value="<%= customer.id %>"><p>Client: <strong><%= `${customer.first_name} ${customer.last_name}`.trim() || customer.email %></strong> <span class="muted small"><%= customer.email %></span></p>
+    <% if (customer) { %><input type="hidden" name="customer_id" value="<%= customer.id %>"><% if (caseRow) { %><input type="hidden" name="case_id" value="<%= caseRow.id %>"><p class="small">Case: <strong><%= caseRow.title %></strong></p><% } %><p>Client: <strong><%= `${customer.first_name} ${customer.last_name}`.trim() || customer.email %></strong> <span class="muted small"><%= customer.email %></span></p>
     <% } else { %>
       <div class="grid-2"><label class="field"><span>Client email</span><input type="email" name="email" required></label><label class="field"><span>Phone</span><input name="phone"></label></div>
       <div class="grid-2"><label class="field"><span>First name</span><input name="first_name"></label><label class="field"><span>Last name</span><input name="last_name"></label></div>

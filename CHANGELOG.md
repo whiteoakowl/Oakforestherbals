@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased — Cases and referrers
+
+### Added
+- **Cases** (episodes of care) on each client: open a case for a concern with its referrer, reason and
+  goals; file notes, care plans, appointments and invoices under it; the case page shows them together
+  with the total billed; close with an outcome, or reopen.
+- **Referral report**: a letter to the referrer, prefilled from the case, saved encrypted and printable.
+- **Referrers** directory (Clients → Referrers) with how many cases each has sent.
+
 ## Unreleased — A calmer, modern admin
 
 ### Changed

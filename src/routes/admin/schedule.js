@@ -68,7 +68,9 @@ router.get('/appointments/new', async (req, res) => {
     if (p) pre.customer = p.customer_id;
   }
   const customer = pre.customer ? await get('SELECT id, email, first_name, last_name FROM customers WHERE id = ?', pre.customer) : null;
-  res.render('admin/schedule/new', { title: 'New appointment', types, people: await staffScope(req), customer, staffId: req.all ? 0 : res.locals.staff.id });
+  // Booking from a case: the appointment is filed under it (only if the case belongs to this client).
+  const caseRow = customer && toInt(req.query.case) ? await get('SELECT c.id, c.title FROM clinic_cases c JOIN patients p ON p.id = c.patient_id WHERE c.id = ? AND p.customer_id = ?', toInt(req.query.case), customer.id) : null;
+  res.render('admin/schedule/new', { title: 'New appointment', types, people: await staffScope(req), customer, caseRow, staffId: req.all ? 0 : res.locals.staff.id });
 });
 
 // Messages to clients carry the appointment type, time, place and practitioner — nothing clinical.
@@ -111,6 +113,8 @@ router.post('/appointments/new', async (req, res) => {
     flash(req, 'error', `${created.length ? `${created.length} appointment(s) were booked; then: ` : ''}${e.message}`);
     return res.redirect(created.length ? `/admin/schedule/appointments/${created[0]}` : back);
   }
+  const caseId = toInt(req.body.case_id) && (await get('SELECT c.id FROM clinic_cases c JOIN patients p ON p.id = c.patient_id WHERE c.id = ? AND p.customer_id = ?', toInt(req.body.case_id), customer.id) || {}).id;
+  if (caseId) for (const id of created) await run('UPDATE appointments SET case_id = ? WHERE id = ?', caseId, id);
   for (const id of created) {
     if (type.price > 0 && req.body.invoice === '1') {
       const a = await scheduling.load(id);

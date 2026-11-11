@@ -30,6 +30,7 @@ const SECTIONS = [
           { href: '/admin/clinic/patients', label: 'All clients', exact: true, match: /^\/admin\/clinic\/patients\/(\d+|new)/ },
           { href: '/admin/clinic/inbox', label: 'Inbox' },
           { href: '/admin/clinic/forms', label: 'Forms', perm: 'clinic.records.manage' },
+          { href: '/admin/clinic/referrers', label: 'Referrers' },
         ],
       },
       { href: '/admin/education', label: 'Education', icon: 'content', perm: 'education.manage' },

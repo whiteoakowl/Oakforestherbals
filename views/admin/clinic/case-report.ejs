@@ -1,0 +1,28 @@
+<% if (print) { %><!doctype html><html lang="en"><head><meta charset="utf-8"><title><%= title %></title>
+<style>body{font:14px/1.6 Georgia,serif;max-width:720px;margin:40px auto;padding:0 24px;color:#111}h1{font-size:20px}.muted{color:#555;font-size:13px}.body{white-space:pre-wrap}@media print{.noprint{display:none}}</style></head><body>
+<p class="noprint"><button onclick="window.print()">Print</button></p>
+<p class="muted"><%= store.name %><br><%= ymd(c.report ? c.report.date : new Date().toISOString()) %></p>
+<% if (c.referrer_name) { %><p><%= c.referrer_name %><%= c.referrer_org ? `<br>${c.referrer_org}` : '' %><% if (c.referrer_address) { %><br><%= c.referrer_address %><% } %></p><% } %>
+<h1>Re: <%= patient.name %><%= patient.profile.date_of_birth ? ` (born ${patient.profile.date_of_birth})` : '' %> — <%= c.title %></h1>
+<div class="body"><%= c.report ? c.report.body : '' %></div>
+<p><%= c.report ? c.report.signed_by : '' %></p>
+<p class="muted">Confidential health information. If you received this in error, please destroy it and tell us.</p>
+</body></html>
+<% } else { %>
+<%- include('../partials/header') %>
+<% const base = `/admin/clinic/patients/${patient.id}/cases/${c.id}`; %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Referral report', backHref: base }) %>
+  <p class="muted"><%= patient.name %> · <%= c.title %><%= c.referrer_name ? ` · to ${c.referrer_name}` : '' %></p>
+  <% const draft = c.report ? c.report.body : `Thank you for referring ${patient.name}.\n\nReason for referral:\n${c.details.reason || ''}\n\nWhat we have done (${c.appointments.filter((a) => a.status === 'completed').length} completed visit(s) since ${ymd(c.opened_on)}):\n\nCurrent plan:\n\nProgress and outcome:\n\nRecommendations:\n`; %>
+  <% if (canManage) { %>
+  <form method="post" action="<%= base %>/report" class="card form-stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Letter</span><textarea name="body" rows="18"><%= draft %></textarea></label>
+    <p class="muted small">Only send what the client has agreed to share with this referrer.</p>
+    <div class="row-gap"><button class="btn btn-primary">Save</button><% if (c.report) { %><a class="btn" href="<%= base %>/report?print=1" target="_blank" rel="noopener">Print or save as PDF</a><% } %></div>
+  </form>
+  <% } else { %><div class="card"><p class="note-text"><%= draft %></p></div><% } %>
+</div>
+<%- include('../partials/footer') %>
+<% } %>

@@ -190,3 +190,10 @@ share of an order as its own line.
 | `subscriptions` | Our copy of each Stripe subscription: customer, variant, quantity, price, delivery charge, schedule, status, next renewal, ending flag, delivery address. |
 | `subscription_invoices` | One row per paid Stripe invoice, so each becomes exactly one order. |
 | `orders.subscription_id` | Which subscription a delivery order came from. |
+
+## 0013_cases_referrers
+| Change | Purpose |
+|---|---|
+| `referrers` | Doctors, practitioners and other sources of referrals, with contact details for letters. |
+| `clinic_cases` | Cases (episodes of care) per client: title, status, referrer and date, practitioner, encrypted reason/goals and referral report, opened/closed dates and outcome. |
+| `case_id` on `clinical_notes`, `care_plans`, `appointments`, `invoices` | Files each item under a case (only a case belonging to the same client is accepted). |

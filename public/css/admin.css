@@ -713,3 +713,8 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
 }
 @media (max-width: 900px) { .sidebar { top: 64px; height: auto; } .nav-collapse { display: none; } }
 @media (max-width: 600px) { .topbar-search { display: none; } }
+.case-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.case-card { color: var(--text); display: block; transition: box-shadow .15s, transform .15s; }
+.case-card:hover { box-shadow: var(--shadow-pop); transform: translateY(-1px); color: var(--text); }
+.case-note { padding: 12px 0; border-top: 1px solid var(--border); }
+.case-note:first-of-type { border-top: 0; padding-top: 0; }

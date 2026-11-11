@@ -27,7 +27,8 @@ invoices.get('/', async (req, res) => {
 
 invoices.get('/new', async (req, res) => {
   const customer = toInt(req.query.customer) ? await get('SELECT id, email, first_name, last_name FROM customers WHERE id = ?', toInt(req.query.customer)) : null;
-  res.render('admin/invoices/new', { title: 'New invoice', customer });
+  const caseRow = customer && toInt(req.query.case) ? await get('SELECT c.id, c.title FROM clinic_cases c JOIN patients p ON p.id = c.patient_id WHERE c.id = ? AND p.customer_id = ?', toInt(req.query.case), customer.id) : null;
+  res.render('admin/invoices/new', { title: 'New invoice', customer, caseRow });
 });
 
 invoices.post('/new', async (req, res) => {
@@ -38,7 +39,8 @@ invoices.post('/new', async (req, res) => {
   const items = asList(req.body.items).map((i) => ({ description: text(i && i.description, 300), quantity: Number(i && i.quantity) || 1, unit_price: parseMoney(i && i.unit_price), taxable: i && i.taxable === '1' }))
     .filter((i) => i.description && i.unit_price !== null);
   if (!items.length) return fail(req, res, 'Add at least one line with a description and price.', '/admin/invoices/new');
-  const id = await billing.createInvoice({ customerId: customer.id, email, name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(), items, dueDays: toInt(req.body.due_days, 14), notes: text(req.body.notes), issue: req.body.draft !== '1', createdBy: res.locals.staff.name });
+  const caseId = toInt(req.body.case_id) && (await get('SELECT c.id FROM clinic_cases c JOIN patients p ON p.id = c.patient_id WHERE c.id = ? AND p.customer_id = ?', toInt(req.body.case_id), customer.id) || {}).id;
+  const id = await billing.createInvoice({ customerId: customer.id, email, name: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(), items, dueDays: toInt(req.body.due_days, 14), notes: text(req.body.notes), issue: req.body.draft !== '1', createdBy: res.locals.staff.name, caseId: caseId || null });
   await audit.record(req, 'invoice.created', { entityType: 'invoice', entityId: id });
   res.redirect(`/admin/invoices/${id}`);
 });

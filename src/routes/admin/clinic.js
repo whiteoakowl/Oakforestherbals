@@ -10,6 +10,7 @@ const comms = require('../../comms');
 const vault = require('../../vault');
 const audit = require('../../audit');
 const storage = require('../../storage');
+const cases = require('../../cases');
 const { flash, verifyCsrf } = require('../../middleware');
 const { toInt, paginate, token } = require('../../utils');
 
@@ -116,7 +117,7 @@ router.post('/patients/new', requireManage, async (req, res) => {
 
 /* ---------- Record ---------- */
 
-const TABS = ['overview', 'health', 'notes', 'forms', 'plans', 'progress', 'learning', 'messages', 'documents', 'timeline'];
+const TABS = ['overview', 'cases', 'health', 'notes', 'forms', 'plans', 'progress', 'learning', 'messages', 'documents', 'timeline'];
 
 router.get('/patients/:id', patientParam, async (req, res) => {
   const tab = TABS.includes(req.query.tab) ? req.query.tab : 'overview';
@@ -158,6 +159,11 @@ router.get('/patients/:id', patientParam, async (req, res) => {
     extra.activeThread = tid ? await clinic2.thread(tid, p.id) : null;
     if (extra.activeThread) await run("UPDATE messages SET read_by_staff_at = now() WHERE thread_id = ? AND sender_type = 'patient' AND read_by_staff_at IS NULL", extra.activeThread.id);
   }
+  if (tab === 'cases') {
+    extra.casesList = await cases.forPatient(p.id);
+    extra.referrers = await all('SELECT id, name, organisation FROM referrers WHERE archived = 0 ORDER BY lower(name)');
+  }
+  if (tab === 'notes' || tab === 'plans') extra.openCases = await cases.openFor(p.id);
   if (tab === 'notes') extra.templates = await all('SELECT * FROM note_templates WHERE owner_id IS NULL OR owner_id = ? ORDER BY name', res.locals.staff.id);
   if (tab === 'overview' && res.locals.can('clinic.assignments.manage')) extra.assignable = await clinic.assignableStaff();
   await audit.record(req, 'patient.viewed', { entityType: 'patient', entityId: p.id, details: { tab } });
@@ -251,9 +257,10 @@ router.post('/patients/:id/notes', requireManage, patientParam, async (req, res)
   const amends = toInt(req.body.amends_note_id);
   const amendsOk = amends && await get('SELECT 1 FROM clinical_notes WHERE id = ? AND patient_id = ? AND signed_at IS NOT NULL', amends, req.patient.id);
   const sign = req.body.sign === '1';
-  const id = await insert(`INSERT INTO clinical_notes (patient_id, author_id, author_name, kind, visit_date, body_enc, internal, amends_note_id, signed_at)
-    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ${sign ? 'now()' : 'NULL'})`, req.patient.id, res.locals.staff.id, res.locals.staff.name, n.kind, n.visit,
-  vault.seal(n.content), amendsOk ? amends : null);
+  const caseId = await cases.validFor(req.patient.id, req.body.case_id);
+  const id = await insert(`INSERT INTO clinical_notes (patient_id, author_id, author_name, kind, visit_date, body_enc, internal, amends_note_id, signed_at, case_id)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ${sign ? 'now()' : 'NULL'}, ?)`, req.patient.id, res.locals.staff.id, res.locals.staff.name, n.kind, n.visit,
+  vault.seal(n.content), amendsOk ? amends : null, caseId);
   await audit.record(req, sign ? 'patient.note_signed' : 'patient.note_created', { entityType: 'patient', entityId: req.patient.id, details: { note: id, kind: n.kind, amends: amendsOk ? amends : undefined } });
   flash(req, 'success', sign ? 'Note signed and locked.' : 'Draft note saved. Sign it when it\'s final.');
   res.redirect(`${back(req, 'notes')}#note-${id}`);
@@ -431,8 +438,9 @@ function readPlan(body) {
 
 router.post('/patients/:id/plans', requireManage, patientParam, async (req, res) => {
   const c = readPlan(req.body);
-  const id = await insert(`INSERT INTO care_plans (patient_id, content_enc, start_date, end_date, review_date, created_by, created_by_name) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    req.patient.id, vault.seal(c), dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), dateOrNull(req.body.review_date), res.locals.staff.id, res.locals.staff.name);
+  const id = await insert(`INSERT INTO care_plans (patient_id, content_enc, start_date, end_date, review_date, created_by, created_by_name, case_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    req.patient.id, vault.seal(c), dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), dateOrNull(req.body.review_date), res.locals.staff.id, res.locals.staff.name,
+    await cases.validFor(req.patient.id, req.body.case_id));
   await audit.record(req, 'patient.plan_created', { entityType: 'patient', entityId: req.patient.id, details: { plan: id } });
   res.redirect(`/admin/clinic/patients/${req.patient.id}?tab=plans&plan=${id}`);
 });
@@ -534,6 +542,87 @@ router.post('/patients/:id/messages', requireManage, patientParam, async (req, r
   const threadId = await clinic2.postMessage({ patientId: req.patient.id, threadId: tid, subject: text(req.body.subject, 200), body, sender: 'staff', staff: res.locals.staff });
   await audit.record(req, 'patient.message_sent', { entityType: 'patient', entityId: req.patient.id, details: { thread: threadId } });
   res.redirect(`/admin/clinic/patients/${req.patient.id}?tab=messages&thread=${threadId}`);
+});
+
+/* ---------- Cases (episodes of care) ---------- */
+
+const caseBack = (req, id) => `/admin/clinic/patients/${req.patient.id}/cases/${id}`;
+
+router.post('/patients/:id/cases', requireManage, patientParam, async (req, res) => {
+  const title = text(req.body.title, 200);
+  if (!title) { flash(req, 'error', 'Give the case a short title, e.g. “Sleep and stress”.'); return res.redirect(back(req, 'cases')); }
+  const referrer = toInt(req.body.referrer_id) && await get('SELECT id FROM referrers WHERE id = ?', toInt(req.body.referrer_id));
+  const id = await insert(`INSERT INTO clinic_cases (patient_id, title, referrer_id, referral_date, practitioner_id, details_enc, opened_on, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_DATE), ?)`, req.patient.id, title, referrer ? referrer.id : null, dateOrNull(req.body.referral_date),
+  res.locals.staff.id, vault.seal({ reason: text(req.body.reason, 10000), goals: text(req.body.goals, 10000) }), dateOrNull(req.body.opened_on), res.locals.staff.name);
+  await audit.record(req, 'patient.case_opened', { entityType: 'patient', entityId: req.patient.id, details: { case: id } });
+  res.redirect(caseBack(req, id));
+});
+
+router.get('/patients/:id/cases/:caseId', patientParam, async (req, res) => {
+  const c = await cases.load(req.patient.id, toInt(req.params.caseId));
+  if (!c) return notFound(res);
+  await audit.record(req, 'patient.case_viewed', { entityType: 'patient', entityId: req.patient.id, details: { case: c.id } });
+  res.render('admin/clinic/case', {
+    title: `${c.title} · ${req.patient.name}`, patient: req.patient, c, canManage: canManage(res), ymd: clinic.ymd, NOTE_KINDS: clinic.NOTE_KINDS,
+    referrers: await all('SELECT id, name, organisation FROM referrers WHERE archived = 0 ORDER BY lower(name)'),
+    when: (d) => require('../../scheduling').formatWhen(d),
+  });
+});
+
+router.post('/patients/:id/cases/:caseId', requireManage, patientParam, async (req, res) => {
+  const c = await get('SELECT * FROM clinic_cases WHERE id = ? AND patient_id = ?', toInt(req.params.caseId), req.patient.id);
+  if (!c) return notFound(res);
+  if (req.body.action === 'close') {
+    await run("UPDATE clinic_cases SET status = 'closed', closed_on = CURRENT_DATE, closed_reason = ?, updated_at = now() WHERE id = ?", text(req.body.closed_reason, 300), c.id);
+    await audit.record(req, 'patient.case_closed', { entityType: 'patient', entityId: req.patient.id, details: { case: c.id } });
+  } else if (req.body.action === 'reopen') {
+    await run("UPDATE clinic_cases SET status = 'open', closed_on = NULL, closed_reason = '', updated_at = now() WHERE id = ?", c.id);
+  } else {
+    const referrer = toInt(req.body.referrer_id) && await get('SELECT id FROM referrers WHERE id = ?', toInt(req.body.referrer_id));
+    await run('UPDATE clinic_cases SET title = ?, referrer_id = ?, referral_date = ?, details_enc = ?, updated_at = now() WHERE id = ?',
+      text(req.body.title, 200) || c.title, referrer ? referrer.id : null, dateOrNull(req.body.referral_date), vault.seal({ reason: text(req.body.reason, 10000), goals: text(req.body.goals, 10000) }), c.id);
+    flash(req, 'success', 'Case saved.');
+  }
+  res.redirect(caseBack(req, c.id));
+});
+
+// Letter to the referrer (or a summary for the client's other practitioners), saved and printable.
+router.get('/patients/:id/cases/:caseId/report', patientParam, async (req, res) => {
+  const c = await cases.load(req.patient.id, toInt(req.params.caseId));
+  if (!c) return notFound(res);
+  await audit.record(req, 'patient.case_report_viewed', { entityType: 'patient', entityId: req.patient.id, details: { case: c.id } });
+  res.render('admin/clinic/case-report', { title: `Report: ${c.title}`, patient: req.patient, c, canManage: canManage(res), ymd: clinic.ymd, print: req.query.print === '1' });
+});
+
+router.post('/patients/:id/cases/:caseId/report', requireManage, patientParam, async (req, res) => {
+  const c = await get('SELECT id FROM clinic_cases WHERE id = ? AND patient_id = ?', toInt(req.params.caseId), req.patient.id);
+  if (!c) return notFound(res);
+  await run('UPDATE clinic_cases SET report_enc = ?, updated_at = now() WHERE id = ?', vault.seal({ body: text(req.body.body, 30000), signed_by: res.locals.staff.name, date: new Date().toISOString().slice(0, 10) }), c.id);
+  await audit.record(req, 'patient.case_report_saved', { entityType: 'patient', entityId: req.patient.id, details: { case: c.id } });
+  flash(req, 'success', 'Report saved.');
+  res.redirect(`${caseBack(req, c.id)}/report`);
+});
+
+/* ---------- Referrers ---------- */
+
+router.get('/referrers', async (req, res) => {
+  const list = await all(`SELECT r.*, (SELECT COUNT(*) FROM clinic_cases c WHERE c.referrer_id = r.id) AS cases,
+      (SELECT MAX(c.referral_date) FROM clinic_cases c WHERE c.referrer_id = r.id) AS last_referral
+    FROM referrers r ORDER BY r.archived, lower(r.name)`);
+  res.render('admin/clinic/referrers', { title: 'Referrers', list, KINDS: cases.REFERRER_KINDS, canManage: canManage(res), edit: toInt(req.query.edit) });
+});
+
+router.post('/referrers', requireManage, async (req, res) => {
+  const name = text(req.body.name, 200);
+  if (!name) { flash(req, 'error', 'Enter the referrer’s name.'); return res.redirect('/admin/clinic/referrers'); }
+  const kind = cases.REFERRER_KINDS.some(([k]) => k === req.body.kind) ? req.body.kind : 'other';
+  const fields = [name, text(req.body.organisation, 200), kind, text(req.body.email, 200), text(req.body.phone, 60), text(req.body.address, 500), text(req.body.notes, 2000)];
+  const id = toInt(req.body.id);
+  if (id) await run('UPDATE referrers SET name = ?, organisation = ?, kind = ?, email = ?, phone = ?, address = ?, notes = ?, archived = ? WHERE id = ?', ...fields, req.body.archived === '1' ? 1 : 0, id);
+  else await insert('INSERT INTO referrers (name, organisation, kind, email, phone, address, notes) VALUES (?, ?, ?, ?, ?, ?, ?)', ...fields);
+  flash(req, 'success', 'Referrer saved.');
+  res.redirect('/admin/clinic/referrers');
 });
 
 router.post('/note-templates', requireManage, async (req, res) => {
