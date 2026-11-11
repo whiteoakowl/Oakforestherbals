@@ -121,6 +121,7 @@ Order confirmations, shipping updates, cancellations, welcome and password-reset
 | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | — | Store uploaded images in Supabase Storage. Without them, images go to `uploads/` |
 | `SUPABASE_BUCKET` | `store-media` | Storage bucket name (created automatically, public) |
 | `SETUP_KEY` | — | Required to create the first admin account, when set |
+| `ADMIN_RECOVERY_KEY` | — | Only if the owner is locked out: set it, visit `/admin/recover`, reset the owner password, then remove it |
 | `CLINIC_ENCRYPTION_KEY` | — | **Required for clinic records.** 64 hex characters (32 random bytes). Encrypts clinical data before it is stored. Back it up; it cannot be recovered. See `docs/PRIVACY.md` |
 | `CLINIC_ENCRYPTION_KEY_PREVIOUS` | — | Only while rotating the key: the old key(s), comma-separated, so existing records can be re-encrypted. Remove when Settings → Security says everything is done |
 | `SUPABASE_PRIVATE_BUCKET` | `clinic-private` | Private bucket for encrypted clinic documents (created automatically, never public) |

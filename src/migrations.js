@@ -1570,6 +1570,19 @@ CREATE TABLE IF NOT EXISTS community_posts (
 CREATE INDEX IF NOT EXISTS idx_community_posts ON community_posts(community_id, parent_id, created_at);
 `,
   },
+  {
+    id: '0018_staff_password_resets',
+    sql: `
+-- "Forgot password?" links for staff. Only a hash of each token is stored; links expire after an hour.
+CREATE TABLE IF NOT EXISTS staff_password_resets (
+  token_hash TEXT PRIMARY KEY,
+  staff_id INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+`,
+  },
 ];
 
 // Supabase publishes the public schema through its Data API (PostgREST) to anyone holding the

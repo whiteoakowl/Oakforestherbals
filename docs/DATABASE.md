@@ -229,3 +229,8 @@ Body chart, tongue and pulse findings are stored inside the (encrypted) clinical
 | `communities` | Group spaces: name, description, guidelines, linked program, facilitator, status (active, read only, archived). |
 | `community_members` | Invited clients, when they accepted the guidelines, their chosen display name, muted/removed, last visit. |
 | `community_posts` | Posts and replies (encrypted), pinned, hidden with reason, reported. |
+
+## 0018_staff_password_resets
+| Change | Purpose |
+|---|---|
+| `staff_password_resets` | Staff “forgot password” links: a hash of the token, who it's for, when it expires (1 hour) and when it was used. |

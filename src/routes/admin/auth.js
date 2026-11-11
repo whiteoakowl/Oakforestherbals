@@ -2,7 +2,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const crypto = require('node:crypto');
-const { get, run, insert } = require('../../db');
+const { get, all, run, insert } = require('../../db');
 const settings = require('../../settings');
 const { flash, throttle } = require('../../middleware');
 const audit = require('../../audit');
@@ -105,6 +105,94 @@ router.post('/login/verify', throttle('staff2fa'), async (req, res) => {
   await audit.record(req, 'staff.login', { entityType: 'staff', entityId: staff.id, actor: { type: 'staff', id: staff.id, name: staff.name }, details: { two_factor: result.recovery ? 'recovery_code' : 'app' } });
   if (result.recovery) flash(req, 'info', `You used a recovery code. ${await twofactor.remainingCodes(staff.id)} left — make new ones under Your profile if you're running low.`);
   await signIn(req, staff.id, () => res.redirect(p.next));
+});
+
+/* ---------- Forgot password (staff) ---------- */
+
+const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
+// Signs someone out everywhere after their password changes. Matches the id exactly.
+const endSessions = (id) => run('DELETE FROM sessions WHERE data LIKE ? OR data LIKE ?', `%"staffId":${id},%`, `%"staffId":${id}}%`);
+const recoveryKey = () => process.env.ADMIN_RECOVERY_KEY || '';
+
+router.get('/forgot', (req, res) => res.render('admin/forgot', { title: 'Reset your password', recovery: Boolean(recoveryKey()) }));
+
+router.post('/forgot', throttle('staffreset'), async (req, res) => {
+  const staff = await get('SELECT id, email, name FROM staff WHERE email = ?', String(req.body.email || '').trim());
+  if (staff) {
+    const t = crypto.randomBytes(32).toString('base64url');
+    await run("INSERT INTO staff_password_resets (token_hash, staff_id, expires_at) VALUES (?, ?, now() + interval '1 hour')", hashToken(t), staff.id);
+    const url = `${req.protocol}://${req.get('host')}/admin/reset/${t}`;
+    await require('../../mailer').notify(null, staff.email, 'Reset your admin password', 'password-reset', { url });
+    await audit.record(req, 'staff.password_reset_requested', { entityType: 'staff', entityId: staff.id, actor: { type: 'staff', id: staff.id, name: staff.name } });
+  }
+  // Same answer either way, so the form can't be used to find out who has an account.
+  flash(req, 'success', 'If that email belongs to a staff account, we’ve sent a link to reset the password. It works for one hour.');
+  res.redirect('/admin/login');
+});
+
+async function resetRow(token) {
+  return get('SELECT r.*, s.email, s.name FROM staff_password_resets r JOIN staff s ON s.id = r.staff_id WHERE r.token_hash = ? AND r.used_at IS NULL AND r.expires_at > now()', hashToken(token));
+}
+
+router.get('/reset/:token', async (req, res) => {
+  const r = await resetRow(req.params.token);
+  if (!r) { flash(req, 'error', 'This reset link is invalid or has expired. Ask for a new one.'); return res.redirect('/admin/forgot'); }
+  res.render('admin/reset', { title: 'Choose a new password', action: `/admin/reset/${req.params.token}`, email: r.email, owners: null });
+});
+
+router.post('/reset/:token', throttle('staffreset'), async (req, res) => {
+  const r = await resetRow(req.params.token);
+  if (!r) { flash(req, 'error', 'This reset link is invalid or has expired. Ask for a new one.'); return res.redirect('/admin/forgot'); }
+  const password = String(req.body.password || '');
+  if (password.length < 8 || password !== String(req.body.confirm || '')) { flash(req, 'error', 'Enter the same new password twice, at least 8 characters.'); return res.redirect(`/admin/reset/${req.params.token}`); }
+  const claimed = await run('UPDATE staff_password_resets SET used_at = now() WHERE token_hash = ? AND used_at IS NULL', r.token_hash);
+  if (!claimed.changes) return res.redirect('/admin/forgot');
+  await run('UPDATE staff SET password_hash = ? WHERE id = ?', bcrypt.hashSync(password, 10), r.staff_id);
+  await endSessions(r.staff_id);
+  await audit.record(req, 'staff.password_reset', { entityType: 'staff', entityId: r.staff_id, actor: { type: 'staff', id: r.staff_id, name: r.name } });
+  flash(req, 'success', 'Password changed. Log in with your new password.');
+  res.redirect('/admin/login');
+});
+
+/* ---------- Owner recovery (no email needed) ----------
+ * For when the owner has lost their login entirely. Works only while ADMIN_RECOVERY_KEY is set in the
+ * hosting environment, so only someone who controls the site's settings can use it. */
+
+const RECOVERY_MS = 10 * 60 * 1000;
+const recoveryOpen = (req) => Boolean(recoveryKey() && req.session.recoveryAt && Date.now() - req.session.recoveryAt < RECOVERY_MS);
+
+router.get('/recover', async (req, res) => {
+  if (!recoveryKey()) return res.render('admin/recover', { title: 'Recover the owner account', enabled: false, owners: null });
+  const owners = recoveryOpen(req) ? await all("SELECT id, name, email, totp_enabled_at IS NOT NULL AS two_factor FROM staff WHERE role = 'owner' ORDER BY id") : null;
+  res.render('admin/recover', { title: 'Recover the owner account', enabled: true, owners });
+});
+
+router.post('/recover', throttle('recover'), async (req, res) => {
+  if (!recoveryKey()) return res.redirect('/admin/recover');
+  const sent = Buffer.from(String(req.body.key || ''));
+  const expected = Buffer.from(recoveryKey());
+  if (sent.length !== expected.length || !crypto.timingSafeEqual(sent, expected)) {
+    await audit.record(req, 'staff.recovery_failed', {});
+    flash(req, 'error', 'That recovery key is incorrect.');
+    return res.redirect('/admin/recover');
+  }
+  req.session.recoveryAt = Date.now();
+  res.redirect('/admin/recover');
+});
+
+router.post('/recover/reset', throttle('recover'), async (req, res) => {
+  if (!recoveryOpen(req)) { flash(req, 'error', 'Enter the recovery key again.'); return res.redirect('/admin/recover'); }
+  const owner = await get("SELECT id, name, email FROM staff WHERE id = ? AND role = 'owner'", Number(req.body.staff_id) || 0);
+  const password = String(req.body.password || '');
+  if (!owner) { flash(req, 'error', 'Choose the owner account.'); return res.redirect('/admin/recover'); }
+  if (password.length < 8 || password !== String(req.body.confirm || '')) { flash(req, 'error', 'Enter the same new password twice, at least 8 characters.'); return res.redirect('/admin/recover'); }
+  await run('UPDATE staff SET password_hash = ? WHERE id = ?', bcrypt.hashSync(password, 10), owner.id);
+  if (req.body.disable_two_factor === '1') await twofactor.disable(owner.id);
+  await endSessions(owner.id);
+  req.session.recoveryAt = null;
+  await audit.record(req, 'staff.owner_recovered', { entityType: 'staff', entityId: owner.id, actor: { type: 'system', id: null, name: 'Recovery key' }, details: { two_factor_cleared: req.body.disable_two_factor === '1' } });
+  flash(req, 'success', `Password set for ${owner.email}. Log in now, then remove ADMIN_RECOVERY_KEY from Netlify.`);
+  res.redirect('/admin/login');
 });
 
 router.post('/logout', async (req, res) => {
