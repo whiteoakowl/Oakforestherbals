@@ -1,23 +1,11 @@
 <%- include('auth-layout') %>
   <h1>Reset your password</h1>
-  <% if (open) { %>
-  <p class="muted">Enter your staff email and choose a new password.</p>
-  <form action="/admin/forgot" method="post" class="form-stack">
-    <input type="hidden" name="_csrf" value="<%= csrf %>">
-    <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="username" autofocus></label>
-    <label class="field"><span>New password</span><input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
-    <label class="field"><span>Type it again</span><input type="password" name="confirm" minlength="8" required autocomplete="new-password"></label>
-    <button class="btn btn-primary btn-block">Save new password</button>
-  </form>
-  <p class="small muted">This works once, then switches off.</p>
-  <% } else { %>
   <p class="muted">Enter your staff email and we’ll send you a link to choose a new password.</p>
   <form action="/admin/forgot" method="post" class="form-stack">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <label class="field"><span>Email</span><input type="email" name="email" required autocomplete="username" autofocus></label>
     <button class="btn btn-primary btn-block">Send reset link</button>
   </form>
-  <% } %>
   <p class="small" style="margin-top:16px">Store owner and can’t get the email, or don’t know which email you used? <a href="/admin/recover">Recover the owner account</a>.</p>
   <p class="small"><a href="/admin/login">Back to log in</a></p>
 </main>
