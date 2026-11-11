@@ -758,3 +758,51 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
 .auth-brand { font-size: 16px; font-weight: 650; margin-bottom: 28px; }
 .auth-card .btn-block { min-height: 44px; font-size: 15px; margin-top: 4px; }
 .inline-details { display: inline-block; } .inline-details[open] form { margin-top: 6px; }
+
+/* ---------- Phones and small tablets: one column, full width, no sideways scrolling ---------- */
+@media (max-width: 900px) {
+  .admin-shell, .nav-collapsed .admin-shell { grid-template-columns: minmax(0, 1fr); }
+  .main { padding: 16px 12px 64px; width: 100%; }
+  .page, .page.narrow, .page.wide-page, .settings-page { max-width: 100%; }
+  .layout-2, .layout-halves, .settings-layout, .grid-2, .grid-3, .charting-grid { grid-template-columns: minmax(0, 1fr); }
+  .card { padding: 16px; }
+  .card.flush { padding: 0; }
+  /* Wide tables scroll inside their card instead of pushing the page wider. */
+  .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table th, .table td { padding: 10px 12px; }
+  .page-header { align-items: flex-start; }
+  .page-actions { width: 100%; }
+  .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .row-between input, .inline-fields > input, .inline-fields > select { max-width: 100%; min-width: 0; }
+  .inline-fields { flex-wrap: wrap; }
+  .topbar { gap: 8px; padding: 0 10px; }
+  .user-name { display: none; }
+  .menu-pop { right: 0; max-width: calc(100vw - 24px); }
+  .dialog { width: calc(100vw - 24px); }
+  img, svg, video, iframe { max-width: 100%; }
+}
+@media (max-width: 600px) {
+  .stat-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .radio-cards { grid-template-columns: minmax(0, 1fr); }
+  .case-grid { grid-template-columns: minmax(0, 1fr); }
+  .today-hero h1 { font-size: 22px; }
+}
+@media (max-width: 900px) {
+  .bulk-bar { flex-wrap: wrap; }
+  code { overflow-wrap: anywhere; word-break: break-word; }
+}
+
+@media (max-width: 700px) {
+  table.stackable { display: block !important; overflow: visible !important; border: 0; }
+  table.stackable thead { display: none; }
+  table.stackable tbody { display: grid; gap: 10px; }
+  table.stackable tbody tr { display: block; border: 1px solid var(--border, #e3e7e4); border-radius: 12px; padding: 6px 12px; background: var(--surface, #fff); }
+  table.stackable tbody td { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0 !important; border: 0 !important; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+  table.stackable tbody td::before { content: attr(data-label); font-size: 12px; font-weight: 600; color: var(--text-muted, #66736c); text-align: left; flex-shrink: 0; max-width: 45%; }
+  table.stackable tbody td:not([data-label])::before, table.stackable tbody td[data-label=""]::before { content: none; }
+  table.stackable tbody td[data-label=""], table.stackable tbody td:not([data-label]) { justify-content: flex-end; }
+  table.stackable tbody td:first-child { font-weight: 600; }
+  table.stackable tbody td[colspan] { justify-content: center; text-align: center; }
+  table.stackable tbody td.check-col::before { content: none; }
+  .card.flush table.stackable tbody { padding: 10px; }
+}

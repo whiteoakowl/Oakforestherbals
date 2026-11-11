@@ -127,3 +127,11 @@
     billingFields.hidden = r.value !== 'no' || !r.checked;
   }));
 })();
+
+// Phones: tables become stacked cards labelled with their column headings (no sideways scrolling).
+document.querySelectorAll('main table').forEach((table) => {
+  const heads = [...table.querySelectorAll('thead th')].map((th) => th.textContent.trim());
+  if (!heads.length) return;
+  table.classList.add('stackable');
+  table.querySelectorAll('tbody tr').forEach((tr) => [...tr.children].forEach((td, i) => { if (heads[i]) td.setAttribute('data-label', heads[i]); }));
+});
