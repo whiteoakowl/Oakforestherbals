@@ -328,3 +328,48 @@
   });
   document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) { items = []; render(); } });
 })();
+
+// Body chart: click the figure to add a numbered marker; each marker gets a description field.
+(function () {
+  'use strict';
+  document.querySelectorAll('[data-body-chart]').forEach((svg) => {
+    const box = svg.closest('.charting');
+    const input = box.querySelector('[data-chart-input]');
+    const list = box.querySelector('[data-marker-list]');
+    const layer = svg.querySelector('[data-markers]');
+    let marks = [];
+    try { marks = JSON.parse(input.value || '[]'); } catch (e) { marks = []; }
+    const ns = 'http://www.w3.org/2000/svg';
+    function save() {
+      [...list.querySelectorAll('[data-marker-label]')].forEach((el, i) => { if (marks[i]) marks[i].label = el.value; });
+      input.value = JSON.stringify(marks);
+    }
+    function draw() {
+      layer.replaceChildren();
+      list.replaceChildren();
+      marks.forEach((m, i) => {
+        const g = document.createElementNS(ns, 'g'); g.setAttribute('class', 'marker');
+        const c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', m.x * 2); c.setAttribute('cy', m.y * 2.1); c.setAttribute('r', 5);
+        const t = document.createElementNS(ns, 'text'); t.setAttribute('x', m.x * 2); t.setAttribute('y', m.y * 2.1 + 2.5); t.setAttribute('text-anchor', 'middle'); t.textContent = i + 1;
+        g.append(c, t); layer.append(g);
+        const li = document.createElement('li');
+        const field = document.createElement('input');
+        field.value = m.label || ''; field.placeholder = `Marker ${i + 1}: e.g. aching, 6/10`; field.setAttribute('aria-label', `Marker ${i + 1} description`); field.dataset.markerLabel = '';
+        field.addEventListener('input', save);
+        li.append(field); list.append(li);
+      });
+      input.value = JSON.stringify(marks);
+    }
+    svg.addEventListener('click', (e) => {
+      const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      if (p.y > 200 || marks.length >= 40) return;
+      save();
+      marks.push({ view: p.x < 100 ? 'front' : 'back', x: Math.round(p.x / 2 * 10) / 10, y: Math.round(p.y / 2.1 * 10) / 10, label: '' });
+      draw();
+      list.lastElementChild.querySelector('input').focus();
+    });
+    box.querySelector('[data-chart-undo]').addEventListener('click', () => { save(); marks.pop(); draw(); });
+    draw();
+  });
+}());

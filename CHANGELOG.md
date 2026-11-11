@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Charting and the dispensary
+
+### Added
+- **Body chart** on clinical notes: click front or back of the figure to place numbered markers and
+  describe each; shown on the note.
+- **Tongue and pulse** findings (body, coating, shape, moisture; rate, overall and the six positions),
+  with common terms suggested.
+- **Dispensary** tab on each client: choose a formula and amount, see the scaled ingredients and cost,
+  a safety reminder (herb safety entries with sources, plus the client's recorded allergies and
+  medications), then dispense — ingredients come out of stock oldest-expiry first with lot numbers kept,
+  cost is what those lots cost, an invoice can be created, and a label prints with directions.
+
 ## Unreleased — Cases and referrers
 
 ### Added

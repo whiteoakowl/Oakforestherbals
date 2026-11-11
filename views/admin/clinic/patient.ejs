@@ -16,7 +16,7 @@
     <div class="banner banner-critical" role="note"><strong>Allergies:</strong> <%= allergies.map((a) => a.data.name).join(', ') %></div>
   <% } %>
   <nav class="tabs card flush patient-tabs" aria-label="Patient record sections">
-    <% for (const [k, l] of [['overview', 'Overview'], ['cases', 'Cases'], ['health', 'Health history'], ['notes', `Notes (${notes.length})`], ['forms', 'Forms'], ['plans', 'Care plans'], ['progress', 'Progress'], ['learning', 'Learning'], ['messages', 'Messages'], ['documents', `Documents (${documents.length})`], ['timeline', 'Timeline']]) { %>
+    <% for (const [k, l] of [['overview', 'Overview'], ['cases', 'Cases'], ['health', 'Health history'], ['notes', `Notes (${notes.length})`], ['dispensary', 'Dispensary'], ['forms', 'Forms'], ['plans', 'Care plans'], ['progress', 'Progress'], ['learning', 'Learning'], ['messages', 'Messages'], ['documents', `Documents (${documents.length})`], ['timeline', 'Timeline']]) { %>
       <a href="?tab=<%= k %>" class="tab <%= tab === k ? 'active' : '' %>" <%= tab === k ? 'aria-current="page"' : '' %>><%= l %></a>
     <% } %>
   </nav>
@@ -157,6 +157,7 @@
         <details><summary class="small">SOAP fields (used when Type is SOAP note)</summary>
           <% for (const [k, l] of SOAP_FIELDS) { %><label class="field mt-sm"><span><%= l %></span><textarea name="<%= k %>" rows="3"></textarea></label><% } %>
         </details>
+        <%- include('_charting', { body: null }) %>
         <p class="muted small">Notes are internal: they are never shown to the patient. Drafts can be edited by their author; signing locks the note permanently.</p>
         <div class="row-gap right"><button class="btn" name="sign" value="0">Save draft</button><button class="btn btn-primary" name="sign" value="1">Sign and lock</button></div>
       </form>
@@ -184,12 +185,14 @@
             <% } else { %>
               <label class="field"><span>Note</span><textarea name="text" rows="8"><%= n.body.text || '' %></textarea></label>
             <% } %>
+            <%- include('_charting', { body: n.body }) %>
             <div class="row-gap right"><a class="btn" href="?tab=notes#note-<%= n.id %>">Cancel</a><button class="btn" name="sign" value="0">Save draft</button><button class="btn btn-primary" name="sign" value="1">Sign and lock</button></div>
           </form>
         <% } else { %>
           <% if (n.kind === 'soap') { %>
             <% for (const [k, l] of SOAP_FIELDS) { if (!n.body[k]) continue; %><div><strong class="small"><%= l %></strong><p class="note-text"><%= n.body[k] %></p></div><% } %>
           <% } else { %><p class="note-text"><%= n.body.text %></p><% } %>
+          <%- include('_chart-view', { n }) %>
           <div class="row-gap small">
             <% if (canManage && !n.signed_at && mine) { %>
               <a href="?tab=notes&edit=<%= n.id %>#note-<%= n.id %>">Edit</a>
@@ -231,6 +234,62 @@
       </a>
     <% } %>
     </div>
+  <% } %>
+
+  <% if (tab === 'dispensary') { const pv = typeof dispensePreview !== 'undefined' ? dispensePreview : null; %>
+    <% if (canManage) { %>
+    <div class="card form-stack">
+      <h2>Make up a remedy</h2>
+      <form method="get" class="grid-3 align-end">
+        <input type="hidden" name="tab" value="dispensary">
+        <label class="field"><span>Formula</span><select name="formula" required><option value="">Choose…</option><% for (const f of formulaOptions) { %><option value="<%= f.id %>" <%= String(query.formula) === String(f.id) ? 'selected' : '' %>><%= f.name %><%= f.status !== 'approved' ? ` (${f.status})` : '' %></option><% } %></select></label>
+        <label class="field"><span>Amount</span><input name="qty" inputmode="decimal" required value="<%= query.qty || '' %>" placeholder="e.g. 100"></label>
+        <label class="field"><span>Unit</span><select name="unit"><% for (const [k, u] of Object.entries(UNITS)) { %><option value="<%= k %>" <%= (query.unit || 'g') === k ? 'selected' : '' %>><%= u.label %></option><% } %></select></label>
+        <div><button class="btn">Work it out</button></div>
+      </form>
+      <% if (pv && pv.error) { %><p class="banner banner-critical"><%= pv.error %></p><% } %>
+      <% if (pv && !pv.error) { %>
+        <% if (pv.formula.status !== 'approved') { %><p class="banner">This formula isn’t approved yet (<%= pv.formula.status %>).</p><% } %>
+        <% if (pv.problems.length) { %><p class="banner banner-critical"><%= pv.problems.join(' ') %></p><% } %>
+        <table class="table compact"><thead><tr><th>Ingredient</th><th class="num">Amount</th><th class="num">Share</th><th class="num">Cost</th></tr></thead><tbody>
+          <% for (const l of pv.lines) { %><tr><td><%= l.name %></td><td class="num"><%= l.amount %> <%= l.unit %></td><td class="num"><%= l.percent !== null ? `${l.percent}%` : '' %></td><td class="num"><%= money(l.cost) %></td></tr><% } %>
+          <tr class="strong"><td>Ingredient cost</td><td></td><td></td><td class="num"><%= money(pv.cost) %></td></tr>
+        </tbody></table>
+        <% const safetyEntries = pv.safety.entries; const allergiesNow = activeOf('allergy'); const medsNow = activeOf('medication'); %>
+        <div class="safety-check">
+          <strong>Before you dispense</strong>
+          <% if (safetyEntries.length) { %><ul class="small"><% for (const e of safetyEntries) { %><li><strong><%= e.common_name %></strong> — <%= e.kind %>: <%= e.description %> <span class="muted">(<%= e.evidence %>; <%= e.source_title %>)</span></li><% } %></ul><% } else { %><p class="small muted">No safety entries in the herbal database for these herbs.</p><% } %>
+          <% if (pv.safety.noSafety.length) { %><p class="small">No safety information recorded yet for: <%= pv.safety.noSafety.map((h) => h.common_name).join(', ') %>.</p><% } %>
+          <% if (pv.safety.unlinked.length) { %><p class="small">Not linked to the herbal database: <%= pv.safety.unlinked.map((m) => m.name).join(', ') %>.</p><% } %>
+          <p class="small"><strong>This client:</strong> allergies — <%= allergiesNow.length ? allergiesNow.map((a) => a.data.name).join(', ') : 'none recorded' %>; medications — <%= medsNow.length ? medsNow.map((m) => m.data.name).join(', ') : 'none recorded' %>.</p>
+          <p class="muted small">This is a reminder of what’s recorded, not a full interaction check. Use your clinical judgement.</p>
+        </div>
+        <form method="post" action="<%= base %>/dispense" class="form-stack">
+          <%- csrfField %>
+          <input type="hidden" name="formula_id" value="<%= pv.formula.id %>"><input type="hidden" name="qty" value="<%= query.qty %>"><input type="hidden" name="unit" value="<%= query.unit %>">
+          <label class="field"><span>Directions for the label</span><textarea name="instructions" rows="2" placeholder="e.g. 5 ml in a little water, twice daily before meals"></textarea></label>
+          <div class="grid-3">
+            <label class="field"><span>Price</span><input name="price" inputmode="decimal" placeholder="<%= centsToInput(pv.cost) %>"></label>
+            <label class="field"><span>Best before</span><input type="date" name="best_before"></label>
+            <% if (typeof openCases !== 'undefined' && openCases.length) { %><label class="field"><span>Case</span><select name="case_id"><option value="">None</option><% for (const oc of openCases) { %><option value="<%= oc.id %>"><%= oc.title %></option><% } %></select></label><% } %>
+          </div>
+          <label class="check"><input type="checkbox" name="take_stock" value="1" checked> Take the ingredients from stock (oldest expiry first; lot numbers are recorded)</label>
+          <% if (can('invoices.manage')) { %><label class="check"><input type="checkbox" name="invoice" value="1"> Create an invoice for it</label><% } %>
+          <div class="right"><button class="btn btn-primary">Dispense</button></div>
+        </form>
+      <% } %>
+    </div>
+    <% } %>
+    <% if (!dispensed.length) { %><div class="card empty-state"><p>Nothing dispensed for this client yet.</p></div><% } %>
+    <% for (const d of dispensed) { %>
+      <article class="card" id="dispensing-<%= d.id %>">
+        <div class="row-between"><h2><%= d.formula_name %> · <%= Number(d.quantity) %> <%= d.unit %></h2><a class="btn btn-sm" href="<%= base %>/dispensings/<%= d.id %>/label" target="_blank" rel="noopener">Print label</a></div>
+        <p class="muted small"><%= d.code %> · <%= formatDate(d.created_at, true) %> · <%= d.dispensed_by_name %><%= d.invoice_number ? ` · invoice #${d.invoice_number}` : '' %> · price <%= money(d.price) %><%= d.cost !== null ? `, cost ${money(d.cost)}` : '' %></p>
+        <% if (d.instructions) { %><p><strong>Directions:</strong> <%= d.instructions %></p><% } %>
+        <p class="small"><%= d.ingredients.map((i) => `${i.name} ${i.amount} ${i.unit}`).join(' · ') %></p>
+        <% if (d.lots.length) { %><p class="small muted">Lots: <%= d.lots.map((l) => `${l.material} ${l.lot}`).join(', ') %></p><% } %>
+      </article>
+    <% } %>
   <% } %>
 
   <% if (tab === 'documents') { %>

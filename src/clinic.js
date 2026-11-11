@@ -33,6 +33,22 @@ const SOAP_FIELDS = [['subjective', 'Subjective'], ['objective', 'Objective'], [
 const DOCUMENT_KINDS = [['document', 'Document'], ['lab_result', 'Lab result'], ['photo', 'Photo'], ['consent', 'Consent form'], ['intake', 'Intake form'], ['other', 'Other']];
 const DOCUMENT_KEYS = DOCUMENT_KINDS.map(([k]) => k);
 
+// Charting: body chart markers (x/y as % of the figure, front or back) and TCM tongue and pulse.
+const TONGUE_FIELDS = [['body', 'Body colour'], ['coating', 'Coating'], ['shape', 'Shape'], ['moisture', 'Moisture'], ['notes', 'Other signs']];
+const PULSE_FIELDS = [['rate', 'Rate (bpm)'], ['overall', 'Overall quality'], ['left_cun', 'Left cun'], ['left_guan', 'Left guan'], ['left_chi', 'Left chi'],
+  ['right_cun', 'Right cun'], ['right_guan', 'Right guan'], ['right_chi', 'Right chi']];
+function readChart(raw) {
+  let list = [];
+  try { list = JSON.parse(String(raw || '[]')); } catch { return []; }
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 40).map((m) => ({
+    view: m && m.view === 'back' ? 'back' : 'front',
+    x: Math.max(0, Math.min(100, Math.round(Number(m && m.x) * 10) / 10 || 0)),
+    y: Math.max(0, Math.min(100, Math.round(Number(m && m.y) * 10) / 10 || 0)),
+    label: String((m && m.label) || '').trim().slice(0, 200),
+  }));
+}
+
 const PROFILE_FIELDS = ['date_of_birth', 'preferred_name', 'pronouns', 'occupation', 'emergency_name', 'emergency_relationship', 'emergency_phone', 'summary'];
 
 // DATE columns arrive as Date objects from one driver and strings from another.
@@ -133,6 +149,6 @@ async function timeline(patient) {
 }
 
 module.exports = {
-  HEALTH_CATEGORIES, CATEGORY_KEYS, NOTE_KINDS, NOTE_KEYS, SOAP_FIELDS, DOCUMENT_KINDS, DOCUMENT_KEYS, PROFILE_FIELDS,
+  TONGUE_FIELDS, PULSE_FIELDS, readChart, HEALTH_CATEGORIES, CATEGORY_KEYS, NOTE_KINDS, NOTE_KEYS, SOAP_FIELDS, DOCUMENT_KINDS, DOCUMENT_KEYS, PROFILE_FIELDS,
   ymd, canSeeAll, canSeeAny, scope, findVisible, readProfile, age, healthItems, notes, documents, practitioners, assignableStaff, timeline,
 };

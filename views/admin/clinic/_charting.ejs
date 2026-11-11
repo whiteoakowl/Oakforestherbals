@@ -1,0 +1,26 @@
+<% const b = typeof body !== 'undefined' && body ? body : {}; const marks = b.chart || []; const t = b.tongue || {}; const pu = b.pulse || {}; %>
+<details class="charting" <%= marks.length || Object.keys(t).length || Object.keys(pu).length ? 'open' : '' %>>
+  <summary class="small"><strong>Body chart, tongue and pulse</strong> (optional)</summary>
+  <div class="charting-grid mt-sm">
+    <div>
+      <%- include('_body-figure', { marks, interactive: true }) %>
+      <input type="hidden" name="chart" value="<%= JSON.stringify(marks) %>" data-chart-input>
+      <ol class="marker-list small" data-marker-list><% marks.forEach((m) => { %><li><input value="<%= m.label %>" aria-label="Marker label" data-marker-label></li><% }) %></ol>
+      <p class="muted small">Click the figure to mark pain, tension or other findings, then describe each marker. <button type="button" class="link-plain small" data-chart-undo>Remove last</button></p>
+    </div>
+    <div class="form-stack">
+      <fieldset class="form-stack"><legend class="small"><strong>Tongue</strong></legend>
+        <% for (const [k, l] of TONGUE_FIELDS) { %><label class="field"><span><%= l %></span><input name="tongue_<%= k %>" value="<%= t[k] || '' %>" list="tongue-<%= k %>-list"></label><% } %>
+        <datalist id="tongue-body-list"><option value="Pale"><option value="Pink (normal)"><option value="Red"><option value="Dark red"><option value="Purple"></datalist>
+        <datalist id="tongue-coating-list"><option value="Thin white"><option value="Thick white"><option value="Yellow"><option value="Greasy"><option value="Peeled / none"></datalist>
+        <datalist id="tongue-shape-list"><option value="Normal"><option value="Swollen"><option value="Thin"><option value="Teeth marks"><option value="Cracked"></datalist>
+        <datalist id="tongue-moisture-list"><option value="Normal"><option value="Dry"><option value="Wet"></datalist>
+      </fieldset>
+      <fieldset class="form-stack"><legend class="small"><strong>Pulse</strong></legend>
+        <div class="grid-2"><% for (const [k, l] of PULSE_FIELDS.slice(0, 2)) { %><label class="field"><span><%= l %></span><input name="pulse_<%= k %>" value="<%= pu[k] || '' %>"></label><% } %></div>
+        <div class="grid-3"><% for (const [k, l] of PULSE_FIELDS.slice(2)) { %><label class="field"><span><%= l %></span><input name="pulse_<%= k %>" value="<%= pu[k] || '' %>" list="pulse-list"></label><% } %></div>
+        <datalist id="pulse-list"><option value="Floating"><option value="Deep"><option value="Slow"><option value="Rapid"><option value="Wiry"><option value="Slippery"><option value="Thin"><option value="Weak"><option value="Choppy"><option value="Full"></datalist>
+      </fieldset>
+    </div>
+  </div>
+</details>

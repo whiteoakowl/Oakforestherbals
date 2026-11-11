@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Label <%= d.code %></title>
+<style>
+  body { font: 11px/1.35 -apple-system, "Segoe UI", Arial, sans-serif; margin: 16px; color: #000; }
+  .label { width: 90mm; min-height: 55mm; border: 1px solid #000; border-radius: 3mm; padding: 3mm 4mm; box-sizing: border-box; }
+  h1 { font-size: 13px; margin: 0 0 1mm; } .big { font-size: 12px; } .small { font-size: 9px; } p { margin: 0 0 1.2mm; }
+  .row { display: flex; justify-content: space-between; gap: 4mm; }
+  @media print { .noprint { display: none; } body { margin: 0; } .label { border: 0; } }
+</style></head><body>
+<p class="noprint"><button onclick="window.print()">Print</button></p>
+<div class="label">
+  <div class="row"><strong><%= store.name %></strong><span class="small"><%= d.code %></span></div>
+  <h1><%= d.formula_name %> — <%= Number(d.quantity) %> <%= d.unit %></h1>
+  <p class="big">For: <strong><%= patient.name %></strong></p>
+  <% if (d.instructions) { %><p class="big"><%= d.instructions %></p><% } %>
+  <p class="small">Contains: <%= d.ingredients.map((i) => `${i.name}${i.percent !== null && i.percent !== undefined ? ` ${i.percent}%` : ''}`).join(', ') %></p>
+  <div class="row small"><span>Made <%= ymd(d.created_at instanceof Date ? d.created_at.toISOString() : d.created_at) %> by <%= d.dispensed_by_name %></span><% if (d.best_before) { %><span>Best before <%= ymd(d.best_before) %></span><% } %></div>
+  <p class="small">Keep out of reach of children. Store in a cool, dark place.</p>
+</div>
+</body></html>

@@ -11,6 +11,7 @@ const vault = require('../../vault');
 const audit = require('../../audit');
 const storage = require('../../storage');
 const cases = require('../../cases');
+const dispensary = require('../../dispensary');
 const { flash, verifyCsrf } = require('../../middleware');
 const { toInt, paginate, token } = require('../../utils');
 
@@ -23,7 +24,7 @@ router.use((req, res, next) => {
   }
   if (!vault.configured()) return res.status(503).render('admin/clinic/locked', { title: 'Clinic records locked' });
   Object.assign(res.locals, {
-    HEALTH_CATEGORIES: clinic.HEALTH_CATEGORIES, NOTE_KINDS: clinic.NOTE_KINDS, SOAP_FIELDS: clinic.SOAP_FIELDS,
+    HEALTH_CATEGORIES: clinic.HEALTH_CATEGORIES, NOTE_KINDS: clinic.NOTE_KINDS, SOAP_FIELDS: clinic.SOAP_FIELDS, TONGUE_FIELDS: clinic.TONGUE_FIELDS, PULSE_FIELDS: clinic.PULSE_FIELDS,
     DOCUMENT_KINDS: clinic.DOCUMENT_KINDS, age: clinic.age, ymd: clinic.ymd, ITEM_KINDS: clinic2.ITEM_KINDS, FIELD_TYPES: clinic2.FIELD_TYPES, visibleField: clinic2.visible,
   });
   next();
@@ -117,7 +118,7 @@ router.post('/patients/new', requireManage, async (req, res) => {
 
 /* ---------- Record ---------- */
 
-const TABS = ['overview', 'cases', 'health', 'notes', 'forms', 'plans', 'progress', 'learning', 'messages', 'documents', 'timeline'];
+const TABS = ['overview', 'cases', 'health', 'notes', 'dispensary', 'forms', 'plans', 'progress', 'learning', 'messages', 'documents', 'timeline'];
 
 router.get('/patients/:id', patientParam, async (req, res) => {
   const tab = TABS.includes(req.query.tab) ? req.query.tab : 'overview';
@@ -163,7 +164,14 @@ router.get('/patients/:id', patientParam, async (req, res) => {
     extra.casesList = await cases.forPatient(p.id);
     extra.referrers = await all('SELECT id, name, organisation FROM referrers WHERE archived = 0 ORDER BY lower(name)');
   }
-  if (tab === 'notes' || tab === 'plans') extra.openCases = await cases.openFor(p.id);
+  if (tab === 'dispensary') {
+    extra.dispensed = await dispensary.forPatient(p.id);
+    const v = require('../../formulas').visibleSql(res.locals.staff.id);
+    extra.formulaOptions = await all(`SELECT f.id, f.name, f.status, f.yield_qty, f.yield_unit FROM formulas f WHERE ${v.sql} AND f.status != 'archived' ORDER BY lower(f.name)`, ...v.params);
+    if (toInt(req.query.formula)) extra.dispensePreview = await dispensary.preview(toInt(req.query.formula), res.locals.staff.id, req.query.qty, String(req.query.unit || ''));
+    extra.UNITS = require('../../costing').UNITS;
+  }
+  if (tab === 'notes' || tab === 'plans' || tab === 'dispensary') extra.openCases = await cases.openFor(p.id);
   if (tab === 'notes') extra.templates = await all('SELECT * FROM note_templates WHERE owner_id IS NULL OR owner_id = ? ORDER BY name', res.locals.staff.id);
   if (tab === 'overview' && res.locals.can('clinic.assignments.manage')) extra.assignable = await clinic.assignableStaff();
   await audit.record(req, 'patient.viewed', { entityType: 'patient', entityId: p.id, details: { tab } });
@@ -246,7 +254,14 @@ function readNote(body) {
   const content = kind === 'soap'
     ? Object.fromEntries(clinic.SOAP_FIELDS.map(([k]) => [k, text(body[k], 50000)]))
     : { text: text(body.text, 50000) };
-  const empty = Object.values(content).every((v) => !v);
+  // Optional charting: body chart markers, and tongue and pulse findings.
+  const chart = clinic.readChart(body.chart);
+  if (chart.length) content.chart = chart;
+  const tongue = Object.fromEntries(clinic.TONGUE_FIELDS.map(([k]) => [k, text(body[`tongue_${k}`], 300)]).filter(([, v]) => v));
+  if (Object.keys(tongue).length) content.tongue = tongue;
+  const pulse = Object.fromEntries(clinic.PULSE_FIELDS.map(([k]) => [k, text(body[`pulse_${k}`], 300)]).filter(([, v]) => v));
+  if (Object.keys(pulse).length) content.pulse = pulse;
+  const empty = Object.values(content).every((v) => !v || (Array.isArray(v) && !v.length));
   const visit = /^\d{4}-\d{2}-\d{2}$/.test(String(body.visit_date || '')) ? body.visit_date : new Date().toISOString().slice(0, 10);
   return { kind, content, empty, visit };
 }
@@ -602,6 +617,38 @@ router.post('/patients/:id/cases/:caseId/report', requireManage, patientParam, a
   await audit.record(req, 'patient.case_report_saved', { entityType: 'patient', entityId: req.patient.id, details: { case: c.id } });
   flash(req, 'success', 'Report saved.');
   res.redirect(`${caseBack(req, c.id)}/report`);
+});
+
+/* ---------- Dispensary ---------- */
+
+router.post('/patients/:id/dispense', requireManage, patientParam, async (req, res) => {
+  const { parseMoney } = require('../../utils');
+  const q = new URLSearchParams({ tab: 'dispensary', formula: String(toInt(req.body.formula_id)), qty: String(req.body.qty || ''), unit: String(req.body.unit || '') });
+  try {
+    const id = await dispensary.dispense({
+      patientId: req.patient.id, caseId: await cases.validFor(req.patient.id, req.body.case_id), formulaId: toInt(req.body.formula_id), qty: req.body.qty, unit: String(req.body.unit || ''),
+      instructions: text(req.body.instructions, 2000), price: parseMoney(req.body.price) || 0, takeStock: req.body.take_stock === '1', bestBefore: dateOrNull(req.body.best_before), staff: res.locals.staff,
+    });
+    const d = await get('SELECT * FROM dispensings WHERE id = ?', id);
+    if (req.body.invoice === '1' && d.price > 0 && res.locals.can('invoices.manage')) {
+      const billing = require('../../billing');
+      const invoiceId = await billing.createInvoice({ customerId: req.patient.customer_id, email: req.patient.email, name: req.patient.name, items: [{ description: `${d.formula_name} — ${Number(d.quantity)} ${d.unit} (${d.code})`, quantity: 1, unit_price: d.price, taxable: true }], createdBy: res.locals.staff.name, caseId: d.case_id });
+      await run('UPDATE dispensings SET invoice_id = ? WHERE id = ?', invoiceId, id);
+    }
+    await audit.record(req, 'patient.dispensed', { entityType: 'patient', entityId: req.patient.id, details: { dispensing: id, formula: d.formula_id } });
+    flash(req, 'success', `Dispensed ${d.code}.`);
+    res.redirect(`${back(req, 'dispensary')}#dispensing-${id}`);
+  } catch (err) {
+    if (!err.status) throw err;
+    flash(req, 'error', err.message);
+    res.redirect(`/admin/clinic/patients/${req.patient.id}?${q}`);
+  }
+});
+
+router.get('/patients/:id/dispensings/:did/label', patientParam, async (req, res) => {
+  const d = (await dispensary.forPatient(req.patient.id)).find((x) => x.id === toInt(req.params.did));
+  if (!d) return notFound(res);
+  res.render('admin/clinic/dispense-label', { patient: req.patient, d, ymd: clinic.ymd, layoutless: true });
 });
 
 /* ---------- Referrers ---------- */

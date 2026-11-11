@@ -197,3 +197,11 @@ share of an order as its own line.
 | `referrers` | Doctors, practitioners and other sources of referrals, with contact details for letters. |
 | `clinic_cases` | Cases (episodes of care) per client: title, status, referrer and date, practitioner, encrypted reason/goals and referral report, opened/closed dates and outcome. |
 | `case_id` on `clinical_notes`, `care_plans`, `appointments`, `invoices` | Files each item under a case (only a case belonging to the same client is accepted). |
+
+## 0014_dispensary
+| Change | Purpose |
+|---|---|
+| `dispensings` | Remedies made up for a client: formula, amount, encrypted directions, ingredients, stock lots used, actual cost, price, invoice, label code, best-before, who made it. |
+| `inventory_transactions` kind check | Adds `dispense` as a kind of stock movement. |
+
+Body chart, tongue and pulse findings are stored inside the (encrypted) clinical note, so no new columns.
