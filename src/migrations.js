@@ -1138,6 +1138,24 @@ CREATE TABLE IF NOT EXISTS staff_preferences (
 );
 `,
   },
+  {
+    id: '0009_performance_indexes',
+    sql: `
+-- Indexes for look-ups that grow with the business: herb profiles, invoices, batches, staff
+-- notifications and product sales. Additive only.
+CREATE INDEX IF NOT EXISTS idx_herb_uses_herb ON herb_uses (herb_id);
+CREATE INDEX IF NOT EXISTS idx_herb_preparations_herb ON herb_preparations (herb_id);
+CREATE INDEX IF NOT EXISTS idx_herb_tradition_profiles_herb ON herb_tradition_profiles (herb_id);
+CREATE INDEX IF NOT EXISTS idx_herb_images_herb ON herb_images (herb_id, position);
+CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice ON invoice_items (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices (customer_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_open ON invoices (status, due_on);
+CREATE INDEX IF NOT EXISTS idx_batches_status ON production_batches (status);
+CREATE INDEX IF NOT EXISTS idx_notifications_staff ON notifications (staff_id);
+CREATE INDEX IF NOT EXISTS idx_items_variant ON order_items (variant_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders (financial_status, created_at);
+`,
+  },
 ];
 
 // Supabase publishes the public schema through its Data API (PostgREST) to anyone holding the

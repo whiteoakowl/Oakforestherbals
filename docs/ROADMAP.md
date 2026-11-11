@@ -79,9 +79,13 @@ Message centre, email/SMS templates and consent, scheduled reminders (Netlify Sc
 Functions), and an optional AI assistant limited to each user's permissions, with clinical output
 always practitioner-reviewed and never turned into a recommendation automatically.
 
-## Phase 10 — Hardening
+## Phase 10 — Hardening ✅
 Permission matrix tests across every role, privacy tests, the two end-to-end workflows from the
 brief, mobile and accessibility passes, performance checks with large herb and order volumes.
+- Done: role-by-area permission matrix, sidebar link checks, follow-up booking in the patient
+  workflow, phone/desktop layout and labelling checks, indexes for growing tables.
+- Still open: two-factor sign-in, encryption key rotation, an external accessibility audit
+  (screen reader testing by a person), and load testing against the real Supabase database.
 
 ## What I'll need from you along the way
 | When | What |

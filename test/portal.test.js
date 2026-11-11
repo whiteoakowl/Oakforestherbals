@@ -208,3 +208,22 @@ test('patients see only their own records, and only what is shared', async () =>
   }
   assert.ok(await get("SELECT 1 FROM audit_logs WHERE action = 'portal.plan_viewed' AND actor_type = 'customer'"));
 });
+
+test('the practitioner books a follow-up; the patient sees it and the confirmation, with no clinical notes in either', async () => {
+  await owner.post('/admin/schedule/types/new', { name: 'Follow-up consultation', kind: 'follow_up', duration_min: '30', price: '45.00', mode: 'either', capacity: '1', online_booking: '1', active: '1', staff_ids: String((await get("SELECT id FROM staff WHERE email = 'ann@example.com'")).id) }, '/admin/schedule/types');
+  const type = await get("SELECT id FROM appointment_types WHERE name = 'Follow-up consultation'");
+  const customer = await get("SELECT id FROM customers WHERE email = 'robin@example.com'");
+  const day = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const res = await ann.post('/admin/schedule/appointments/new', { type_id: type.id, customer_id: customer.id, day, time: '10:00', mode: 'online', override: '1', notes: 'Review sleep plan progress', invoice: '1', notify: '1' }, '/admin/schedule/appointments/new');
+  assert.match(res.location, /^\/admin\/schedule\/appointments\/\d+$/);
+  const appt = await get('SELECT * FROM appointments WHERE id = ?', Number(res.location.split('/').pop()));
+  assert.equal(appt.staff_id, (await get("SELECT id FROM staff WHERE email = 'ann@example.com'")).id, 'a practitioner books into their own calendar');
+  assert.notEqual(appt.notes_enc, 'Review sleep plan progress', 'internal notes are encrypted');
+  assert.ok(await get('SELECT 1 FROM invoices WHERE customer_id = ? AND total = 4500', customer.id));
+  const mine = await patient.get('/account/appointments');
+  assert.match(mine.text, /Follow-up consultation/);
+  assert.doesNotMatch(mine.text, /Review sleep plan progress/);
+  const mail = await get("SELECT * FROM email_outbox WHERE to_address = 'robin@example.com' AND template = 'appointment_confirmation' ORDER BY id DESC LIMIT 1");
+  assert.ok(mail);
+  assert.doesNotMatch(mail.html, /sleep plan/i);
+});

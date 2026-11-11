@@ -150,3 +150,8 @@ names or health details.
 Each automation claims its row before sending (`reminder_sent_at`, `reminded_at`, the digest day),
 so overlapping or repeated runs never send twice. The AI assistant adds no tables: it stores neither
 questions nor answers.
+
+## 0009_performance_indexes
+Indexes only (no data changes): herb uses, preparations, tradition profiles and images by herb;
+invoice lines by invoice; invoices by customer and by status/due date; batches by status; staff
+notifications by recipient; order lines by variant; orders by payment status and date.

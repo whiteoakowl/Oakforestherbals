@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Phase 10: hardening
+
+### Added
+- **Permission matrix tests**: one staff member per system role, checked against every admin area
+  (allowed areas open, others answer 403), every sidebar link opens for its role, changes are refused
+  without the manage permission, and only the clinic roles hold clinical permissions by default.
+- The patient workflow test now ends with the practitioner booking a follow-up (invoice and
+  confirmation email, no clinical detail in either, internal notes encrypted).
+- Phone and desktop checks of 22 key admin and storefront pages: no sideways scrolling, every form
+  field labelled, every image with alt text, no unnamed buttons or links.
+- Migration `0009_performance_indexes` (indexes only).
+
 ## Unreleased — Phase 9: communications, automation and AI
 
 ### Added
