@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+<div class="page narrow">
+  <%- include('partials/page-header', { heading: searched ? `Results for “${searchQuery}”` : 'Search' }) %>
+  <% if (!searched) { %>
+    <div class="card empty-state"><%- include('partials/icon', { name: 'search', size: 40 }) %><p>Type at least two letters in the search box at the top. Press <kbd class="kbd">/</kbd> anywhere to jump there.</p></div>
+  <% } else if (!groups.length) { %>
+    <div class="card empty-state"><%- include('partials/icon', { name: 'search', size: 40 }) %><p>Nothing matched “<%= searchQuery %>”.</p></div>
+  <% } else { %>
+    <div class="search-groups">
+      <% for (const g of groups) { %>
+        <section class="card flush search-group">
+          <h2 class="pad" style="padding-bottom:0"><%= g.label %> <a class="small" href="<%= g.more %>">See all</a></h2>
+          <div class="pad" style="padding-top:8px">
+            <% for (const h of g.hits) { %>
+              <a class="search-hit" href="<%= h.href %>">
+                <% if (h.initials) { %><span class="avatar"><%= h.title.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() %></span><% } %>
+                <span><strong><%= h.title %></strong><% if (h.sub) { %><br><span class="muted small"><%= h.sub %></span><% } %></span>
+              </a>
+            <% } %>
+          </div>
+        </section>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

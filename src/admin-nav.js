@@ -14,46 +14,25 @@ const SECTIONS = [
     ],
   },
   {
-    label: 'Store',
+    label: 'Clinic',
     items: [
       {
-        href: '/admin/orders', label: 'Orders', icon: 'orders', perm: 'orders.view',
+        href: '/admin/schedule', label: 'Calendar', icon: 'calendar', anyPerm: ['scheduling.manage', 'scheduling.own'],
         children: [
-          { href: '/admin/orders', label: 'All orders', exact: true, match: /^\/admin\/orders\/(\d+|new)/ },
-          { href: '/admin/orders/abandoned', label: 'Abandoned checkouts' },
-          { href: '/admin/subscriptions', label: 'Subscriptions' },
-        ],
-      },
-      { href: '/admin/pos', label: 'Point of sale', icon: 'pos', perm: 'pos.use' },
-      {
-        href: '/admin/products', label: 'Products', icon: 'products', perm: 'products.manage',
-        children: [
-          { href: '/admin/products', label: 'All products', exact: true, match: /^\/admin\/products\/(\d+|new)$/ },
-          { href: '/admin/collections', label: 'Collections' },
-          { href: '/admin/products/inventory', label: 'Inventory' },
-          { href: '/admin/reviews', label: 'Reviews' },
-        ],
-      },
-      { href: '/admin/gift-cards', label: 'Gift cards', icon: 'discounts', perm: 'orders.manage' },
-      { href: '/admin/customers', label: 'Customers', icon: 'customers', perm: 'customers.view' },
-      {
-        href: '/admin/content', label: 'Content', icon: 'content', perm: 'content.manage',
-        children: [
-          { href: '/admin/content/pages', label: 'Pages' },
-          { href: '/admin/content/blog', label: 'Blog posts' },
-          { href: '/admin/content/files', label: 'Files' },
-          { href: '/admin/content/navigation', label: 'Navigation' },
+          { href: '/admin/schedule', label: 'Calendar', exact: true, match: /^\/admin\/schedule\/appointments\// },
+          { href: '/admin/schedule/types', label: 'Appointment types', perm: 'scheduling.manage' },
+          { href: '/admin/schedule/hours', label: 'Hours and profile' },
         ],
       },
       {
-        href: '/admin/costing', label: 'Costing', icon: 'cost', perm: 'costing.manage',
+        href: '/admin/clinic/patients', label: 'Clients', icon: 'patients', anyPerm: ['clinic.patients.view_assigned', 'clinic.patients.view_all'],
         children: [
-          { href: '/admin/costing', label: 'Materials', exact: true, match: /^\/admin\/costing\/(materials|products)\// },
-          { href: '/admin/analytics/profitability', label: 'Profitability' },
+          { href: '/admin/clinic/patients', label: 'All clients', exact: true, match: /^\/admin\/clinic\/patients\/(\d+|new)/ },
+          { href: '/admin/clinic/inbox', label: 'Inbox' },
+          { href: '/admin/clinic/forms', label: 'Forms', perm: 'clinic.records.manage' },
         ],
       },
-      { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', perm: 'analytics.view', exact: true },
-      { href: '/admin/discounts', label: 'Discounts', icon: 'discounts', perm: 'discounts.manage' },
+      { href: '/admin/education', label: 'Education', icon: 'content', perm: 'education.manage' },
     ],
   },
   {
@@ -94,25 +73,46 @@ const SECTIONS = [
     ],
   },
   {
-    label: 'Clinic',
+    label: 'Store',
     items: [
       {
-        href: '/admin/clinic/patients', label: 'Patients', icon: 'patients', anyPerm: ['clinic.patients.view_assigned', 'clinic.patients.view_all'],
+        href: '/admin/orders', label: 'Orders', icon: 'orders', perm: 'orders.view',
         children: [
-          { href: '/admin/clinic/patients', label: 'All patients', exact: true, match: /^\/admin\/clinic\/patients\/(\d+|new)/ },
-          { href: '/admin/clinic/inbox', label: 'Inbox' },
-          { href: '/admin/clinic/forms', label: 'Forms', perm: 'clinic.records.manage' },
+          { href: '/admin/orders', label: 'All orders', exact: true, match: /^\/admin\/orders\/(\d+|new)/ },
+          { href: '/admin/orders/abandoned', label: 'Abandoned checkouts' },
+          { href: '/admin/subscriptions', label: 'Subscriptions' },
         ],
       },
-      { href: '/admin/education', label: 'Education', icon: 'content', perm: 'education.manage' },
+      { href: '/admin/pos', label: 'Point of sale', icon: 'pos', perm: 'pos.use' },
       {
-        href: '/admin/schedule', label: 'Schedule', icon: 'calendar', anyPerm: ['scheduling.manage', 'scheduling.own'],
+        href: '/admin/products', label: 'Products', icon: 'products', perm: 'products.manage',
         children: [
-          { href: '/admin/schedule', label: 'Calendar', exact: true, match: /^\/admin\/schedule\/appointments\// },
-          { href: '/admin/schedule/types', label: 'Appointment types', perm: 'scheduling.manage' },
-          { href: '/admin/schedule/hours', label: 'Hours and profile' },
+          { href: '/admin/products', label: 'All products', exact: true, match: /^\/admin\/products\/(\d+|new)$/ },
+          { href: '/admin/collections', label: 'Collections' },
+          { href: '/admin/products/inventory', label: 'Inventory' },
+          { href: '/admin/reviews', label: 'Reviews' },
         ],
       },
+      { href: '/admin/gift-cards', label: 'Gift cards', icon: 'discounts', perm: 'orders.manage' },
+      { href: '/admin/customers', label: 'Customers', icon: 'customers', perm: 'customers.view' },
+      {
+        href: '/admin/content', label: 'Content', icon: 'content', perm: 'content.manage',
+        children: [
+          { href: '/admin/content/pages', label: 'Pages' },
+          { href: '/admin/content/blog', label: 'Blog posts' },
+          { href: '/admin/content/files', label: 'Files' },
+          { href: '/admin/content/navigation', label: 'Navigation' },
+        ],
+      },
+      {
+        href: '/admin/costing', label: 'Costing', icon: 'cost', perm: 'costing.manage',
+        children: [
+          { href: '/admin/costing', label: 'Materials', exact: true, match: /^\/admin\/costing\/(materials|products)\// },
+          { href: '/admin/analytics/profitability', label: 'Profitability' },
+        ],
+      },
+      { href: '/admin/analytics', label: 'Analytics', icon: 'analytics', perm: 'analytics.view', exact: true },
+      { href: '/admin/discounts', label: 'Discounts', icon: 'discounts', perm: 'discounts.manage' },
     ],
   },
   {

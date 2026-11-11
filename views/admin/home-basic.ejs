@@ -1,6 +1,9 @@
 <%- include('partials/header') %>
 <div class="page narrow">
-  <%- include('partials/page-header', { heading: `Welcome, ${staff.name.split(' ')[0]}` }) %>
+  <div class="today-hero">
+  <div><p class="muted small" style="margin:0"><%= new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) %></p><h1>Good <%= new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening' %>, <%= staff.name.split(' ')[0] %></h1></div>
+  <% if (typeof quickCreate !== 'undefined' && quickCreate.length) { %><div class="quick-actions"><% for (const [href, label] of quickCreate.slice(0, 4)) { %><a class="btn btn-secondary btn-sm" href="<%= href %>">+ <%= label %></a><% } %></div><% } %>
+</div>
   <%- include('partials/widgets') %>
   <% const links = adminNav.flatMap((s) => s.items).filter((i) => i.href !== '/admin'); %>
   <div class="card">

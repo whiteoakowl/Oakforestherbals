@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — A calmer, modern admin
+
+### Changed
+- **New look** in place of the merchant-dashboard style: light top bar and sidebar, forest-green accent,
+  Inter type, roomier spacing, rounded cards with soft shadows, pill badges and tabs, softer inputs and
+  buttons, and a matching dark mode (switch it from the account menu).
+- **Sidebar** puts the practice first (Calendar, Clients, Inbox, Forms, then herbal, apothecary, store and
+  finance), and collapses to icons on desktop (remembered per browser).
+- **Home** greets you with today's date, quick-action buttons and an agenda-style list of appointments.
+
+### Added
+- **Search everything** from the top bar (clients, customers, orders, invoices, products, herbs, formulas,
+  materials), limited to what each person may open; press `/` to jump to it; an exact order number opens it.
+- **“+ New” menu** with shortcuts to whatever the person can create.
+
 ## Unreleased — Point of sale: Stripe card readers and gift cards
 
 ### Added

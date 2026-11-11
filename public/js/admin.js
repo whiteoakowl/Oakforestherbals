@@ -8,8 +8,28 @@
     if (el) fn(e, el);
   });
 
-  // Sidebar on small screens
-  on('[data-sidebar-toggle]', 'click', () => $('[data-sidebar]').classList.toggle('open'));
+  // Sidebar: slides in on small screens; collapses to icons on desktop (remembered per browser).
+  const collapse = () => {
+    const c = document.documentElement.classList.toggle('nav-collapsed');
+    try { localStorage.setItem('sidebar', c ? 'collapsed' : 'open'); } catch (e) { /* private mode */ }
+  };
+  on('[data-sidebar-toggle]', 'click', () => (window.innerWidth > 900 ? collapse() : $('[data-sidebar]').classList.toggle('open')));
+  on('[data-nav-collapse]', 'click', collapse);
+  // Light / dark switch (remembered); otherwise follows the device.
+  try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* ignore */ }
+  on('[data-theme-toggle]', 'click', () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('theme', root.dataset.theme); } catch (e) { /* ignore */ }
+  });
+  // "/" jumps to search; Escape or a click elsewhere closes open menus.
+  const closeMenus = (except) => $$('details.quick-create[open], details.user-menu[open]').forEach((d) => { if (d !== except) d.open = false; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && !e.target.closest('input, textarea, select, [contenteditable]')) { const s = $('[data-global-search]'); if (s) { e.preventDefault(); s.focus(); } }
+    if (e.key === 'Escape') closeMenus();
+  });
+  document.addEventListener('click', (e) => closeMenus(e.target.closest('details')));
   on('[data-open-store]', 'click', (e) => { e.preventDefault(); e.stopPropagation(); window.open('/', '_blank', 'noopener'); });
 
   // Clickable rows (ignore clicks on inputs/links inside them)

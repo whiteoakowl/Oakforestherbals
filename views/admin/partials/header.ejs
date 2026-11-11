@@ -1,29 +1,38 @@
 <%- include('head') %>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 <header class="topbar">
-  <button class="topbar-menu" data-sidebar-toggle aria-label="Toggle navigation">☰</button>
+  <button class="topbar-menu" data-sidebar-toggle aria-label="Show or hide navigation"><%- include('icon', { name: 'menu' }) %></button>
   <a href="/admin" class="topbar-brand"><span class="brand-mark"><%= store.name.charAt(0) %></span><span class="brand-name"><%= store.name %></span></a>
-  <% if (can('products.manage')) { %>
-  <form class="topbar-search" action="/admin/products" method="get" role="search">
+  <form class="topbar-search" action="/admin/search" method="get" role="search">
     <%- include('icon', { name: 'search', size: 16 }) %>
-    <input name="q" placeholder="Search products" aria-label="Search products">
+    <input name="q" placeholder="Search clients, products, orders, herbs…" aria-label="Search everything" value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" autocomplete="off" data-global-search>
+    <kbd class="kbd" aria-hidden="true">/</kbd>
   </form>
-  <% } else { %><div class="topbar-search-spacer"></div><% } %>
-  <a class="topbar-bell" href="/admin/communications/notifications" aria-label="Notifications<%= typeof unreadCount !== 'undefined' && unreadCount ? ` (${unreadCount} unread)` : '' %>">🔔<% if (typeof unreadCount !== 'undefined' && unreadCount) { %><span class="bell-count"><%= unreadCount > 9 ? '9+' : unreadCount %></span><% } %></a>
+  <% if (typeof quickCreate !== 'undefined' && quickCreate.length) { %>
+  <details class="quick-create">
+    <summary class="btn btn-primary"><%- include('icon', { name: 'plus', size: 16 }) %><span class="qc-label">New</span></summary>
+    <div class="menu-pop">
+      <% for (const [href, label] of quickCreate) { %><a href="<%= href %>"><%= label %></a><% } %>
+    </div>
+  </details>
+  <% } %>
+  <a class="topbar-icon" href="/admin/communications/notifications" aria-label="Notifications<%= typeof unreadCount !== 'undefined' && unreadCount ? ` (${unreadCount} unread)` : '' %>"><%- include('icon', { name: 'bell' }) %><% if (typeof unreadCount !== 'undefined' && unreadCount) { %><span class="bell-count"><%= unreadCount > 9 ? '9+' : unreadCount %></span><% } %></a>
   <div class="topbar-user">
     <details class="user-menu">
-      <summary><span class="avatar"><%= staff.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() %></span><span class="user-name"><%= staff.name %></span></summary>
+      <summary aria-label="Account menu"><span class="avatar"><%= staff.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() %></span><span class="user-name"><%= staff.name %></span></summary>
       <div class="menu-pop">
         <div class="muted small"><%= staff.email %></div>
         <a href="/admin/profile">Your profile</a>
         <a href="/" target="_blank" rel="noopener">View online store</a>
+        <button type="button" class="link-plain" data-theme-toggle>Switch light / dark</button>
         <form action="/admin/logout" method="post"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="link-plain">Log out</button></form>
       </div>
     </details>
   </div>
 </header>
 <div class="admin-shell">
-  <nav class="sidebar" data-sidebar>
+  <nav class="sidebar" data-sidebar aria-label="Main">
     <% const isActive = (prefix, exact) => exact ? adminPath === prefix : adminPath === prefix || adminPath.startsWith(prefix + '/'); %>
     <% for (const section of adminNav) { %>
       <% if (section.label) { %><div class="nav-label"><%= section.label %></div><% } %>
@@ -32,7 +41,7 @@
           <% const children = item.children && item.children.length ? item.children : null; %>
           <% const open = isActive(item.href, item.exact) || (children && children.some((c) => isActive(c.href, c.exact) || (c.match && c.match.test(adminPath)))); %>
           <li>
-            <a href="<%= children ? children[0].href : item.href %>" class="nav-item <%= open && !children ? 'active' : '' %> <%= open && children ? 'open' : '' %>"><%- include('icon', { name: item.icon }) %><%= item.label %>
+            <a href="<%= children ? children[0].href : item.href %>" title="<%= item.label %>" class="nav-item <%= open && !children ? 'active' : '' %> <%= open && children ? 'open' : '' %>"><%- include('icon', { name: item.icon }) %><span class="nav-text"><%= item.label %></span>
               <% if (item.storeLink) { %><span class="nav-eye" title="View store" data-open-store><%- include('icon', { name: 'eye', size: 16 }) %></span><% } %>
             </a>
             <% if (children && open) { %>
@@ -47,13 +56,14 @@
         <% } %>
       </ul>
     <% } %>
-    <% if (showSettings) { %>
     <ul class="sidebar-bottom">
-      <li><a href="/admin/settings" class="nav-item <%= isActive('/admin/settings') && !isActive('/admin/settings/preferences') ? 'active' : '' %>"><%- include('icon', { name: 'settings' }) %>Settings</a></li>
-    </ul>
+      <li><button type="button" class="nav-item nav-collapse" data-nav-collapse aria-label="Collapse or expand navigation"><%- include('icon', { name: 'back' }) %><span class="nav-text">Collapse</span></button></li>
+    <% if (showSettings) { %>
+      <li><a href="/admin/settings" class="nav-item <%= isActive('/admin/settings') && !isActive('/admin/settings/preferences') ? 'active' : '' %>"><%- include('icon', { name: 'settings' }) %><span class="nav-text">Settings</span></a></li>
     <% } %>
+    </ul>
   </nav>
-  <main class="main">
+  <main class="main" id="main">
     <% if (flash.length) { %>
       <div class="toasts">
         <% for (const f of flash) { %><div class="toast toast-<%= f.type %>" role="status"><%= f.message %></div><% } %>

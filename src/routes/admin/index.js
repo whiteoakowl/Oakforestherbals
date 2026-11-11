@@ -37,6 +37,22 @@ router.use((req, res, next) => {
 });
 router.use(async (req, res, next) => {
   res.locals.adminNav = navFor(res.locals.can);
+  // The "+ New" menu in the top bar: shortcuts to whatever this person can create.
+  const can = res.locals.can;
+  res.locals.quickCreate = [
+    ['/admin/schedule/appointments/new', 'Appointment', can('scheduling.manage') || can('scheduling.own')],
+    ['/admin/clinic/patients/new', 'Client record', can('clinic.records.manage')],
+    ['/admin/customers/new', 'Customer', can('customers.manage')],
+    ['/admin/invoices/new', 'Invoice', can('invoices.manage')],
+    ['/admin/pos', 'Counter sale', can('pos.use')],
+    ['/admin/orders/new', 'Order', can('orders.manage')],
+    ['/admin/products/new', 'Product', can('products.manage')],
+    ['/admin/formulas/new', 'Formula', can('formulas.manage')],
+    ['/admin/production/new', 'Production batch', can('production.manage')],
+    ['/admin/herbs/new', 'Herb', can('herbs.manage')],
+    ['/admin/gift-cards/new', 'Gift card', can('orders.manage')],
+    ['/admin/finance/expenses', 'Expense', can('expenses.manage')],
+  ].filter(([, , ok]) => ok).map(([href, label]) => [href, label]);
   res.locals.showSettings = showSettings(res.locals.can);
   if (req.method === 'GET') res.locals.unreadCount = (await require('../../comms').forStaff(res.locals.staff, { unreadOnly: true, limit: 99 })).length;
   next();
@@ -72,6 +88,7 @@ router.use('/clinic', require('./clinic'));
 router.use('/education', allow('education.manage'), require('./education'));
 router.use('/schedule', require('./schedule'));
 router.use('/communications', require('./communications'));
+router.use('/search', require('./search'));
 router.use('/assistant', allow('assistant.use'), require('./assistant'));
 router.use('/invoices', allow('invoices.manage'), require('./finance').invoices);
 router.use('/finance', require('./finance').finance);

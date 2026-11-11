@@ -9,7 +9,7 @@
   <% if (W.shown.includes('appointments')) { %>
     <div class="card widget"><h2>Appointments <span class="muted small"><%= d.todayCount %> today</span></h2>
       <% if (!d.appointments.length) { %><p class="muted small">Nothing upcoming.</p><% } %>
-      <% for (const a of d.appointments) { %><p class="small"><a href="/admin/schedule/appointments/<%= a.id %>"><%= a.when %></a> · <%= a.type_name %><%= can('scheduling.manage') ? ` · ${a.staff_name}` : '' %></p><% } %>
+      <ul class="agenda"><% for (const a of d.appointments) { %><li><span class="time small"><%= a.when.split(',').slice(2).join(',').trim().replace(/ [A-Z]{2,5}$/, '') %></span><span class="bar"><a href="/admin/schedule/appointments/<%= a.id %>"><strong><%= a.type_name %></strong></a><br><span class="muted small"><%= a.when.split(',').slice(0, 2).join(',') %><%= can('scheduling.manage') && a.staff_name ? ` · ${a.staff_name}` : '' %></span></span><span class="badge"><%= a.status %></span></li><% } %></ul>
       <a class="small" href="/admin/schedule">Open the schedule</a></div>
   <% } %>
   <% if (W.shown.includes('clinic')) { const c = d.clinic; %>
