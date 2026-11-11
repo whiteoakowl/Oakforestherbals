@@ -10,6 +10,7 @@ const SECTIONS = [
     label: '',
     items: [
       { href: '/admin', label: 'Home', icon: 'home', exact: true },
+      { href: '/admin/assistant', label: 'Assistant', icon: 'spark', perm: 'assistant.use' },
     ],
   },
   {

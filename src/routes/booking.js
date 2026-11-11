@@ -88,7 +88,8 @@ async function finishBooking(req, res, type, { staffId, start, mode }, back) {
     const invId = await billing.createInvoice({ customerId: customer.id, email: customer.email, name: `${customer.first_name} ${customer.last_name}`.trim(), items: [{ description: `${type.name} — ${scheduling.formatWhen(a.starts_at)}`, quantity: 1, unit_price: type.price }], appointmentId: id, staffId, createdBy: 'Online booking' });
     invoice = await billing.loadInvoice('id', invId);
   }
-  await require('./admin/schedule').appointmentEmail(a, `Booking confirmed — ${settings.load('store').name}`, `You're booked in.${settings.load('booking').confirmation_note ? ` ${settings.load('booking').confirmation_note}` : ''}`);
+  await require('./admin/schedule').appointmentEmail(a, 'appointment_confirmation');
+  await require('../comms').notifyStaff({ kind: 'booking', title: `Online booking: ${type.name}, ${scheduling.formatWhen(a.starts_at)}`, link: `/admin/schedule/appointments/${id}`, staffId });
   await audit.record(req, 'appointment.booked_online', { entityType: 'appointment', entityId: id, actor: { type: 'customer', id: customer.id, name: customer.email } });
   // A deposit is paid now through Stripe when card payments are set up; otherwise at the clinic.
   if (invoice && type.deposit > 0 && stripe.stripeConfigured()) {

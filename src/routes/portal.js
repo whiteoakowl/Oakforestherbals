@@ -92,6 +92,10 @@ router.post('/forms/:id', formUpload.any(), verifyCsrf, assignmentParam, async (
   await clinic2.submitForm({ assignment: a, form: { id: a.form_id, version: a.version, fields: a.fields }, patientId: req.patient.id, answers, by: 'patient', signature: sig ? { name: answers[sig.id], at: new Date().toISOString(), ip: req.ip } : null });
   delete req.session.formDraft;
   await log(req, 'portal.form_submitted', { assignment: a.id });
+  const comms = require('../comms');
+  const assigned = await all('SELECT staff_id FROM practitioner_assignments WHERE patient_id = ?', req.patient.id);
+  for (const s of assigned) await comms.notifyStaff({ kind: 'form', title: `Form submitted: ${a.name}`, link: `/admin/clinic/patients/${req.patient.id}?tab=forms`, staffId: s.staff_id });
+  if (!assigned.length) await comms.notifyStaff({ kind: 'form', title: `Form submitted: ${a.name}`, link: `/admin/clinic/patients/${req.patient.id}?tab=forms`, permission: 'clinic.patients.view_all' });
   flash(req, 'success', 'Thank you. Your form was sent securely to the clinic.');
   res.redirect('/account/clinic');
 });

@@ -1,6 +1,7 @@
 <%- include('partials/header') %>
 <div class="page narrow">
   <%- include('partials/page-header', { heading: `Welcome, ${staff.name.split(' ')[0]}` }) %>
+  <%- include('partials/widgets') %>
   <% const links = adminNav.flatMap((s) => s.items).filter((i) => i.href !== '/admin'); %>
   <div class="card">
     <% if (links.length) { %>

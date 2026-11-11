@@ -7,7 +7,7 @@ const scheduling = require('../../scheduling');
 const billing = require('../../billing');
 const settings = require('../../settings');
 const vault = require('../../vault');
-const mailer = require('../../mailer');
+const comms = require('../../comms');
 const audit = require('../../audit');
 const { flash } = require('../../middleware');
 const { toInt, parseMoney, token } = require('../../utils');
@@ -71,14 +71,16 @@ router.get('/appointments/new', async (req, res) => {
   res.render('admin/schedule/new', { title: 'New appointment', types, people: await staffScope(req), customer, staffId: req.all ? 0 : res.locals.staff.id });
 });
 
-async function appointmentEmail(appt, subject, intro) {
-  if (!appt.email) return;
+// Messages to clients carry the appointment type, time, place and practitioner — nothing clinical.
+async function appointmentEmail(appt, key) {
+  if (!appt || !appt.email) return;
   const store = settings.load('store');
-  const base = process.env.BASE_URL || process.env.URL || '';
-  const esc = (s) => String(s || '').replace(/[<&>"]/g, (c) => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;', '"': '&quot;' }[c]));
-  await mailer.sendRaw(appt.email, subject, `<p>${esc(intro)}</p>
-    <p><strong>${esc(appt.type_name)}</strong> with ${esc(appt.staff_name)}<br>${esc(scheduling.formatWhen(appt.starts_at))}<br>${appt.mode === 'virtual' ? `Online${appt.video_link ? `: <a href="${esc(appt.video_link)}">join link</a>` : ' — your link will be sent before the appointment'}` : esc(appt.location || store.address || '')}</p>
-    <p><a href="${base}/account/appointments">See or change your appointments</a></p>`);
+  const who = await get('SELECT email, first_name, phone, sms_opt_in, email_reminders FROM customers WHERE id = ?', appt.customer_id);
+  await comms.send(key, who || appt, {
+    type: appt.type_name, practitioner: appt.staff_name, when: scheduling.formatWhen(appt.starts_at),
+    where: appt.mode === 'virtual' ? `Online${appt.video_link ? `: ${appt.video_link}` : ' — your link will be sent before the appointment'}` : (appt.location || store.address || ''),
+    note: settings.load('booking').confirmation_note, link: `${comms.base()}/account/appointments`, book_link: `${comms.base()}/book/${appt.type_id}`,
+  }, { reminder: key === 'appointment_reminder' });
 }
 
 router.post('/appointments/new', async (req, res) => {
@@ -115,7 +117,7 @@ router.post('/appointments/new', async (req, res) => {
       await billing.createInvoice({ customerId: customer.id, email: a.email, name: `${a.first_name || ''} ${a.last_name || ''}`.trim(), items: [{ description: `${type.name} — ${scheduling.formatWhen(a.starts_at)}`, quantity: 1, unit_price: type.price }], appointmentId: id, staffId, createdBy: res.locals.staff.name });
     }
   }
-  if (req.body.notify === '1') await appointmentEmail(await scheduling.load(created[0]), `Your appointment${repeats > 1 ? 's' : ''} with ${res.locals.store.name}`, repeats > 1 ? `You're booked in for ${repeats} weekly appointments, starting:` : "You're booked in:");
+  if (req.body.notify === '1') await appointmentEmail(await scheduling.load(created[0]), 'appointment_confirmation');
   await audit.record(req, 'appointment.created', { entityType: 'appointment', entityId: created[0], details: { count: created.length } });
   flash(req, 'success', created.length > 1 ? `${created.length} weekly appointments booked.` : 'Appointment booked.');
   res.redirect(`/admin/schedule/appointments/${created[0]}`);
@@ -148,10 +150,10 @@ router.post('/appointments/:id', apptParam, async (req, res) => {
     status === 'cancelled' ? text(req.body.cancel_reason, 300) || a.cancel_reason : a.cancel_reason, a.id);
   await audit.record(req, 'appointment.updated', { entityType: 'appointment', entityId: a.id, details: { status } });
   if (status === 'cancelled' && a.status !== 'cancelled') {
-    if (req.body.notify === '1') await appointmentEmail(a, `Appointment cancelled — ${res.locals.store.name}`, 'Your appointment has been cancelled:');
+    if (req.body.notify === '1') await appointmentEmail(a, 'appointment_cancelled');
     await notifyWaitlist(a);
   } else if (status === 'confirmed' && a.status !== 'confirmed' && req.body.notify === '1') {
-    await appointmentEmail({ ...a, video_link: videoLink }, `Appointment confirmed — ${res.locals.store.name}`, 'Your appointment is confirmed:');
+    await appointmentEmail({ ...a, video_link: videoLink }, 'appointment_confirmation');
   }
   flash(req, 'success', 'Appointment saved.');
   res.redirect(back);
@@ -176,7 +178,7 @@ router.post('/appointments/:id/reschedule', apptParam, async (req, res) => {
     if (!e.status) throw e;
     return fail(req, res, e.message, back);
   }
-  if (req.body.notify === '1') await appointmentEmail(await scheduling.load(a.id), `Appointment moved — ${res.locals.store.name}`, 'Your appointment has moved to:');
+  if (req.body.notify === '1') await appointmentEmail(await scheduling.load(a.id), 'appointment_moved');
   await audit.record(req, 'appointment.rescheduled', { entityType: 'appointment', entityId: a.id });
   flash(req, 'success', 'Appointment moved.');
   res.redirect(back);
@@ -192,11 +194,11 @@ router.post('/appointments/:id/invoice', apptParam, async (req, res) => {
 
 // When a slot frees up, everyone waiting for that type (and practitioner) is told — first come, first served.
 async function notifyWaitlist(a) {
-  const waiting = await all(`SELECT w.id, c.email FROM appointment_waitlist w JOIN customers c ON c.id = w.customer_id WHERE w.status = 'waiting' AND w.type_id = ? AND (w.staff_id IS NULL OR w.staff_id = ?)`, a.type_id, a.staff_id);
-  const base = process.env.BASE_URL || process.env.URL || '';
+  const waiting = await all(`SELECT w.id, c.email, c.first_name, c.phone, c.sms_opt_in FROM appointment_waitlist w JOIN customers c ON c.id = w.customer_id
+    WHERE w.status = 'waiting' AND w.type_id = ? AND (w.staff_id IS NULL OR w.staff_id = ?)`, a.type_id, a.staff_id);
   for (const w of waiting) {
-    await mailer.sendRaw(w.email, `A ${a.type_name} slot opened up`, `<p>A time you were waiting for has become available: ${scheduling.formatWhen(a.starts_at)}. <a href="${base}/book/${a.type_id}">Book it before someone else does</a>.</p>`);
-    await run("UPDATE appointment_waitlist SET notified_at = now() WHERE id = ?", w.id);
+    await comms.send('waitlist_opening', w, { type: a.type_name, when: scheduling.formatWhen(a.starts_at), book_link: `${comms.base()}/book/${a.type_id}` });
+    await run('UPDATE appointment_waitlist SET notified_at = now() WHERE id = ?', w.id);
   }
 }
 

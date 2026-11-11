@@ -74,7 +74,7 @@ Appointment types, availability, booking with deposits and policies, reminders; 
 refunds ledger (back-filled from existing orders); invoices; expenses; financial dashboards and
 accounting exports; Stripe and SMTP secrets moved to environment variables.
 
-## Phase 9 — Communications, automation and AI
+## Phase 9 — Communications, automation and AI ✅
 Message centre, email/SMS templates and consent, scheduled reminders (Netlify Scheduled
 Functions), and an optional AI assistant limited to each user's permissions, with clinical output
 always practitioner-reviewed and never turned into a recommendation automatically.

@@ -176,4 +176,19 @@ router.post('/addresses/:id/delete', async (req, res) => {
   res.redirect('/account/addresses');
 });
 
+router.post('/preferences', requireCustomer, async (req, res) => {
+  const { normalizePhone } = require('../comms');
+  const wantsSms = req.body.sms_opt_in === '1';
+  const phone = normalizePhone(req.body.sms_phone);
+  if (wantsSms && !phone) {
+    flash(req, 'error', 'Enter your mobile number with the country code, like +15551234567.');
+    return res.redirect('/account');
+  }
+  const c = res.locals.customer;
+  await run(`UPDATE customers SET email_reminders = ?, sms_opt_in = ?, sms_opt_in_at = CASE WHEN ? = 1 AND sms_opt_in = 0 THEN now() ELSE sms_opt_in_at END, phone = COALESCE(?, phone) WHERE id = ?`,
+    req.body.email_reminders === '1' ? 1 : 0, wantsSms ? 1 : 0, wantsSms ? 1 : 0, phone, c.id);
+  flash(req, 'success', 'Reminder preferences saved.');
+  res.redirect('/account');
+});
+
 module.exports = router;

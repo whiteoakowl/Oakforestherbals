@@ -204,10 +204,14 @@ async function postMessage({ patientId, threadId, subject, body, sender, staff }
   });
   const store = settings.load('store');
   const base = process.env.BASE_URL || process.env.URL || '';
+  const comms = require('./comms');
   if (sender === 'staff') {
-    const p = await get('SELECT c.email, c.first_name FROM patients p JOIN customers c ON c.id = p.customer_id WHERE p.id = ?', patientId);
-    if (p && p.email) await mailer.sendRaw(p.email, `New secure message from ${store.name}`, `<p>Hello ${String(p.first_name || '').replace(/</g, '&lt;')},</p><p>You have a new secure message from ${store.name}. For your privacy it isn't included in this email.</p><p><a href="${base}/account/clinic/messages">Sign in to read it</a></p>`);
+    const p = await get('SELECT c.email, c.first_name, c.phone, c.sms_opt_in, c.email_reminders FROM patients p JOIN customers c ON c.id = p.customer_id WHERE p.id = ?', patientId);
+    if (p) await comms.send('message_waiting', p, { link: `${base}/account/clinic/messages` });
   } else {
+    const assigned = await all('SELECT staff_id FROM practitioner_assignments WHERE patient_id = ?', patientId);
+    for (const a of assigned) await comms.notifyStaff({ kind: 'message', title: 'New secure message from a patient', link: `/admin/clinic/patients/${patientId}?tab=messages`, staffId: a.staff_id });
+    if (!assigned.length) await comms.notifyStaff({ kind: 'message', title: 'New secure message from a patient', link: `/admin/clinic/patients/${patientId}?tab=messages`, permission: 'clinic.patients.view_all' });
     // Tell assigned practitioners (or the clinic inbox) that a message arrived — again without content.
     const to = (await all('SELECT s.email FROM practitioner_assignments pa JOIN staff s ON s.id = pa.staff_id WHERE pa.patient_id = ?', patientId)).map((r) => r.email);
     const fallback = settings.load('notifications').staff_order_email;

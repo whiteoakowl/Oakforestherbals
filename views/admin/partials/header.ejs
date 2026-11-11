@@ -9,6 +9,7 @@
     <input name="q" placeholder="Search products" aria-label="Search products">
   </form>
   <% } else { %><div class="topbar-search-spacer"></div><% } %>
+  <a class="topbar-bell" href="/admin/communications/notifications" aria-label="Notifications<%= typeof unreadCount !== 'undefined' && unreadCount ? ` (${unreadCount} unread)` : '' %>">🔔<% if (typeof unreadCount !== 'undefined' && unreadCount) { %><span class="bell-count"><%= unreadCount > 9 ? '9+' : unreadCount %></span><% } %></a>
   <div class="topbar-user">
     <details class="user-menu">
       <summary><span class="avatar"><%= staff.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() %></span><span class="user-name"><%= staff.name %></span></summary>

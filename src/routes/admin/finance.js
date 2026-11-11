@@ -3,7 +3,7 @@
 const express = require('express');
 const { get, all, run, insert } = require('../../db');
 const billing = require('../../billing');
-const mailer = require('../../mailer');
+const comms = require('../../comms');
 const audit = require('../../audit');
 const { flash, requirePermission } = require('../../middleware');
 const { toInt, parseMoney, asList, csvRow, centsToInput } = require('../../utils');
@@ -78,8 +78,7 @@ invoices.post('/:id/status', invParam, async (req, res) => {
 invoices.post('/:id/send', invParam, async (req, res) => {
   const inv = req.inv;
   if (!inv.email) return fail(req, res, 'This invoice has no email address.', `/admin/invoices/${inv.id}`);
-  const base = process.env.BASE_URL || process.env.URL || '';
-  await mailer.sendRaw(inv.email, `Invoice #${inv.number} from ${res.locals.store.name}`, `<p>Your invoice #${inv.number} for ${res.locals.money(inv.total)} is ready.${inv.due_on ? ` It's due on ${ymd(inv.due_on)}.` : ''}</p><p><a href="${base}/invoices/${inv.token}">View${inv.balance > 0 ? ' and pay' : ''} your invoice</a></p>`);
+  await comms.send('invoice_sent', { email: inv.email, first_name: inv.first_name }, { number: inv.number, amount: res.locals.money(inv.total), due: inv.due_on ? ` It's due on ${ymd(inv.due_on)}.` : '', link: `${comms.base()}/invoices/${inv.token}` });
   flash(req, 'success', `Invoice emailed to ${inv.email}.`);
   res.redirect(`/admin/invoices/${inv.id}`);
 });

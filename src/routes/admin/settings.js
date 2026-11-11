@@ -24,6 +24,7 @@ const SECTIONS = [
   ['staff', 'Users', 'Staff accounts and their roles', 'staff.manage'],
   ['roles', 'Roles and permissions', 'What each role can see and do', 'staff.manage'],
   ['audit', 'Audit log', 'Sign-ins, permission changes and other security events', 'audit.view'],
+  ['../communications', 'Communications', 'Message templates, email and SMS logs, automations', 'settings.manage'],
 ];
 
 // Only the sections this staff member may open are listed.

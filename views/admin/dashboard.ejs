@@ -4,6 +4,7 @@
     <div class="page-title-row"><h1>Good <%= new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening' %>, <%= staff.name.split(' ')[0] %></h1></div>
     <div class="page-actions"><%- include('partials/range') %></div>
   </div>
+  <%- include('partials/widgets') %>
 
   <div class="stat-row">
     <div class="card stat"><div class="stat-label">Total sales</div><div class="stat-value"><%= money(m.totalSales) %></div></div>

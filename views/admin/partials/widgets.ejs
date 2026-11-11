@@ -1,0 +1,52 @@
+<% if (typeof widgets !== 'undefined' && widgets) { const W = widgets; const d = W.data; %>
+<div class="widgets">
+  <% if (W.shown.includes('notifications')) { %>
+    <div class="card widget"><h2>Notifications</h2>
+      <% if (!d.notifications.length) { %><p class="muted small">You're all caught up.</p><% } %>
+      <% for (const n of d.notifications) { %><form method="post" action="/admin/communications/notifications/read" class="notif-row"><input type="hidden" name="_csrf" value="<%= csrf %>"><input type="hidden" name="id" value="<%= n.id %>"><input type="hidden" name="go" value="<%= n.link %>"><button class="link-plain small"><%= n.title %></button><span class="muted small"><%= formatDate(n.created_at) %></span></form><% } %>
+      <a class="small" href="/admin/communications/notifications">All notifications</a></div>
+  <% } %>
+  <% if (W.shown.includes('appointments')) { %>
+    <div class="card widget"><h2>Appointments <span class="muted small"><%= d.todayCount %> today</span></h2>
+      <% if (!d.appointments.length) { %><p class="muted small">Nothing upcoming.</p><% } %>
+      <% for (const a of d.appointments) { %><p class="small"><a href="/admin/schedule/appointments/<%= a.id %>"><%= a.when %></a> · <%= a.type_name %><%= can('scheduling.manage') ? ` · ${a.staff_name}` : '' %></p><% } %>
+      <a class="small" href="/admin/schedule">Open the schedule</a></div>
+  <% } %>
+  <% if (W.shown.includes('clinic')) { const c = d.clinic; %>
+    <div class="card widget"><h2>Clinic</h2>
+      <div class="mini-stats"><div><strong><%= c.active %></strong><span>active patients</span></div><div><strong><%= c.newPatients %></strong><span>new (30 days)</span></div><div><strong><%= c.formsWaiting %></strong><span>forms to review</span></div><div><strong><%= c.unread %></strong><span>unread messages</span></div><div><strong><%= c.drafts %></strong><span>my unsigned notes</span></div><div><strong><%= c.practitioners %></strong><span>active practitioners</span></div></div>
+      <a class="small" href="/admin/clinic/inbox">Clinic inbox</a></div>
+  <% } %>
+  <% if (W.shown.includes('inventory')) { const i = d.inventory; %>
+    <div class="card widget"><h2>Inventory</h2>
+      <div class="mini-stats"><div><strong><%= money(i.value) %></strong><span>materials value</span></div><div><strong><%= money(i.finished) %></strong><span>finished goods</span></div></div>
+      <% if (i.low.length) { %><p class="small"><strong>Low:</strong> <%= i.low.map((m) => m.name).join(', ') %></p><% } %>
+      <% if (i.expiring.length) { %><p class="small"><strong>Expiring (<%= i.warnDays %> days):</strong> <%= i.expiring.map((m) => `${m.name} ${m.next_expiry}`).join(', ') %></p><% } %>
+      <a class="small" href="/admin/inventory">Open inventory</a></div>
+  <% } %>
+  <% if (W.shown.includes('production')) { %>
+    <div class="card widget"><h2>Production</h2>
+      <% if (!d.production.length) { %><p class="muted small">No open batches.</p><% } %>
+      <% for (const b of d.production) { %><p class="small"><a href="/admin/production/<%= b.id %>"><%= b.code %></a> · <%= b.name %> · <span class="badge badge-default"><%= b.status.replace('_', ' ') %></span></p><% } %>
+      <a class="small" href="/admin/production">All batches</a></div>
+  <% } %>
+  <% if (W.shown.includes('finance')) { const f = d.finance; %>
+    <div class="card widget"><h2>Money owed</h2>
+      <div class="mini-stats"><div><strong><%= money(Number(f.outstanding.amount)) %></strong><span><%= f.outstanding.n %> open invoice(s)</span></div><div><strong><%= f.overdue %></strong><span>overdue</span></div><div><strong><%= money(Number(f.pendingOrders.amount)) %></strong><span><%= f.pendingOrders.n %> unpaid order(s)</span></div></div>
+      <a class="small" href="/admin/invoices?status=open">Open invoices</a></div>
+  <% } %>
+  <% if (W.shown.includes('revenue')) { const max = Math.max(1, ...d.revenue.map((m) => m.revenue)); %>
+    <div class="card widget"><h2>Revenue by month</h2>
+      <div class="month-bars small-bars"><% for (const m of d.revenue) { %><div class="month-bar"><div class="bars"><span class="rev" style="height:<%= (m.revenue / max) * 100 %>%" title="<%= m.month %>: <%= money(m.revenue) %>"></span></div><span class="small muted"><%= m.month.slice(5) %></span></div><% } %></div>
+      <a class="small" href="/admin/finance">Financials</a></div>
+  <% } %>
+  <% if (W.shown.includes('customers')) { %>
+    <div class="card widget"><h2>Recent customers</h2>
+      <% for (const c of d.customers) { %><p class="small"><a href="/admin/customers/<%= c.id %>"><%= `${c.first_name} ${c.last_name}`.trim() || c.email %></a> <span class="muted"><%= c.last_order ? `ordered ${formatDate(c.last_order)}` : `joined ${formatDate(c.created_at)}` %></span></p><% } %></div>
+  <% } %>
+</div>
+<details class="card customize"><summary class="small">Customize this page</summary>
+  <form method="post" action="/admin/dashboard/widgets" class="inline-fields mt-sm"><input type="hidden" name="_csrf" value="<%= csrf %>">
+    <% for (const [k, label] of W.available) { %><label class="check small"><input type="checkbox" name="show" value="<%= k %>" <%= W.shown.includes(k) ? 'checked' : '' %>> <%= label %></label><% } %>
+    <button class="btn btn-sm">Save</button></form></details>
+<% } %>

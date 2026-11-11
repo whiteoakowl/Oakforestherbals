@@ -12,14 +12,24 @@ router.use(async (req, res, next) => {
 
 router.use(require('./auth'));
 router.use(requireStaff);
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
   res.locals.adminNav = navFor(res.locals.can);
   res.locals.showSettings = showSettings(res.locals.can);
+  if (req.method === 'GET') res.locals.unreadCount = (await require('../../comms').forStaff(res.locals.staff, { unreadOnly: true, limit: 99 })).length;
   next();
 });
 
 // Every staff member gets a home page; the sales dashboard needs analytics access.
-router.get('/', (req, res, next) => (res.locals.can('analytics.view') ? next() : res.render('admin/home-basic', { title: 'Home' })));
+router.get('/', async (req, res, next) => {
+  res.locals.widgets = await require('../../dashboard-widgets').build(res.locals.staff, res.locals.can);
+  return res.locals.can('analytics.view') ? next() : res.render('admin/home-basic', { title: 'Home' });
+});
+router.post('/dashboard/widgets', async (req, res) => {
+  const w = require('../../dashboard-widgets');
+  const show = new Set([].concat(req.body.show || []));
+  await w.setHidden(res.locals.staff.id, w.WIDGETS.map(([k]) => k).filter((k) => !show.has(k)));
+  res.redirect('/admin');
+});
 router.use('/analytics/profitability', allow('costing.manage'), require('./profitability'));
 router.use('/analytics', allow('analytics.view'));
 router.use(require('./dashboard'));
@@ -35,6 +45,8 @@ router.use('/clinic/forms', allow('clinic.records.manage'), require('./clinic-fo
 router.use('/clinic', require('./clinic'));
 router.use('/education', allow('education.manage'), require('./education'));
 router.use('/schedule', require('./schedule'));
+router.use('/communications', require('./communications'));
+router.use('/assistant', allow('assistant.use'), require('./assistant'));
 router.use('/invoices', allow('invoices.manage'), require('./finance').invoices);
 router.use('/finance', require('./finance').finance);
 router.use('/herbs', require('./herbs'));

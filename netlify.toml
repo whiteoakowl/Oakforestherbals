@@ -20,3 +20,7 @@
   from = "/*"
   to = "/.netlify/functions/server"
   status = 200
+
+# Hourly automations: appointment reminders, invoice reminders and the daily digest.
+[functions."scheduled"]
+  schedule = "@hourly"

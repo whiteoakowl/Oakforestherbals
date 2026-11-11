@@ -134,3 +134,19 @@ Patient content (`_enc` columns) is encrypted; templates (forms, lessons) are no
 Booking is conflict-safe: a slot is re-checked inside a transaction under a per-practitioner lock.
 Calendar feeds and appointment emails contain the appointment type, time and place — never client
 names or health details.
+
+## 0008_notifications_automation
+| Table | Purpose |
+|---|---|
+| `notifications`, `notification_reads` | In-app staff notifications, addressed to one staff member or to everyone holding a permission; de-duplicated by key; read state per person. |
+| `notification_templates` | Edited versions of the email/SMS templates (missing row = the built-in default). |
+| `sms_outbox` | Every SMS: number, text, template, status (`logged` when Twilio isn't configured, `sent`, `failed`). |
+| `email_outbox.template` (new column) | Which template produced an email. |
+| `customers` (new columns) | `sms_opt_in`, `sms_opt_in_at`, `email_reminders` — the customer's reminder preferences. |
+| `invoices.reminded_at` | When the last overdue reminder went out. |
+| `automation_runs` | Each run of the hourly automations (trigger, start/finish, summary or error). |
+| `staff_preferences` | Per-staff settings, e.g. hidden dashboard widgets. |
+
+Each automation claims its row before sending (`reminder_sent_at`, `reminded_at`, the digest day),
+so overlapping or repeated runs never send twice. The AI assistant adds no tables: it stores neither
+questions nor answers.

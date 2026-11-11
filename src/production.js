@@ -158,6 +158,7 @@ async function complete(id, { used = {}, actual }, staff) {
     }
     await run(`UPDATE production_batches SET status = 'completed', actual_qty = ?, waste_qty = ?, labour_minutes = ?, actual_cost = ?, best_before = ?,
       completed_at = now(), completed_by = ? WHERE id = ?`, qty, actual.waste === '' || actual.waste === undefined ? null : Number(actual.waste), labourMin, total, bestBefore, staff, id);
+    await require('./comms').notifyStaff({ kind: 'batch', title: `Batch ${b.code} completed — awaiting release`, link: `/admin/production/${id}`, permission: 'production.approve', dedupe: `batch-complete-${id}` });
     await event(id, `Completed: ${qty} ${b.variant_id ? 'unit(s)' : b.output_unit} made at an actual cost of ${(total / 100).toFixed(2)} (estimated ${((b.estimated_cost || 0) / 100).toFixed(2)}). Output is in quarantine until released.`, staff);
     return total;
   });

@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: 'Communications' }) %>
+  <div class="layout-2">
+    <div>
+      <div class="card flush"><div class="card-head pad"><h2>Message templates</h2></div>
+        <table class="table small"><thead><tr><th>Message</th><th>Email</th><th>Text</th></tr></thead><tbody>
+          <% for (const t of templates) { %><tr><td><a href="/admin/communications/templates/<%= t.key %>"><%= t.label %></a><div class="muted"><%= t.subject %></div></td><td><%= t.email_enabled ? 'On' : 'Off' %></td><td><%= t.sms_body ? (t.sms_enabled ? 'On' : 'Off') : '—' %></td></tr><% } %>
+        </tbody></table></div>
+      <div class="card flush"><div class="card-head pad"><h2>Recent emails</h2></div>
+        <table class="table small"><tbody><% for (const e of emails) { %><tr><td class="nowrap"><%= formatDate(e.created_at, true) %></td><td><%= e.to_address %><div class="muted"><%= e.subject %></div></td><td><span class="badge badge-<%= e.status === 'sent' ? 'success' : e.status === 'failed' ? 'critical' : 'default' %>"><%= e.status %></span><% if (e.error) { %><div class="critical-text"><%= e.error %></div><% } %></td></tr><% } %></tbody></table></div>
+      <div class="card flush"><div class="card-head pad"><h2>Recent texts</h2></div>
+        <% if (!sms.length) { %><p class="pad muted small">No texts sent yet.</p><% } else { %><table class="table small"><tbody><% for (const s of sms) { %><tr><td class="nowrap"><%= formatDate(s.created_at, true) %></td><td><%= s.to_number %><div class="muted"><%= s.body %></div></td><td><%= s.status %><% if (s.error) { %><div class="critical-text"><%= s.error %></div><% } %></td></tr><% } %></tbody></table><% } %></div>
+    </div>
+    <div>
+      <div class="card"><h2>Text messages</h2>
+        <p class="small"><%= smsReady ? 'Twilio is connected.' : 'Not connected: texts are logged but not sent.' %> <%= optedIn %> client(s) have opted in.</p>
+        <% if (!smsReady) { %><p class="muted small">To send texts, add <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code> and <code>TWILIO_FROM</code> in Netlify's environment variables. Texts go only to clients who opted in from their account, and contain only appointment times and places.</p><% } %></div>
+      <form method="post" action="/admin/communications/automations" class="card form-stack"><input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h2>Automations</h2>
+        <p class="muted small">Run every hour by Netlify (scheduled function), or with the button below.</p>
+        <label class="check small"><input type="checkbox" name="appointment_reminders" value="1" <%= a.appointment_reminders ? 'checked' : '' %>> Appointment reminders (timing under Schedule → booking rules)</label>
+        <label class="check small"><input type="checkbox" name="invoice_reminders" value="1" <%= a.invoice_reminders ? 'checked' : '' %>> Overdue invoice reminders, every <input class="tiny-input" type="number" min="1" name="invoice_reminder_days" value="<%= a.invoice_reminder_days %>" aria-label="Days between reminders"> days</label>
+        <label class="check small"><input type="checkbox" name="inventory_digest" value="1" <%= a.inventory_digest ? 'checked' : '' %>> Daily low-stock and expiry alerts</label>
+        <label class="check small"><input type="checkbox" name="plan_review_alerts" value="1" <%= a.plan_review_alerts ? 'checked' : '' %>> Care plan review reminders to practitioners</label>
+        <button class="btn btn-sm">Save</button>
+      </form>
+      <form method="post" action="/admin/communications/automations/run" class="card"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-sm">Run automations now</button>
+        <h3>Recent runs</h3><% if (!runs.length) { %><p class="muted small">None yet.</p><% } %>
+        <% for (const r of runs) { %><p class="small"><%= formatDate(r.started_at, true) %> · <%= r.trigger %> <span class="muted"><%= r.error || r.summary %></span></p><% } %></form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

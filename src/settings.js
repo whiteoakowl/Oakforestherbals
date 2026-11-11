@@ -131,6 +131,14 @@ const DEFAULTS = {
     due_days: 14,
     footer: '',
   },
+  automation: {
+    appointment_reminders: true,
+    invoice_reminders: true,
+    invoice_reminder_days: 7,
+    inventory_digest: true,
+    plan_review_alerts: true,
+    last_digest_day: '',
+  },
   pos: {
     tax_country: 'US',
     tax_province: '',

@@ -120,7 +120,7 @@ test('cancellation window, rescheduling and the waitlist', async () => {
   assert.equal(res.location, '/account/appointments');
   assert.equal(new Date((await get('SELECT starts_at FROM appointments WHERE id = ?', ids.appt)).starts_at).toISOString(), newStart);
   assert.ok(await get('SELECT 1 FROM invoices WHERE appointment_id = ?', ids.appt), 'the invoice stays with the appointment');
-  const waitMail = await get("SELECT * FROM email_outbox WHERE to_address = 'kim@example.com' AND subject LIKE '%slot opened%'");
+  const waitMail = await get("SELECT * FROM email_outbox WHERE to_address = 'kim@example.com' AND subject LIKE '%opened up%'");
   assert.ok(waitMail, 'the freed slot was offered to the waitlist');
   // Inside the cancellation window, online cancelling is refused.
   await run("UPDATE appointments SET starts_at = now() + interval '2 hours', ends_at = now() + interval '3 hours' WHERE id = ?", ids.appt);

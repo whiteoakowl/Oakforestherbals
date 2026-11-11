@@ -6,6 +6,7 @@ const express = require('express');
 const { get, all, run, insert, tx } = require('../../db');
 const clinic = require('../../clinic');
 const clinic2 = require('../../clinic2');
+const comms = require('../../comms');
 const vault = require('../../vault');
 const audit = require('../../audit');
 const storage = require('../../storage');
@@ -403,8 +404,7 @@ router.post('/patients/:id/forms', requireManage, patientParam, async (req, res)
   await insert('INSERT INTO form_assignments (form_id, patient_id, assigned_by, due_at) VALUES (?, ?, ?, ?)', form.id, req.patient.id, res.locals.staff.name,
     /^\d{4}-\d{2}-\d{2}$/.test(req.body.due_at || '') ? req.body.due_at : null);
   await audit.record(req, 'patient.form_assigned', { entityType: 'patient', entityId: req.patient.id, details: { form: form.id } });
-  await require('../../mailer').sendRaw(req.patient.email, `A form from ${res.locals.store.name}`,
-    `<p>Please complete a form before your next visit. <a href="${process.env.BASE_URL || process.env.URL || ''}/account/clinic">Sign in to your account</a> to fill it in.</p>`);
+  await comms.send('form_assigned', req.patient, { link: `${comms.base()}/account/clinic` });
   flash(req, 'success', 'Form assigned. The patient was emailed a link (without any health details).');
   res.redirect(back(req, 'forms'));
 });
@@ -460,8 +460,7 @@ router.post('/patients/:id/plans/:planId', requireManage, patientParam, planPara
   await run('UPDATE care_plans SET content_enc = ?, start_date = ?, end_date = ?, review_date = ?, status = ?, shared_with_patient = ? WHERE id = ?',
     vault.seal(readPlan(req.body)), dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), dateOrNull(req.body.review_date), status, req.body.shared === '1' ? 1 : 0, req.plan.id);
   if (req.body.shared === '1' && !req.plan.shared_with_patient) {
-    await require('../../mailer').sendRaw(req.patient.email, `Your care plan from ${res.locals.store.name}`,
-      `<p>Your practitioner has shared a care plan with you. <a href="${process.env.BASE_URL || process.env.URL || ''}/account/clinic">Sign in to view it</a>.</p>`);
+    await comms.send('plan_shared', req.patient, { link: `${comms.base()}/account/clinic` });
   }
   await audit.record(req, 'patient.plan_updated', { entityType: 'patient', entityId: req.patient.id, details: { plan: req.plan.id, status, shared: req.body.shared === '1' } });
   flash(req, 'success', 'Care plan saved.');
@@ -523,6 +522,7 @@ router.post('/patients/:id/learning', requireManage, patientParam, async (req, r
   if (!lessonId && !courseId) { flash(req, 'error', 'Choose a lesson or a course.'); return res.redirect(back(req, 'learning')); }
   await insert('INSERT INTO lesson_assignments (patient_id, lesson_id, course_id, assigned_by, due_at) VALUES (?, ?, ?, ?, ?)', req.patient.id, lessonId, courseId, res.locals.staff.name, dateOrNull(req.body.due_at));
   await audit.record(req, 'patient.lesson_assigned', { entityType: 'patient', entityId: req.patient.id, details: { lesson: lessonId, course: courseId } });
+  await comms.send('lesson_assigned', req.patient, { link: `${comms.base()}/account/clinic/learning` });
   flash(req, 'success', 'Assigned. It now appears in the patient\'s learning centre.');
   res.redirect(back(req, 'learning'));
 });

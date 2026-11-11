@@ -20,6 +20,8 @@ can apply even when HIPAA doesn't. Please confirm your position with a lawyer.
 | Audit trail | Every record view, change, download, refused access, assignment and deletion is logged (who, when, which record, from which IP), in an append-only table. Clinical content is never written to the log. |
 | Consent | A record can't be created until staff confirm the patient's consent to storing health information; the time and staff member are recorded. |
 | Deletion | Only an owner can permanently delete a clinic record (typed confirmation). It removes notes, history and files; the customer account and orders stay. A customer with a clinic record can't be deleted from the Customers screen. |
+| Email and SMS | Reminders and notices say only that something is waiting (a message, a form, a plan) or give the appointment type, time and place — never health details. SMS goes only to customers who opted in on their account page (the opt-in time is recorded). |
+| AI assistant | Off until `ANTHROPIC_API_KEY` is set. It can only read what the person asking can already see, and it can't change anything. Patient records are sent to Anthropic **only** for staff whose role holds "Let the AI assistant read records of patients they can see", which no role has by default. Questions and answers are not stored; the audit log records that it was used and which look-ups ran. |
 | Database API closed | Row Level Security is on for every table, so Supabase's public Data API can't read anything. |
 
 ## What you need to do
@@ -42,4 +44,5 @@ can apply even when HIPAA doesn't. Please confirm your position with a lawyer.
 - No two-factor sign-in yet for staff.
 - No key rotation yet.
 - No automatic session timeout for clinic staff beyond the normal 30-day login (sign out on shared devices).
-- Patient-facing access (portal) is not built yet; patients can't see any clinic data.
+- Anthropic does not sign a BAA on ordinary API plans. If you grant the assistant's patient-record
+  permission, patient details leave your systems for Anthropic's API; leave it off if that isn't acceptable.

@@ -37,6 +37,15 @@
         <label class="check"><input type="checkbox" name="accepts_marketing" value="1" <%= customer.accepts_marketing ? 'checked' : '' %>> Email me with news and offers</label>
         <button class="btn btn-secondary">Save profile</button>
       </form>
+      <h3 class="mt">Reminders</h3>
+      <form action="/account/preferences" method="post" class="stack-form">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <label class="check"><input type="checkbox" name="email_reminders" value="1" <%= customer.email_reminders !== 0 ? 'checked' : '' %>> Email me appointment and invoice reminders</label>
+        <label class="check"><input type="checkbox" name="sms_opt_in" value="1" <%= customer.sms_opt_in ? 'checked' : '' %>> Text me appointment reminders</label>
+        <label class="field">Mobile number for texts <input name="sms_phone" value="<%= customer.phone %>" placeholder="+15551234567"></label>
+        <p class="muted small">Texts only ever contain the time and place of an appointment — never health information. Untick to stop.</p>
+        <button class="btn btn-secondary">Save reminders</button>
+      </form>
       <% if (address) { %>
         <h3 class="mt">Default address</h3>
         <%- include('../../partials/address', { a: address }) %>

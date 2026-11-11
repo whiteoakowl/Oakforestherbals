@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased — Phase 9: communications, automation and AI
+
+### Added
+- **Communications** (Settings → Communications): editable email and SMS templates for every
+  automatic message, with placeholders, preview and reset; email and SMS logs; automation settings
+  and run history; "Run now".
+- **Automations** every hour (Netlify Scheduled Function `scheduled`): appointment reminders (email,
+  and SMS for opted-in customers), overdue-invoice reminders, and a daily digest of low stock,
+  expiring lots, care plans due for review and batches awaiting release. Each step is safe to run twice.
+- **Notifications**: a bell in the admin header and a notification centre for every staff member —
+  patient messages, submitted forms, online bookings, completed batches and the daily digest go to
+  the people whose role covers them.
+- **Command centre** home page: widgets for notifications, appointments, clinic counts (no names),
+  inventory, production, finance, revenue and customers, shown by role and hideable per person.
+- **Reminder preferences** on the customer account page: email reminders on/off, SMS opt-in with a
+  mobile number.
+- **AI assistant** (`/admin/assistant`, needs `ANTHROPIC_API_KEY`): answers questions using read-only
+  look-ups of the herbal database, formulas (with costs, scaling and safety entries), apothecary
+  stock and sales — each limited by the asker's own permissions. Patient summaries need the new
+  sensitive permission "assistant.clinic", granted to no role by default. It cites only stored
+  sources, keeps traditions and evidence levels apart, and never diagnoses, prescribes or changes data.
+- New permissions: `assistant.use` (given to administrators, clinic managers, practitioners and
+  apothecary managers) and `assistant.clinic`.
+
+### Changed
+- Every automatic email (forms, care plans, lessons, messages, appointments, waitlist, invoices)
+  now goes through the editable templates.
+
 ## Unreleased — Phase 8: scheduling, invoices and finance
 
 ### Added

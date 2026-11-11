@@ -1,0 +1,17 @@
+<%- include('../partials/header') %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: def[1], backHref: '/admin/communications' }) %>
+  <div class="layout-2">
+    <form method="post" action="/admin/communications/templates/<%= def[0] %>" class="card form-stack"><input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="field"><span>Subject</span><input name="subject" value="<%= t.subject %>" required></label>
+      <label class="field"><span>Email (HTML)</span><textarea name="body" rows="8" required><%= t.body %></textarea></label>
+      <% if (def[4]) { %><label class="field"><span>Text message</span><textarea name="sms_body" rows="2" maxlength="640"><%= t.sms_body %></textarea></label><% } %>
+      <p class="muted small">Placeholders: <%= def[5].split(', ').map((p) => `{{${p}}}`).join(' ') %>. Don't add health information — these go to inboxes and phones outside the clinic's protection.</p>
+      <label class="check small"><input type="checkbox" name="email_enabled" value="1" <%= t.email_enabled ? 'checked' : '' %>> Send by email</label>
+      <% if (def[4]) { %><label class="check small"><input type="checkbox" name="sms_enabled" value="1" <%= t.sms_enabled ? 'checked' : '' %>> Send by text to clients who opted in</label><% } %>
+      <div class="row-gap"><button class="btn btn-primary">Save</button><button class="btn" name="reset" value="1">Reset to default</button></div>
+    </form>
+    <div class="card"><h2>Preview</h2><p class="small"><strong><%= preview.subject %></strong></p><div class="email-preview"><%- preview.body %></div><% if (preview.sms) { %><h3>Text</h3><p class="small"><%= preview.sms %></p><% } %></div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

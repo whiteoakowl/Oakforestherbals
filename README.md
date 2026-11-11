@@ -123,6 +123,10 @@ Order confirmations, shipping updates, cancellations, welcome and password-reset
 | `SETUP_KEY` | — | Required to create the first admin account, when set |
 | `CLINIC_ENCRYPTION_KEY` | — | **Required for clinic records.** 64 hex characters (32 random bytes). Encrypts clinical data before it is stored. Back it up; it cannot be recovered. See `docs/PRIVACY.md` |
 | `SUPABASE_PRIVATE_BUCKET` | `clinic-private` | Private bucket for encrypted clinic documents (created automatically, never public) |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | — | Override the Stripe keys saved in Settings (recommended: keep secrets out of the database) |
+| `SMTP_PASS` | — | Overrides the SMTP password saved in Settings → Notifications |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | — | Send SMS reminders through Twilio. Without them, SMS are only logged |
+| `ANTHROPIC_API_KEY` | — | Turns on the AI assistant (Admin → Assistant). See `docs/PRIVACY.md` before granting it patient access |
 | `BASE_URL` | Netlify's `URL` | Public URL of the store, used for links in emails |
 | `SESSION_SECRET` | derived | Cookie signing secret; defaults to one derived from `DATABASE_URL` |
 | `PORT` | `3000` | HTTP port when running with `npm start` |
