@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — Point of sale: Stripe card readers and gift cards
+
+### Added
+- **Card readers** (Stripe Terminal, server-driven): register a Stripe smart reader (WisePOS E or
+  Reader S700) in Stripe, pick it under Point of sale → Card reader setup, and choose "Card reader" at
+  checkout. The amount appears on the reader; the sale is recorded only after Stripe confirms payment.
+  Declines can be retried with another card, the payment can be cancelled (the sale stays open), and the
+  sale is locked while the reader waits. In test mode a "Simulate a tap" button completes test payments.
+- **Gift cards at the counter**, alone or with another payment method.
+
 ## Unreleased — Store: abandoned cart reminders and subscriptions
 
 ### Added

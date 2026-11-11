@@ -82,17 +82,25 @@
           <% if (totals.discount_total) { %><tr><td>Discount</td><td class="num">−<%= money(totals.discount_total) %></td></tr><% } %>
           <tr><td><%= totals.tax_name %> (<%= totals.tax_rate %>%<%= totals.tax_included ? ', included' : '' %>)</td><td class="num"><%= money(totals.tax_total) %></td></tr>
           <tr><td><strong>Total</strong></td><td class="num"><strong><%= money(totals.total) %></strong></td></tr>
+          <% if (giftCard) { %><tr><td>Gift card ••••<%= giftCard.last4 %></td><td class="num">−<%= money(giftCard.amount) %></td></tr><tr><td><strong>To pay</strong></td><td class="num"><strong><%= money(amountDue) %></strong></td></tr><% } %>
         </table>
+        <form method="post" action="/admin/pos/gift-card" class="inline-fields">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <% if (giftCard) { %><span class="small">Gift card ••••<%= giftCard.last4 %> (<%= money(giftCard.balance) %> on it)</span><button class="btn btn-sm" name="remove" value="1">Remove</button>
+          <% } else { %><input name="code" placeholder="Gift card code" aria-label="Gift card code" class="grow" autocomplete="off"><button class="btn btn-sm">Apply</button><% } %>
+        </form>
+        <% if (giftCardError) { %><p class="small critical-text"><%= giftCardError %></p><% } %>
         <form method="post" action="/admin/pos/complete" class="form-stack">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <% if (amountDue === 0) { %><p class="small">The gift card covers this sale.</p><% } else { %>
           <div class="field"><span>Payment</span>
-            <div class="radio-cards"><% for (const [k, label] of Object.entries(METHODS)) { %><label class="radio-card"><input type="radio" name="method" value="<%= k %>" <%= k === 'cash' ? 'checked' : '' %>> <%= label %></label><% } %></div>
-            <small class="muted">Card payments are taken on your own card terminal; this records the sale.</small>
-          </div>
-          <label class="field"><span>Cash received</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="tendered" inputmode="decimal" placeholder="<%= centsToInput(totals.total) %>"></div><small class="muted">Cash only. Change is shown on the receipt.</small></label>
+            <div class="radio-cards"><% for (const [k, label] of Object.entries(METHODS)) { %><label class="radio-card"><input type="radio" name="method" value="<%= k %>" <%= k === (terminalReady ? 'terminal' : 'cash') ? 'checked' : '' %>> <%= label %></label><% } %></div>
+            <small class="muted"><%= terminalReady ? '“Card reader” sends the amount to your Stripe reader. “Own terminal” just records a card payment taken elsewhere.' : 'Card payments are taken on your own card terminal; this records the sale.' %> <a href="/admin/pos/readers">Card reader setup</a></small>
+          </div><% } %>
+          <label class="field"><span>Cash received</span><div class="input-prefix"><span><%= store.currency_symbol %></span><input name="tendered" inputmode="decimal" placeholder="<%= centsToInput(amountDue) %>"></div><small class="muted">Cash only. Change is shown on the receipt.</small></label>
           <% if (!customer) { %><label class="field"><span>Email a receipt (optional)</span><input type="email" name="email" placeholder="customer@example.com"></label><% } %>
           <label class="field"><span>Note</span><input name="note"></label>
-          <button class="btn btn-primary btn-block">Complete sale · <%= money(totals.total) %></button>
+          <button class="btn btn-primary btn-block">Complete sale · <%= money(amountDue) %></button>
         </form>
         <% } %>
       </div>

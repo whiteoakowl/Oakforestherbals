@@ -63,7 +63,7 @@ Patient-facing wording uses "recommendation" and "care plan", never "prescriptio
 - Done (phases 6–7): form builder and patient-completed forms, note templates, care plans with
   versions linked to approved formulas, products and lessons, progress tracking, secure messages,
   clinic inbox, education library, and the My clinic portal.
-- Still to do: two-factor sign-in for clinical staff; key rotation.
+- Done since: two-step sign-in for staff, idle sign-out and key rotation.
 
 ## Phase 7 — Patient portal and education ✅
 "My Clinic", "My Learning", "My Wellness" inside the existing `/account` area; lessons, courses,
@@ -84,8 +84,10 @@ Permission matrix tests across every role, privacy tests, the two end-to-end wor
 brief, mobile and accessibility passes, performance checks with large herb and order volumes.
 - Done: role-by-area permission matrix, sidebar link checks, follow-up booking in the patient
   workflow, phone/desktop layout and labelling checks, indexes for growing tables.
-- Still open: two-factor sign-in, encryption key rotation, an external accessibility audit
-  (screen reader testing by a person), and load testing against the real Supabase database.
+- Done since: two-factor sign-in, idle sign-out, encryption key rotation; reviews, gift cards, bundles,
+  digital downloads, abandoned cart reminders, subscriptions, Stripe card readers.
+- Still open (need a person or the live site, not code): screen-reader testing by a person, and load
+  testing against the real Supabase database.
 
 ## What I'll need from you along the way
 | When | What |

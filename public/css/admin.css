@@ -532,3 +532,6 @@ code.break { word-break: break-all; }
 .recovery-codes { columns: 2; list-style: none; padding: 0; font-size: 1.05rem; }
 .recovery-codes li { padding: 2px 0; }
 .steps li { margin-bottom: 10px; }
+
+/* Card reader */
+.terminal-amount { font-size: 2.2rem; font-weight: 600; margin: 0; }

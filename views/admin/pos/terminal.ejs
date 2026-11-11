@@ -1,0 +1,25 @@
+<%- include('../partials/header') %>
+<% if (st.state === 'waiting') { %><meta http-equiv="refresh" content="2"><% } %>
+<div class="page narrow">
+  <%- include('../partials/page-header', { heading: 'Card reader' }) %>
+  <div class="card form-stack terminal-status" role="status" aria-live="polite">
+    <p class="terminal-amount"><%= money(amount) %></p>
+    <% if (st.state === 'waiting') { %>
+      <p><strong>Waiting for the customer to tap, insert or swipe their card on the reader…</strong></p>
+      <p class="muted small">This page checks every 2 seconds.</p>
+    <% } else if (st.state === 'declined') { %>
+      <p class="critical-text"><strong>Declined:</strong> <%= st.message %></p>
+      <form method="post" action="/admin/pos/terminal/retry" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-primary">Try another card</button></form>
+    <% } else if (st.state === 'canceled') { %>
+      <p>This payment was cancelled.</p>
+    <% } else { %>
+      <p class="critical-text">Couldn’t reach Stripe: <%= st.message || 'unknown error' %>. <a href="/admin/pos/terminal">Check again</a>.</p>
+    <% } %>
+    <div class="row-gap">
+      <% if (testMode && st.state === 'waiting') { %><form method="post" action="/admin/pos/terminal/simulate" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn">Simulate a tap (test mode)</button></form><% } %>
+      <form method="post" action="/admin/pos/terminal/cancel" class="inline"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn">Cancel card payment</button></form>
+      <a class="btn" href="/admin/pos/terminal">Check now</a>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -142,6 +142,7 @@ const DEFAULTS = {
   pos: {
     tax_country: 'US',
     tax_province: '',
+    terminal_reader: '',
   },
   security: { require_two_factor: 'none', clinical_idle_minutes: 30 },
   reviews: { enabled: true, require_purchase: true, auto_publish: false },
