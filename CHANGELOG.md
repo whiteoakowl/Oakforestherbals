@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Fullscript dispensary and community spaces
+
+### Added
+- **Fullscript dispensary** (Apothecary → Fullscript): your dispensary address and a supplement library of
+  Fullscript product links with usual doses. Care plans can recommend those supplements and link a whole
+  Fullscript treatment plan; clients get "Order on Fullscript" buttons in their plan and a **Supplements**
+  page in My clinic. Links go through the site (recorded in the audit log) and only fullscript.com
+  addresses are accepted. Works with any Fullscript practitioner account; no API access needed.
+- **Community spaces** (Clinic → Communities) for group programs: invite clients you can see (the email
+  names the group only), they join after accepting the guidelines and choosing a display name, then post,
+  reply and report. Facilitators post, pin, hide, mute and remove; groups can be set read-only when a
+  program ends or archived. Posts are encrypted.
+
 ## Unreleased — Leads, programs and the food journal
 
 ### Added

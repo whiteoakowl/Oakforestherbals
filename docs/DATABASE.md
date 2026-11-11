@@ -220,3 +220,12 @@ Body chart, tongue and pulse findings are stored inside the (encrypted) clinical
 | `leads` | Enquiries and prospects: contact, source, interest, stage (new → contacted → consult booked → client / not going ahead), notes, follow-up date, owner, linked customer. |
 | `course_lessons.release_day` | Days after a course is assigned before each lesson opens (programs). |
 | `patient_logs` kind check | Adds `food` entries (meal, what was eaten, how they felt, optional photo stored as an encrypted patient document). |
+
+## 0017_fullscript_communities
+| Change | Purpose |
+|---|---|
+| `fullscript_products` | The practice's supplement library: name, brand, link to the product in its Fullscript dispensary (fullscript.com only), usual dose, optional linked herb. |
+| `care_plan_items.fullscript_product_id` | A care plan recommendation ordered through Fullscript. A whole Fullscript treatment plan link is kept inside the (encrypted) care plan. |
+| `communities` | Group spaces: name, description, guidelines, linked program, facilitator, status (active, read only, archived). |
+| `community_members` | Invited clients, when they accepted the guidelines, their chosen display name, muted/removed, last visit. |
+| `community_posts` | Posts and replies (encrypted), pinned, hidden with reason, reported. |

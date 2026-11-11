@@ -1,0 +1,61 @@
+<%- include('../partials/header') %>
+<% const csrfField = `<input type="hidden" name="_csrf" value="${csrf}">`; const base = `/admin/communities/${c.id}`; %>
+<div class="page">
+  <%- include('../partials/page-header', { heading: c.name, backHref: '/admin/communities', badges: [[c.status.replace('_', ' '), c.status === 'active' ? 'success' : 'default']] }) %>
+  <div class="layout-2">
+    <div>
+      <form method="post" action="<%= base %>/posts" class="card form-stack"><%- csrfField %>
+        <h2>Post to the group</h2>
+        <textarea name="body" rows="3" required placeholder="Welcome everyone! This week we’re focusing on…" aria-label="Post"></textarea>
+        <div class="row-between"><label class="check small"><input type="checkbox" name="pin" value="1"> Pin to the top</label><button class="btn btn-primary">Post</button></div>
+      </form>
+      <% if (!threads.length) { %><div class="card empty-state"><p>No posts yet. Start the conversation.</p></div><% } %>
+      <% for (const t of threads) { %>
+        <article class="card community-post <%= t.hidden ? 'is-hidden' : '' %>" id="post-<%= t.id %>">
+          <div class="row-between"><strong><%= t.author_name %></strong><span class="muted small"><%= t.pinned ? '📌 Pinned · ' : '' %><%= formatDate(t.created_at, true) %></span></div>
+          <% if (t.reported_at && !t.hidden) { %><p class="banner banner-critical small">Reported by a member <%= formatDate(t.reported_at, true) %></p><% } %>
+          <% if (t.hidden) { %><p class="muted small">Hidden from members<%= t.hidden_reason ? `: ${t.hidden_reason}` : '' %></p><% } %>
+          <p class="note-text"><%= t.body %></p>
+          <% for (const r of t.replies) { %>
+            <div class="community-reply <%= r.hidden ? 'is-hidden' : '' %>" id="post-<%= r.id %>"><strong class="small"><%= r.author_name %></strong> <span class="muted small"><%= formatDate(r.created_at, true) %><%= r.hidden ? ' · hidden' : '' %><%= r.reported_at && !r.hidden ? ' · reported' : '' %></span><p class="note-text small"><%= r.body %></p>
+              <form method="post" action="<%= base %>/posts/<%= r.id %>" class="inline"><%- csrfField %><button class="link-plain small" name="action" value="<%= r.hidden ? 'unhide' : 'hide' %>"><%= r.hidden ? 'Show again' : 'Hide' %></button></form></div>
+          <% } %>
+          <div class="row-gap small">
+            <form method="post" action="<%= base %>/posts/<%= t.id %>" class="inline"><%- csrfField %><button class="link-plain small" name="action" value="pin"><%= t.pinned ? 'Unpin' : 'Pin' %></button></form>
+            <form method="post" action="<%= base %>/posts/<%= t.id %>" class="inline"><%- csrfField %><button class="link-plain small" name="action" value="<%= t.hidden ? 'unhide' : 'hide' %>"><%= t.hidden ? 'Show again' : 'Hide' %></button></form>
+            <% if (t.reported_at && !t.hidden) { %><form method="post" action="<%= base %>/posts/<%= t.id %>" class="inline"><%- csrfField %><button class="link-plain small" name="action" value="dismiss">Dismiss report</button></form><% } %>
+          </div>
+          <form method="post" action="<%= base %>/posts" class="inline-fields mt-sm"><%- csrfField %><input type="hidden" name="parent_id" value="<%= t.id %>"><input name="body" placeholder="Reply" aria-label="Reply" class="grow"><button class="btn btn-sm">Reply</button></form>
+        </article>
+      <% } %>
+    </div>
+    <div>
+      <div class="card flush">
+        <h2 class="pad" style="padding-bottom:0">Members</h2>
+        <table class="table compact"><tbody>
+          <% for (const m of members) { %><tr class="<%= m.removed_at ? 'muted' : '' %>"><td><strong><%= m.display_name %></strong><div class="muted small"><%= m.first_name %> <%= m.last_name %> · <%= m.removed_at ? 'left/removed' : m.accepted_at ? `joined ${formatDate(m.accepted_at)}` : 'invited' %><%= m.muted ? ' · muted' : '' %></div></td>
+            <td class="num"><% if (!m.removed_at) { %><form method="post" action="<%= base %>/members/<%= m.id %>" class="inline"><%- csrfField %><button class="link-plain small" name="action" value="mute"><%= m.muted ? 'Unmute' : 'Mute' %></button></form> · <form method="post" action="<%= base %>/members/<%= m.id %>" class="inline" data-confirm="Remove <%= m.display_name %> from the group?"><%- csrfField %><button class="link-plain small critical-text" name="action" value="remove">Remove</button></form><% } %></td></tr><% } %>
+          <% if (!members.length) { %><tr><td class="muted">No one yet.</td></tr><% } %>
+        </tbody></table>
+      </div>
+      <% if (invitable.length && c.status !== 'archived') { %>
+      <form method="post" action="<%= base %>/invite" class="card form-stack"><%- csrfField %>
+        <h2>Invite clients</h2>
+        <div class="checklist"><% for (const p of invitable) { %><label class="check small"><input type="checkbox" name="patient_id" value="<%= p.id %>"> <%= `${p.first_name} ${p.last_name}`.trim() || p.email %></label><% } %></div>
+        <p class="muted small">They get an email with a link (it names the group only). They join after accepting the guidelines.</p>
+        <button class="btn">Send invitations</button>
+      </form>
+      <% } %>
+      <form method="post" action="<%= base %>" class="card form-stack"><%- csrfField %>
+        <h2>Settings</h2>
+        <label class="field"><span>Name</span><input name="name" value="<%= c.name %>"></label>
+        <label class="field"><span>Description</span><textarea name="description" rows="2"><%= c.description %></textarea></label>
+        <label class="field"><span>Linked program</span><select name="course_id"><option value="">—</option><% for (const co of courses) { %><option value="<%= co.id %>" <%= co.id === c.course_id ? 'selected' : '' %>><%= co.title %></option><% } %></select></label>
+        <label class="field"><span>Guidelines</span><textarea name="guidelines" rows="6"><%= c.guidelines %></textarea></label>
+        <label class="field"><span>Status</span><select name="status"><option value="active" <%= c.status === 'active' ? 'selected' : '' %>>Active</option><option value="read_only" <%= c.status === 'read_only' ? 'selected' : '' %>>Read only (program finished)</option><option value="archived" <%= c.status === 'archived' ? 'selected' : '' %>>Archived (hidden from members)</option></select></label>
+        <button class="btn">Save</button>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

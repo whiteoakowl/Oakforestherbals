@@ -25,6 +25,8 @@ const AREAS = [
   ['/admin/gift-cards', any('orders.manage')],
   ['/admin/subscriptions', any('orders.view', 'orders.manage')],
   ['/admin/leads', any('leads.manage')],
+  ['/admin/fullscript', any('formulas.view', 'formulas.manage')],
+  ['/admin/communities', (p) => (p.has('clinic.patients.view_all') || p.has('clinic.patients.view_assigned')) && (p.has('education.manage') || p.has('clinic.records.manage'))],
   ['/admin/clinic/referrers', any('clinic.patients.view_all', 'clinic.patients.view_assigned')],
   ['/admin/schedule/packages', any('scheduling.manage', 'scheduling.own')],
   ['/admin/schedule/rooms', any('scheduling.manage')],

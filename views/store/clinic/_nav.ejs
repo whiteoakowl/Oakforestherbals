@@ -1,5 +1,5 @@
 <nav class="clinic-nav" aria-label="My clinic">
-  <% for (const [href, label] of [['/account/clinic', 'Overview'], ['/account/clinic/learning', 'Learning'], ['/account/clinic/journal', 'My wellness'], ['/account/clinic/messages', 'Messages'], ['/account/clinic/documents', 'Documents']]) { %>
+  <% for (const [href, label] of [['/account/clinic', 'Overview'], ['/account/clinic/learning', 'Learning'], ['/account/clinic/journal', 'My wellness'], ['/account/clinic/supplements', 'Supplements'], ['/account/clinic/community', 'Community'], ['/account/clinic/messages', 'Messages'], ['/account/clinic/documents', 'Documents']]) { %>
     <a href="<%= href %>" class="<%= originalPath === href || (href !== '/account/clinic' && originalPath.startsWith(href)) ? 'active' : '' %>"><%= label %></a>
   <% } %>
 </nav>

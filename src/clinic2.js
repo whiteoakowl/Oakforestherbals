@@ -99,8 +99,9 @@ async function plan(planId, patientId) {
   if (!p) return null;
   p.content = vault.open(p.content_enc) || {};
   const items = await all(`SELECT i.*, f.name AS formula_name, f.status AS formula_status, v.price, v.title AS variant_title, pr.title AS product_title, pr.handle,
-      v.inventory_qty, v.track_inventory, v.continue_selling, pr.status AS product_status, h.common_name AS herb_name, h.slug AS herb_slug, l.title AS lesson_title
-    FROM care_plan_items i LEFT JOIN formulas f ON f.id = i.formula_id LEFT JOIN variants v ON v.id = i.variant_id LEFT JOIN products pr ON pr.id = v.product_id
+      v.inventory_qty, v.track_inventory, v.continue_selling, pr.status AS product_status, h.common_name AS herb_name, h.slug AS herb_slug, l.title AS lesson_title,
+      fp.name AS fs_name, fp.brand AS fs_brand, fp.url AS fs_url, fp.active AS fs_active
+    FROM care_plan_items i LEFT JOIN fullscript_products fp ON fp.id = i.fullscript_product_id LEFT JOIN formulas f ON f.id = i.formula_id LEFT JOIN variants v ON v.id = i.variant_id LEFT JOIN products pr ON pr.id = v.product_id
     LEFT JOIN herbs h ON h.id = i.herb_id LEFT JOIN lessons l ON l.id = i.lesson_id WHERE i.plan_id = ? ORDER BY i.position, i.id`, p.id);
   const today = new Date().toISOString().slice(0, 10);
   for (const i of items) {

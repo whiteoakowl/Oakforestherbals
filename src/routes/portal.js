@@ -167,6 +167,92 @@ router.post('/learning/:lessonId/complete', async (req, res) => {
   res.redirect(`/account/clinic/learning/${id}`);
 });
 
+/* ---------- Community spaces ---------- */
+
+router.get('/community', async (req, res) => {
+  const list = await require('../communities').forPatient(req.patient.id);
+  if (list.length === 1) return res.redirect(`/account/clinic/community/${list[0].id}`);
+  res.render('store/clinic/communities', { title: 'Community', list });
+});
+
+async function memberParam(req, res, next) {
+  const m = await require('../communities').membership(toInt(req.params.id), req.patient.id);
+  if (!m) return res.status(404).render('store/404', { title: 'Not found' });
+  req.member = m;
+  next();
+}
+
+router.get('/community/:id', memberParam, async (req, res) => {
+  const communities = require('../communities');
+  const m = req.member;
+  const community = await get('SELECT * FROM communities WHERE id = ?', m.community_id);
+  const threads = m.accepted_at ? await communities.feed(community.id) : [];
+  if (m.accepted_at) await communities.touch(m.id);
+  res.render('store/clinic/community', { title: community.name, community, m, threads });
+});
+
+router.post('/community/:id/join', memberParam, async (req, res) => {
+  const m = req.member;
+  if (req.body.accept !== '1') { flash(req, 'error', 'Please read and accept the group guidelines to join.'); return res.redirect(`/account/clinic/community/${m.community_id}`); }
+  const name = text(req.body.display_name, 60) || m.display_name;
+  await run('UPDATE community_members SET accepted_at = COALESCE(accepted_at, now()), display_name = ? WHERE id = ?', name, m.id);
+  await log(req, 'portal.community_joined', { community: m.community_id });
+  res.redirect(`/account/clinic/community/${m.community_id}`);
+});
+
+router.post('/community/:id/posts', memberParam, async (req, res) => {
+  const m = req.member;
+  const back = `/account/clinic/community/${m.community_id}`;
+  if (!m.accepted_at || m.muted || m.community_status !== 'active') { flash(req, 'error', 'Posting isn’t open in this group right now.'); return res.redirect(back); }
+  const id = await require('../communities').post({ communityId: m.community_id, parentId: toInt(req.body.parent_id) || null, memberId: m.id, authorName: m.display_name, text: req.body.body });
+  if (id) {
+    const c = await get('SELECT facilitator_id, name FROM communities WHERE id = ?', m.community_id);
+    await require('../comms').notifyStaff({ kind: 'community', title: `New post in ${c.name}`, link: `/admin/communities/${m.community_id}#post-${id}`, ...(c.facilitator_id ? { staffId: c.facilitator_id } : { permission: 'clinic.records.manage' }) });
+  }
+  res.redirect(`${back}#post-${id || ''}`);
+});
+
+router.post('/community/:id/posts/:postId/report', memberParam, async (req, res) => {
+  const m = req.member;
+  const p = await get('SELECT id FROM community_posts WHERE id = ? AND community_id = ? AND hidden = 0', toInt(req.params.postId), m.community_id);
+  if (p) {
+    await run('UPDATE community_posts SET reported_at = now() WHERE id = ?', p.id);
+    const c = await get('SELECT facilitator_id, name FROM communities WHERE id = ?', m.community_id);
+    await require('../comms').notifyStaff({ kind: 'community', title: `A post in ${c.name} was reported`, link: `/admin/communities/${m.community_id}#post-${p.id}`, ...(c.facilitator_id ? { staffId: c.facilitator_id } : { permission: 'clinic.records.manage' }) });
+    flash(req, 'success', 'Thanks — the facilitator will take a look.');
+  }
+  res.redirect(`/account/clinic/community/${m.community_id}`);
+});
+
+router.post('/community/:id/leave', memberParam, async (req, res) => {
+  await run('UPDATE community_members SET removed_at = now() WHERE id = ?', req.member.id);
+  await log(req, 'portal.community_left', { community: req.member.community_id });
+  flash(req, 'success', 'You’ve left the group. Your earlier posts stay unless you ask us to remove them.');
+  res.redirect('/account/clinic');
+});
+
+/* ---------- Supplements (Fullscript dispensary) ---------- */
+
+router.get('/supplements', async (req, res) => {
+  const fullscript = require('../fullscript');
+  const recs = await fullscript.forPatient(req.patient.id);
+  res.render('store/clinic/supplements', { title: 'My supplements', recs, cfg: fullscript.config(), dispensary: fullscript.enabled() });
+});
+
+// Goes to Fullscript through here so the visit is recorded and only Fullscript links are followed.
+router.get('/fullscript', async (req, res) => {
+  const fullscript = require('../fullscript');
+  const recs = await fullscript.forPatient(req.patient.id);
+  let target = null;
+  if (req.query.item) { const i = recs.items.find((x) => x.id === toInt(req.query.item)); target = i && i.url; }
+  else if (req.query.plan) { const p = recs.plans.find((x) => x.id === toInt(req.query.plan)); target = p && p.content.fullscript_url; }
+  else if (fullscript.enabled()) target = fullscript.config().dispensary_url;
+  const url = fullscript.cleanUrl(target);
+  if (!url) return res.status(404).render('store/404', { title: 'Not found' });
+  await log(req, 'portal.fullscript_opened', { item: toInt(req.query.item) || undefined, plan: toInt(req.query.plan) || undefined });
+  res.redirect(302, url);
+});
+
 /* ---------- Wellness journal ---------- */
 
 router.get('/journal', async (req, res) => {

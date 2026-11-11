@@ -1,0 +1,43 @@
+<%- include('partials/header') %>
+<div class="page">
+  <%- include('partials/page-header', { heading: 'Fullscript dispensary', badges: [[connected ? 'Connected' : 'Not set up', connected ? 'success' : 'default']] }) %>
+  <p class="muted">Recommend professional supplements from your Fullscript dispensary alongside your own remedies. Clients see them in their care plans and on a Supplements page in My clinic, and order them from Fullscript with one click. Fullscript ships them and handles payment.</p>
+  <div class="layout-2">
+    <div>
+      <div class="card flush">
+        <h2 class="pad" style="padding-bottom:0">Supplement library</h2>
+        <table class="table"><thead><tr><th>Supplement</th><th>Usual dose</th><th class="num">In plans</th><th></th></tr></thead><tbody>
+          <% for (const p of list) { %><tr class="<%= p.active ? '' : 'muted' %>"><td><a href="<%= p.url %>" target="_blank" rel="noopener"><strong><%= p.name %></strong></a><div class="muted small"><%= p.brand %><%= p.herb_name ? ` · ${p.herb_name}` : '' %><%= p.active ? '' : ' · not offered' %></div></td>
+            <td class="small"><%= p.default_dose %></td><td class="num"><%= usage[p.id] || 0 %></td><td><% if (can('formulas.manage')) { %><a class="small" href="?edit=<%= p.id %>">Edit</a><% } %></td></tr><% } %>
+          <% if (!list.length) { %><tr><td colspan="4" class="muted">No supplements yet. In Fullscript, open a product, copy its link, and add it here.</td></tr><% } %>
+        </tbody></table>
+      </div>
+    </div>
+    <div>
+      <% if (can('formulas.manage')) { const e = list.find((p) => p.id === edit) || {}; %>
+      <form method="post" action="/admin/fullscript/products" class="card form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>"><% if (e.id) { %><input type="hidden" name="id" value="<%= e.id %>"><% } %>
+        <h2><%= e.id ? 'Edit supplement' : 'Add a supplement' %></h2>
+        <label class="field"><span>Name</span><input name="name" required value="<%= e.name || '' %>"></label>
+        <label class="field"><span>Brand</span><input name="brand" value="<%= e.brand || '' %>"></label>
+        <label class="field"><span>Fullscript link</span><input name="url" required value="<%= e.url || '' %>" placeholder="https://us.fullscript.com/…"></label>
+        <label class="field"><span>Usual dose</span><input name="default_dose" value="<%= e.default_dose || '' %>" placeholder="e.g. 1 capsule twice daily with food"></label>
+        <label class="field"><span>Main herb (for safety lookups)</span><select name="herb_id"><option value="">—</option><% for (const h of herbs) { %><option value="<%= h.id %>" <%= h.id === e.herb_id ? 'selected' : '' %>><%= h.common_name %></option><% } %></select></label>
+        <label class="field"><span>Notes for practitioners</span><textarea name="notes" rows="2"><%= e.notes || '' %></textarea></label>
+        <% if (e.id) { %><label class="check"><input type="checkbox" name="active" value="0" <%= e.active ? '' : 'checked' %>> No longer recommended</label><% } %>
+        <div class="row-gap"><button class="btn btn-primary">Save</button><% if (e.id) { %><a class="btn" href="/admin/fullscript">Cancel</a><% } %></div>
+      </form>
+      <form method="post" action="/admin/fullscript/settings" class="card form-stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <h2>Your dispensary</h2>
+        <label class="field"><span>Dispensary address</span><input name="dispensary_url" value="<%= cfg.dispensary_url %>" placeholder="https://us.fullscript.com/welcome/your-practice"><small class="muted">In Fullscript: Settings → Dispensary → copy your patient sign-up link.</small></label>
+        <label class="field"><span>Button text for clients</span><input name="label" value="<%= cfg.label %>"></label>
+        <label class="field"><span>Note for clients</span><input name="note" value="<%= cfg.note %>" placeholder="e.g. Patients receive 15% off through our dispensary"></label>
+        <label class="check"><input type="checkbox" name="enabled" value="1" <%= cfg.enabled ? 'checked' : '' %>> Show the dispensary in My clinic</label>
+        <button class="btn">Save</button>
+      </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer') %>

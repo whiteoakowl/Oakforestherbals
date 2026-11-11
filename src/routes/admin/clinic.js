@@ -143,6 +143,7 @@ router.get('/patients/:id', patientParam, async (req, res) => {
       variants: await all("SELECT v.id, v.title, p.title AS product_title FROM variants v JOIN products p ON p.id = v.product_id WHERE p.status = 'active' ORDER BY lower(p.title), v.position"),
       herbs: await all("SELECT id, common_name, latin_name FROM herbs WHERE status = 'published' ORDER BY lower(common_name)"),
       lessons: await all("SELECT id, title FROM lessons WHERE status = 'published' ORDER BY lower(title)"),
+      fullscript: await require('../../fullscript').library(),
     };
   }
   if (tab === 'progress') {
@@ -448,7 +449,8 @@ router.post('/patients/:id/forms/:assignmentId/cancel', requireManage, patientPa
 
 const dateOrNull = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);
 function readPlan(body) {
-  return { title: text(body.title, 200) || 'Care plan', goals: text(body.goals, 10000), summary: text(body.summary, 20000) };
+  const fs = body.fullscript_url ? require('../../fullscript').cleanUrl(body.fullscript_url) : '';
+  return { title: text(body.title, 200) || 'Care plan', goals: text(body.goals, 10000), summary: text(body.summary, 20000), fullscript_url: fs || '' };
 }
 
 router.post('/patients/:id/plans', requireManage, patientParam, async (req, res) => {
@@ -496,6 +498,9 @@ router.post('/patients/:id/plans/:planId/items', requireManage, patientParam, pl
     title: text(req.body.title, 300), details: text(req.body.details, 10000), dose: text(req.body.dose, 200), frequency: ['daily', 'weekly', 'once', 'as_needed', ''].includes(req.body.frequency) ? req.body.frequency : '',
     timing: text(req.body.timing, 200), duration: text(req.body.duration, 200), preparation: text(req.body.preparation, 5000), cautions: text(req.body.cautions, 5000),
   };
+  // A Fullscript supplement: its name and usual dose fill in anything left blank.
+  const fsProduct = toInt(req.body.fullscript_product_id) ? await get('SELECT * FROM fullscript_products WHERE id = ? AND active = 1', toInt(req.body.fullscript_product_id)) : null;
+  if (fsProduct) { content.title = content.title || fsProduct.name; content.dose = content.dose || fsProduct.default_dose; }
   if (!kind || !content.title) { flash(req, 'error', 'Choose the type and give the item a title.'); return res.redirect(planBack(req)); }
   // Formulas recommended to a patient must be approved first.
   const formulaId = toInt(req.body.formula_id) || null;
@@ -503,9 +508,9 @@ router.post('/patients/:id/plans/:planId/items', requireManage, patientParam, pl
   await beforePlanChange(req);
   const pos = ((await get('SELECT MAX(position) AS m FROM care_plan_items WHERE plan_id = ?', req.plan.id)).m ?? -1) + 1;
   const lessonId = toInt(req.body.lesson_id) || null;
-  await insert(`INSERT INTO care_plan_items (plan_id, kind, content_enc, formula_id, variant_id, herb_id, lesson_id, is_task, start_date, end_date, position)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.plan.id, kind, vault.seal(content), formulaId, toInt(req.body.variant_id) || null, toInt(req.body.herb_id) || null,
-  lessonId, req.body.is_task === '1' || ['task', 'routine'].includes(kind) ? 1 : 0, dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), pos);
+  await insert(`INSERT INTO care_plan_items (plan_id, kind, content_enc, formula_id, variant_id, herb_id, lesson_id, is_task, start_date, end_date, position, fullscript_product_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, req.plan.id, kind, vault.seal(content), formulaId, toInt(req.body.variant_id) || null, toInt(req.body.herb_id) || null,
+  lessonId, req.body.is_task === '1' || ['task', 'routine'].includes(kind) ? 1 : 0, dateOrNull(req.body.start_date), dateOrNull(req.body.end_date), pos, fsProduct ? fsProduct.id : null);
   if (lessonId) await insert('INSERT INTO lesson_assignments (patient_id, lesson_id, care_plan_id, assigned_by) VALUES (?, ?, ?, ?)', req.patient.id, lessonId, req.plan.id, res.locals.staff.name);
   await audit.record(req, 'patient.plan_item_added', { entityType: 'patient', entityId: req.patient.id, details: { plan: req.plan.id, kind } });
   res.redirect(planBack(req));

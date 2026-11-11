@@ -8,6 +8,7 @@
           <label class="field"><span>Title</span><input name="title" value="<%= p.content.title || '' %>"></label>
           <label class="field"><span>Goals</span><textarea name="goals" rows="3"><%= p.content.goals || '' %></textarea></label>
           <label class="field"><span>Overview for the patient</span><textarea name="summary" rows="3"><%= p.content.summary || '' %></textarea></label>
+          <label class="field"><span>Fullscript treatment plan link (optional)</span><input name="fullscript_url" value="<%= p.content.fullscript_url || '' %>" placeholder="https://us.fullscript.com/…"><small class="muted">If you built this client’s supplements as a treatment plan in Fullscript, paste its link: they’ll get an “Order my supplements” button.</small></label>
           <div class="grid-3"><label class="field"><span>Start</span><input type="date" name="start_date" value="<%= p.start_date ? ymd(p.start_date) : '' %>"></label>
             <label class="field"><span>End</span><input type="date" name="end_date" value="<%= p.end_date ? ymd(p.end_date) : '' %>"></label>
             <label class="field"><span>Review / follow-up</span><input type="date" name="review_date" value="<%= p.review_date ? ymd(p.review_date) : '' %>"></label></div>
@@ -27,7 +28,7 @@
             <% if (i.content.details) { %><p class="prewrap small"><%= i.content.details %></p><% } %>
             <% if (i.content.preparation) { %><p class="small"><em>Preparation:</em> <%= i.content.preparation %></p><% } %>
             <% if (i.content.cautions) { %><p class="small"><em>Cautions:</em> <%= i.content.cautions %></p><% } %>
-            <p class="small"><% if (i.formula_name) { %>Formula: <a href="/admin/formulas/<%= i.formula_id %>"><%= i.formula_name %></a> <% } %><% if (i.product_title) { %>Product: <%= i.product_title %> <% } %><% if (i.herb_name) { %>Herb: <a href="/admin/herbs/<%= i.herb_slug %>"><%= i.herb_name %></a> <% } %><% if (i.lesson_title) { %>Lesson: <%= i.lesson_title %> <% } %>
+            <p class="small"><% if (i.formula_name) { %>Formula: <a href="/admin/formulas/<%= i.formula_id %>"><%= i.formula_name %></a> <% } %><% if (i.product_title) { %>Product: <%= i.product_title %> <% } %><% if (i.herb_name) { %>Herb: <a href="/admin/herbs/<%= i.herb_slug %>"><%= i.herb_name %></a> <% } %><% if (i.lesson_title) { %>Lesson: <%= i.lesson_title %> <% } %><% if (i.fs_name) { %>Fullscript: <a href="<%= i.fs_url %>" target="_blank" rel="noopener"><%= i.fs_name %></a> <% } %>
               <% if (i.is_task) { %><span class="muted">· done <%= i.doneDates.length %> time(s)<%= i.doneToday ? ', including today' : '' %></span><% } %></p>
             <% if (canManage) { %><form method="post" action="<%= pb %>/items/<%= i.id %>/delete" data-confirm="Remove this item?"><%- csrfField %><button class="link-plain small critical-text">Remove</button></form><% } %>
           </div>
@@ -51,6 +52,7 @@
           <label class="field"><span>Product they can buy</span><select name="variant_id"><option value="">—</option><% for (const v of planOptions.variants) { %><option value="<%= v.id %>"><%= v.product_title %><%= v.title !== 'Default Title' ? ` — ${v.title}` : '' %></option><% } %></select></label>
           <label class="field"><span>Herb</span><select name="herb_id"><option value="">—</option><% for (const h of planOptions.herbs) { %><option value="<%= h.id %>"><%= h.common_name %></option><% } %></select></label>
           <label class="field"><span>Lesson (also assigns it)</span><select name="lesson_id"><option value="">—</option><% for (const l of planOptions.lessons) { %><option value="<%= l.id %>"><%= l.title %></option><% } %></select></label>
+          <% if (planOptions.fullscript.length) { %><label class="field"><span>Fullscript supplement (they order it there)</span><select name="fullscript_product_id"><option value="">—</option><% for (const f of planOptions.fullscript) { %><option value="<%= f.id %>"><%= f.name %><%= f.brand ? ` — ${f.brand}` : '' %></option><% } %></select></label><% } %>
         </div>
         <label class="check small"><input type="checkbox" name="is_task" value="1"> The patient ticks this off (daily task or checklist)</label>
         <p class="muted small">Recommendations are written and approved by you; nothing is added automatically. Patient-facing wording: “recommendation”, not “prescription”.</p>

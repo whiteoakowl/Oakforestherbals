@@ -376,3 +376,7 @@ th.right, td.right { text-align: right; }
 .bundle-contents { margin: 16px 0; }
 .download-list { padding-left: 18px; }
 .gift-card-form { margin-bottom: 16px; }
+.community-reply { margin: 10px 0 0 16px; padding: 8px 12px; border-left: 3px solid #d6ddd8; background: #f7f9f7; border-radius: 0 10px 10px 0; }
+.community-post .inline-form { display: flex; gap: 8px; margin-top: 10px; }
+.community-post .inline-form input { flex: 1; }
+.guidelines { background: #f7f9f7; padding: 12px; border-radius: 10px; }

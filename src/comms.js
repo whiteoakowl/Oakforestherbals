@@ -46,6 +46,9 @@ const TEMPLATES = [
   ['abandoned_cart', 'Abandoned cart reminder', 'You left something in your cart',
     '<p>Hi {{first_name}},</p><p>You left these in your cart at {{store}}:</p><p style="white-space:pre-line">{{items}}</p><p><a href="{{link}}">Return to your cart</a></p><p style="font-size:12px;color:#666">You received this because you agreed to hear from us at checkout. <a href="{{unsubscribe}}">Don\'t send these</a>.</p>',
     '', 'first_name, items, link, unsubscribe, store'],
+  ['community_invite', 'Community invitation', 'You\'re invited to join {{community}}',
+    '<p>Hi {{first_name}},</p><p>Your practitioner has invited you to <strong>{{community}}</strong>, a private group at {{store}}.</p><p><a href="{{link}}">See the group and join</a></p>',
+    '', 'first_name, community, link, store'],
 ];
 const KEYS = TEMPLATES.map(([k]) => k);
 

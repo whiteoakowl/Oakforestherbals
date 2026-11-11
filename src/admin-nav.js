@@ -37,6 +37,7 @@ const SECTIONS = [
       },
       { href: '/admin/leads', label: 'Leads', icon: 'funnel', perm: 'leads.manage' },
       { href: '/admin/education', label: 'Education', icon: 'content', perm: 'education.manage' },
+      { href: '/admin/communities', label: 'Communities', icon: 'users', perm: 'clinic.records.manage' },
     ],
   },
   {
@@ -74,6 +75,7 @@ const SECTIONS = [
           { href: '/admin/production/trace', label: 'Batch tracing' },
         ],
       },
+      { href: '/admin/fullscript', label: 'Fullscript', icon: 'flask', anyPerm: ['formulas.view', 'formulas.manage'] },
     ],
   },
   {

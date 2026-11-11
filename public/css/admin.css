@@ -747,3 +747,5 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
 .banner.banner-critical { background: var(--critical-bg); color: var(--critical); border-left: 4px solid #b42318; }
 .banner.banner-success { background: var(--success-bg); color: var(--success-text); }
 .kanban { grid-template-columns: repeat(5, minmax(190px, 1fr)); }
+.community-post.is-hidden, .community-reply.is-hidden { opacity: .55; }
+.community-reply { margin: 10px 0 0 16px; padding: 8px 12px; border-left: 3px solid var(--border-strong); background: var(--surface-2); border-radius: 0 10px 10px 0; }

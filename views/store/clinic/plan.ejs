@@ -6,6 +6,7 @@
   <% if (progress) { %><p>Task completion, last two weeks: <strong><%= progress.percent %>%</strong></p><% } %>
   <% if (plan.content.goals) { %><h3>Goals</h3><p class="prewrap"><%= plan.content.goals %></p><% } %>
   <% if (plan.content.summary) { %><p class="prewrap"><%= plan.content.summary %></p><% } %>
+  <% if (plan.content.fullscript_url) { %><p><a class="btn" href="/account/clinic/fullscript?plan=<%= plan.id %>" target="_blank" rel="noopener">Order my supplements on Fullscript</a></p><% } %>
 </div>
 <% for (const i of plan.items) { %>
   <div class="card plan-item">
@@ -18,6 +19,7 @@
     <% if (i.content.preparation) { %><p><em>How to prepare:</em> <%= i.content.preparation %></p><% } %>
     <% if (i.content.cautions) { %><p class="caution"><em>Cautions:</em> <%= i.content.cautions %></p><% } %>
     <% if (i.lesson_id) { %><p><a href="/account/clinic/learning/<%= i.lesson_id %>">Read: <%= i.lesson_title %></a></p><% } %>
+    <% if (i.fs_url && i.fs_active) { %><p><a class="btn btn-secondary" href="/account/clinic/fullscript?item=<%= i.id %>" target="_blank" rel="noopener">Order <%= i.fs_name %> on Fullscript</a></p><% } %>
     <% if (i.variant_id && i.product_status === 'active') { %>
       <form method="post" action="/account/clinic/plans/<%= plan.id %>/items/<%= i.id %>/cart"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-secondary">Add <%= i.product_title %> to cart · <%= money(i.price) %></button></form>
     <% } %>
