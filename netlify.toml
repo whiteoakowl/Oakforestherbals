@@ -21,6 +21,17 @@
   to = "/.netlify/functions/server"
   status = 200
 
+# The service worker must be re-checked on every visit so updates reach installed apps.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
 # Hourly automations: appointment reminders, invoice reminders and the daily digest.
 [functions."scheduled"]
   schedule = "@hourly"

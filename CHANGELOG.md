@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Install as an app
+
+### Added
+- **Installable app** for the storefront and the admin. Each has its own manifest (`/manifest.webmanifest`,
+  `/admin/manifest.webmanifest`) with the store name, theme colours and new app icons (192, 512, maskable
+  512 and a 180px Apple touch icon). Installing from the admin opens straight into the admin.
+- **Install app button** in the storefront footer and the admin account menu. On Android/Chrome it opens the
+  install prompt; on iPhone/iPad it shows "Share → Add to Home Screen" steps. It's hidden once installed.
+- **Service worker** (`/sw.js`) that keeps styles, scripts, images and fonts on the device so the app opens
+  quickly, and shows a friendly "You're offline" page when there's no connection. Pages are never cached,
+  so carts, sign-ins and admin data are always fresh.
+
 ## Unreleased — Getting back into the admin
 
 ### Added

@@ -21,6 +21,8 @@ app.use(mw.securityHeaders);
 // On Netlify these are served by the CDN before requests reach the function.
 app.use('/public', express.static(path.join(ROOT, 'public'), { maxAge: '1h' }));
 app.use('/images', express.static(path.join(ROOT, 'public', 'images'), { maxAge: '1d' }));
+const pwa = require('./routes/pwa');
+app.use(pwa.staticRouter);
 if (!storage.useSupabase) {
   app.use('/uploads', express.static(storage.UPLOAD_DIR, {
     maxAge: '7d',
@@ -84,6 +86,7 @@ app.use(session({
 app.use(mw.loadSettings);
 app.use(mw.locals);
 app.use(mw.csrfGuard);
+app.use(pwa.manifestRouter);
 
 app.use('/admin', require('./routes/admin'));
 app.use(mw.storefrontPassword);

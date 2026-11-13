@@ -235,6 +235,8 @@ th.right, td.right { text-align: right; }
 .footer-meta { display: flex; gap: 16px; align-items: center; }
 .admin-link { text-decoration: none; }
 .admin-link:hover { text-decoration: underline; }
+.install-app-link { font: inherit; color: inherit; background: none; border: 1px solid currentColor; border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.install-app-link[hidden] { display: none; }
 .site-footer h4 { font-family: var(--font-body); font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; }
 .footer-bottom { display: flex; justify-content: space-between; padding: 24px 16px; margin-top: 40px; border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent); font-size: .85rem; opacity: .75; }
 

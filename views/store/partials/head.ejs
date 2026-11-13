@@ -11,6 +11,14 @@
 <meta property="og:site_name" content="<%= store.name %>">
 <% if (typeof ogImage !== 'undefined' && ogImage) { %><meta property="og:image" content="<%= ogImage %>"><% } %>
 <% if (theme.favicon) { %><link rel="icon" href="<%= theme.favicon %>"><% } else { %><link rel="icon" href="/images/favicon.svg" type="image/svg+xml"><% } %>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="<%= theme.color_primary %>">
+<link rel="apple-touch-icon" href="/images/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="<%= store.name %>">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script src="/public/js/pwa.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=<%= encodeURIComponent(theme.font_heading) %>:wght@400;500;600;700&family=<%= encodeURIComponent(theme.font_body) %>:wght@400;500;600&display=swap">

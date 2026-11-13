@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#77b48a">
+<title>You're offline</title>
+<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<style>
+  :root { color-scheme: light dark; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #f6f8f4; color: #1f2a22; text-align: center;
+  }
+  @media (prefers-color-scheme: dark) { body { background: #141a16; color: #e8efe9; } p { color: #b5c2b8; } }
+  main { max-width: 360px; }
+  img { width: 88px; height: 88px; border-radius: 22px; }
+  h1 { font-size: 1.5rem; margin: 20px 0 8px; }
+  p { margin: 0 0 24px; line-height: 1.5; color: #4d5b50; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 12px 24px; background: #77b48a; color: #10180f; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <img src="/images/app-icon.svg" alt="">
+  <h1>You're offline</h1>
+  <p>There's no internet connection right now. Check your signal or Wi‑Fi, then try again.</p>
+  <button type="button" onclick="location.reload()">Try again</button>
+</main>
+<script>window.addEventListener('online', function () { location.reload(); });</script>
+</body>
+</html>
